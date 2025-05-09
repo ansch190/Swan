@@ -19,4 +19,9 @@
     <string name="remove_path">Entfernen</string>
     <string name="libraries">Bibliotheken</string>
     <string name="context_menu_info">Info</string>
+    <string name="notification_channel_name">Musikwiedergabe</string>
+    <string name="notification_title">Swan Musik</string>
+    <string name="notification_play">Abspielen</string>
+    <string name="notification_pause">Pausieren</string>
+    <string name="notification_stop">Stoppen</string>
 </resources>
