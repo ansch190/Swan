@@ -18,20 +18,25 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModelProvider
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.lifecycle.lifecycleScope
+import androidx.viewpager2.adapter.FragmentStateAdapter
+import com.google.android.material.tabs.TabLayoutMediator
 import com.schwanitz.swan.databinding.ActivityLibraryBinding
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class LibraryActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLibraryBinding
     private lateinit var viewModel: MainViewModel
-    private lateinit var musicAdapter: MusicFileAdapter
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
     private val TAG = "LibraryActivity"
     private val NOTIFICATION_PERMISSION_CODE = 100
+    private var filters = listOf<FilterEntity>()
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
@@ -84,41 +89,27 @@ class LibraryActivity : AppCompatActivity() {
 
         viewModel = ViewModelProvider(this, MainViewModelFactory(this, MusicRepository(this))).get(MainViewModel::class.java)
 
-        musicAdapter = MusicFileAdapter(
-            musicFiles = emptyList(),
-            onItemClick = { uri ->
-                musicService?.play(uri)
-            },
-            onShowMetadata = { musicFile ->
-                Log.d(TAG, "Showing metadata for file: ${musicFile.name}")
-                val position = musicAdapter.filteredFiles.indexOf(musicFile)
-                if (position >= 0) {
-                    MetadataFragment.newInstance(musicAdapter.filteredFiles, position)
-                        .show(supportFragmentManager, "MetadataFragment")
-                }
+        // Beobachte Filter aus der Datenbank
+        lifecycleScope.launch {
+            AppDatabase.getDatabase(this@LibraryActivity).filterDao().getAllFilters().collectLatest { filterList ->
+                Log.d(TAG, "Loaded filters: ${filterList.map { it.displayName }}")
+                filters = filterList
+                setupTabs()
             }
-        )
-        binding.recyclerView.apply {
-            layoutManager = LinearLayoutManager(this@LibraryActivity)
-            adapter = musicAdapter
-            registerForContextMenu(this)
-        }
-
-        viewModel.musicFiles.observe(this) { files ->
-            Log.d(TAG, "Music files updated, count: ${files.size}")
-            musicAdapter.updateFiles(files)
         }
 
         binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean = false
             override fun onQueryTextChange(newText: String?): Boolean {
-                musicAdapter.filter(newText)
+                // Filterlogik im FilterFragment
+                (supportFragmentManager.findFragmentByTag("f${binding.viewPager.currentItem}") as? FilterFragment)
+                    ?.filter(newText)
                 return true
             }
         })
 
         binding.playButton.setOnClickListener {
-            musicService?.play(musicAdapter.filteredFiles.getOrNull(musicAdapter.selectedPosition)?.uri ?: return@setOnClickListener)
+            // Wiedergabe wird später angepasst
         }
         binding.pauseButton.setOnClickListener {
             musicService?.pause()
@@ -132,6 +123,13 @@ class LibraryActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupTabs() {
+        binding.viewPager.adapter = FilterPagerAdapter(this, filters)
+        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+            tab.text = filters[position].displayName
+        }.attach()
+    }
+
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
         super.onCreateContextMenu(menu, v, menuInfo)
         menuInflater.inflate(R.menu.context_menu, menu)
@@ -140,16 +138,8 @@ class LibraryActivity : AppCompatActivity() {
     override fun onContextItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.context_info -> {
-                val position = musicAdapter.selectedPosition
-                if (position != RecyclerView.NO_POSITION) {
-                    Log.d(TAG, "Context menu: Showing metadata for file at position: $position")
-                    MetadataFragment.newInstance(musicAdapter.filteredFiles, position)
-                        .show(supportFragmentManager, "MetadataFragment")
-                    true
-                } else {
-                    Log.w(TAG, "Context menu: Invalid position $position")
-                    false
-                }
+                // Wird später angepasst
+                false
             }
             else -> super.onContextItemSelected(item)
         }
@@ -182,5 +172,15 @@ class LibraryActivity : AppCompatActivity() {
                 Log.w(TAG, "Notification permission denied")
             }
         }
+    }
+}
+
+class FilterPagerAdapter(
+    activity: FragmentActivity,
+    private val filters: List<FilterEntity>
+) : FragmentStateAdapter(activity) {
+    override fun getItemCount(): Int = filters.size
+    override fun createFragment(position: Int): Fragment {
+        return FilterFragment.newInstance(filters[position].criterion)
     }
 }

@@ -57,4 +57,14 @@ class MainViewModel(
         db.libraryPathDao().deletePath(uri)
         // Dateien werden durch ForeignKey CASCADE automatisch gelöscht
     }
+
+    suspend fun addFilter(criterion: String, displayName: String) {
+        Log.d(TAG, "Adding filter: $criterion")
+        db.filterDao().insertFilter(FilterEntity(criterion, displayName))
+    }
+
+    suspend fun removeFilter(criterion: String) {
+        Log.d(TAG, "Removing filter: $criterion")
+        db.filterDao().deleteFilter(criterion)
+    }
 }

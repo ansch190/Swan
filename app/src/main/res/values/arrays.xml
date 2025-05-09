@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="filter_options">
+        <item>@string/filter_by_title</item>
+        <item>@string/filter_by_artist</item>
+        <item>@string/filter_by_album</item>
+        <item>@string/filter_by_genre</item>
+    </string-array>
+</resources>

@@ -7,10 +7,11 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [LibraryPathEntity::class, MusicFileEntity::class], version = 2, exportSchema = false)
+@Database(entities = [LibraryPathEntity::class, MusicFileEntity::class, FilterEntity::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun libraryPathDao(): LibraryPathDao
     abstract fun musicFileDao(): MusicFileDao
+    abstract fun filterDao(): FilterDao
 
     companion object {
         @Volatile
@@ -23,7 +24,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "swan_database"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                 INSTANCE = instance
                 instance
@@ -32,8 +33,13 @@ abstract class AppDatabase : RoomDatabase() {
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                // Füge Index für libraryPathUri in music_files hinzu
                 database.execSQL("CREATE INDEX index_music_files_libraryPathUri ON music_files(libraryPathUri)")
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("CREATE TABLE IF NOT EXISTS filters (criterion TEXT NOT NULL, displayName TEXT NOT NULL, PRIMARY KEY(criterion))")
             }
         }
     }

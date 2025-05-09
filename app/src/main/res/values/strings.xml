@@ -34,4 +34,17 @@
     <string name="play_button">Abspielen</string>
     <string name="pause_button">Pausieren</string>
     <string name="stop_button">Stoppen</string>
+    <string name="filter_by_title">Titel</string>
+    <string name="filter_by_artist">Künstler</string>
+    <string name="filter_by_album">Album</string>
+    <string name="filter_by_genre">Genre</string>
+    <string name="filter_by_album_artist">Albumkünstler</string>
+    <string name="filter_by_disc_number">Disc-Nummer</string>
+    <string name="filter_by_track_number">Track-Nummer</string>
+    <string name="filter_by_year">Jahr</string>
+    <string name="filters">Filter</string>
+    <string name="filter_settings_title">Filter-Einstellungen</string>
+    <string name="add_filter">Filter hinzufügen</string>
+    <string name="remove_filter">Entfernen</string>
+    <string name="select_filters">Filter auswählen</string>
 </resources>

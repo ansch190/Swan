@@ -57,14 +57,22 @@ class MusicFileAdapter(
         notifyDataSetChanged()
     }
 
-    fun filter(query: String?) {
+    fun filter(query: String?, criterion: String = "title") {
         filteredFiles = if (query.isNullOrBlank()) {
             musicFiles
         } else {
             musicFiles.filter { file ->
-                (file.title?.contains(query, ignoreCase = true) ?: false) ||
-                        file.name.contains(query, ignoreCase = true) ||
-                        file.uri.lastPathSegment?.contains(query, ignoreCase = true) == true
+                when (criterion) {
+                    "artist" -> file.artist?.contains(query, ignoreCase = true) ?: false
+                    "album" -> file.album?.contains(query, ignoreCase = true) ?: false
+                    "genre" -> file.genre?.contains(query, ignoreCase = true) ?: false
+                    "title" -> (file.title?.contains(query, ignoreCase = true) ?: false) ||
+                            file.name.contains(query, ignoreCase = true) ||
+                            file.uri.lastPathSegment?.contains(query, ignoreCase = true) == true
+                    else -> (file.title?.contains(query, ignoreCase = true) ?: false) ||
+                            file.name.contains(query, ignoreCase = true) ||
+                            file.uri.lastPathSegment?.contains(query, ignoreCase = true) == true
+                }
             }
         }
         selectedPosition = RecyclerView.NO_POSITION

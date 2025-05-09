@@ -27,6 +27,9 @@ class SettingsFragment : DialogFragment() {
         binding.librariesButton.setOnClickListener {
             LibraryPathsFragment().show(parentFragmentManager, "LibraryPathsFragment")
         }
+        binding.filtersButton.setOnClickListener {
+            FilterSettingsFragment().show(parentFragmentManager, "FilterSettingsFragment")
+        }
     }
 
     override fun onStart() {
