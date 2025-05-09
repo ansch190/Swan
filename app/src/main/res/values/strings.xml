@@ -31,4 +31,7 @@
     <string name="sample_rate_label">Abtastrate:</string>
     <string name="bitrate_label">Bitrate:</string>
     <string name="tag_version_label">Tag-Version:</string>
+    <string name="play_button">Abspielen</string>
+    <string name="pause_button">Pausieren</string>
+    <string name="stop_button">Stoppen</string>
 </resources>

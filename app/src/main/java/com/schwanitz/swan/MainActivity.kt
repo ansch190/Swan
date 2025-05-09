@@ -67,6 +67,12 @@ class MainActivity : AppCompatActivity() {
 
         binding.navView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
+                R.id.nav_libraries -> {
+                    Log.d(TAG, "Opening libraries")
+                    LibraryPathsFragment().show(supportFragmentManager, "LibraryPathsFragment")
+                    binding.drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
                 R.id.nav_settings -> {
                     Log.d(TAG, "Opening settings")
                     SettingsFragment().show(supportFragmentManager, "SettingsFragment")
