@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Swan</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="title_label">Titel</string>
+    <string name="artist_label">Künstler</string>
+    <string name="album_label">Album</string>
+    <string name="album_artist_label">Albumkünstler</string>
+    <string name="disc_number_label">Disc-Nummer</string>
+    <string name="track_number_label">Track-Nummer</string>
+    <string name="year_label">Jahr</string>
+    <string name="genre_label">Genre</string>
+    <string name="unknown">Unbekannt</string>
+    <string name="artwork_description">Album artwork</string>
+    <string name="select_folder">Ordner auswählen</string>
+    <string name="settings">Einstellungen</string>
+    <string name="library_paths_title">Bibliothekspfade</string>
+    <string name="add_path">Pfad hinzufügen</string>
+    <string name="remove_path">Entfernen</string>
+    <string name="libraries">Bibliotheken</string>
+    <string name="context_menu_info">Info</string>
+</resources>
