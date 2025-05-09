@@ -24,4 +24,11 @@
     <string name="notification_play">Abspielen</string>
     <string name="notification_pause">Pausieren</string>
     <string name="notification_stop">Stoppen</string>
+    <string name="filename_label">Dateiname:</string>
+    <string name="path_label">Pfad:</string>
+    <string name="file_size_label">Größe:</string>
+    <string name="codec_label">Audio-Codec:</string>
+    <string name="sample_rate_label">Abtastrate:</string>
+    <string name="bitrate_label">Bitrate:</string>
+    <string name="tag_version_label">Tag-Version:</string>
 </resources>

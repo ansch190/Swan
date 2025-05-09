@@ -13,7 +13,7 @@
             android:id="@+id/filename_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Dateiname:"
+            android:text="@string/filename_label"
             android:textStyle="bold"
             android:textSize="18sp" />
         <TextView
@@ -27,7 +27,7 @@
             android:id="@+id/path_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Pfad:"
+            android:text="@string/path_label"
             android:textStyle="bold"
             android:textSize="18sp" />
         <TextView
@@ -41,7 +41,7 @@
             android:id="@+id/file_size_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Größe:"
+            android:text="@string/file_size_label"
             android:textStyle="bold"
             android:textSize="18sp" />
         <TextView
@@ -55,7 +55,7 @@
             android:id="@+id/codec_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Audio-Codec:"
+            android:text="@string/codec_label"
             android:textStyle="bold"
             android:textSize="18sp" />
         <TextView
@@ -69,7 +69,7 @@
             android:id="@+id/sample_rate_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Herzzahl:"
+            android:text="@string/sample_rate_label"
             android:textStyle="bold"
             android:textSize="18sp" />
         <TextView
@@ -83,7 +83,7 @@
             android:id="@+id/bitrate_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Bitrate:"
+            android:text="@string/bitrate_label"
             android:textStyle="bold"
             android:textSize="18sp" />
         <TextView
@@ -97,7 +97,7 @@
             android:id="@+id/tag_version_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tag-Version:"
+            android:text="@string/tag_version_label"
             android:textStyle="bold"
             android:textSize="18sp" />
         <TextView
