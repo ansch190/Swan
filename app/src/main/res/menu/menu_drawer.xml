@@ -2,8 +2,8 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <group android:checkableBehavior="single">
         <item
-            android:id="@+id/nav_libraries"
-            android:title="@string/libraries"
+            android:id="@+id/nav_library"
+            android:title="@string/library"
             android:icon="@android:drawable/ic_menu_gallery" />
         <item
             android:id="@+id/nav_settings"

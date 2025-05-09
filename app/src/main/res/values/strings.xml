@@ -17,7 +17,7 @@
     <string name="library_paths_title">Bibliothekspfade</string>
     <string name="add_path">Pfad hinzufügen</string>
     <string name="remove_path">Entfernen</string>
-    <string name="libraries">Bibliotheken</string>
+    <string name="library">Bibliothek</string>
     <string name="context_menu_info">Info</string>
     <string name="notification_channel_name">Musikwiedergabe</string>
     <string name="notification_title">Swan Musik</string>

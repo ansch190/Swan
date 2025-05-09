@@ -19,7 +19,7 @@
         android:id="@+id/librariesButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/libraries"
+        android:text="@string/library"
         android:layout_marginBottom="8dp" />
 
 </LinearLayout>

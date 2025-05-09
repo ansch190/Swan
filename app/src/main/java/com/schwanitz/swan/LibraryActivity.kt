@@ -21,16 +21,16 @@ import androidx.core.view.GravityCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.schwanitz.swan.databinding.ActivityMainBinding
+import com.schwanitz.swan.databinding.ActivityLibraryBinding
 
-class MainActivity : AppCompatActivity() {
+class LibraryActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var binding: ActivityLibraryBinding
     private lateinit var viewModel: MainViewModel
     private lateinit var musicAdapter: MusicFileAdapter
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
-    private val TAG = "MainActivity"
+    private val TAG = "LibraryActivity"
     private val NOTIFICATION_PERMISSION_CODE = 100
 
     private val connection = object : ServiceConnection {
@@ -47,7 +47,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
+        binding = ActivityLibraryBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         // Request notification permission for Android 13+
@@ -68,9 +68,7 @@ class MainActivity : AppCompatActivity() {
         binding.navView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.nav_library -> {
-                    Log.d(TAG, "Opening library")
-                    val intent = Intent(this, LibraryActivity::class.java)
-                    startActivity(intent)
+                    Log.d(TAG, "Already in library")
                     binding.drawerLayout.closeDrawer(GravityCompat.START)
                     true
                 }
@@ -101,7 +99,7 @@ class MainActivity : AppCompatActivity() {
             }
         )
         binding.recyclerView.apply {
-            layoutManager = LinearLayoutManager(this@MainActivity)
+            layoutManager = LinearLayoutManager(this@LibraryActivity)
             adapter = musicAdapter
             registerForContextMenu(this)
         }
