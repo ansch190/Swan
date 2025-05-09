@@ -47,4 +47,5 @@
     <string name="add_filter">Filter hinzufügen</string>
     <string name="remove_filter">Entfernen</string>
     <string name="select_filters">Filter auswählen</string>
+    <string name="empty_filter_message">Keine Werte verfügbar</string>
 </resources>

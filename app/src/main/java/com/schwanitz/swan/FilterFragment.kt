@@ -1,5 +1,6 @@
 package com.schwanitz.swan
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -52,7 +53,11 @@ class FilterFragment : Fragment() {
 
         adapter = FilterItemAdapter(emptyList()) { item ->
             Log.d(TAG, "Item selected: $item for criterion: $criterion")
-            // Hier kannst du die Logik für die Auswahl eines Elements hinzufügen
+            val intent = Intent(context, SongsActivity::class.java).apply {
+                putExtra("criterion", criterion)
+                putExtra("value", item)
+            }
+            startActivity(intent)
         }
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(context)
@@ -75,6 +80,7 @@ class FilterFragment : Fragment() {
                 }
                 Log.d(TAG, "Loaded items for $criterion: ${items.size}")
                 adapter.updateItems(items)
+                updateEmptyState(items)
             }
         }
     }
@@ -99,6 +105,17 @@ class FilterFragment : Fragment() {
         }
         Log.d(TAG, "Filtered items for $criterion: ${filteredItems.size} for query: $query")
         adapter.updateItems(filteredItems)
+        updateEmptyState(filteredItems)
+    }
+
+    private fun updateEmptyState(items: List<String>) {
+        if (items.isEmpty()) {
+            binding.recyclerView.visibility = View.GONE
+            binding.emptyText.visibility = View.VISIBLE
+        } else {
+            binding.recyclerView.visibility = View.VISIBLE
+            binding.emptyText.visibility = View.GONE
+        }
     }
 
     override fun onDestroyView() {

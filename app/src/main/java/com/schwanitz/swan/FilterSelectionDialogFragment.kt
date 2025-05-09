@@ -6,7 +6,9 @@ import android.os.Bundle
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class FilterSelectionDialogFragment : DialogFragment() {
 
@@ -19,7 +21,8 @@ class FilterSelectionDialogFragment : DialogFragment() {
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val filterOptions = arrayOf(
+        // Alle möglichen Filteroptionen
+        val allFilterOptions = arrayOf(
             getString(R.string.filter_by_title),
             getString(R.string.filter_by_artist),
             getString(R.string.filter_by_album),
@@ -29,7 +32,7 @@ class FilterSelectionDialogFragment : DialogFragment() {
             getString(R.string.filter_by_year),
             getString(R.string.filter_by_genre)
         )
-        val filterCriteria = arrayOf(
+        val allFilterCriteria = arrayOf(
             "title",
             "artist",
             "album",
@@ -39,11 +42,37 @@ class FilterSelectionDialogFragment : DialogFragment() {
             "year",
             "genre"
         )
-        val selectedFilters = BooleanArray(filterOptions.size) { false }
 
+        // Lade vorhandene Filter synchron
+        val existingFilters = runBlocking {
+            AppDatabase.getDatabase(requireContext()).filterDao().getAllFilters().first()
+        }
+        val existingCriteria = existingFilters.map { it.criterion }.toSet()
+
+        // Filtere die Auswahloptionen
+        val filterOptions = mutableListOf<String>()
+        val filterCriteria = mutableListOf<String>()
+        allFilterCriteria.forEachIndexed { index, criterion ->
+            if (criterion !in existingCriteria) {
+                filterOptions.add(allFilterOptions[index])
+                filterCriteria.add(criterion)
+            }
+        }
+
+        // Wenn keine Filter verfügbar sind, zeige eine Nachricht
+        if (filterOptions.isEmpty()) {
+            return AlertDialog.Builder(requireContext())
+                .setTitle(R.string.select_filters)
+                .setMessage("Keine weiteren Filter verfügbar")
+                .setPositiveButton(android.R.string.ok, null)
+                .create()
+        }
+
+        // Erstelle den Dialog mit den verfügbaren Filtern
+        val selectedFilters = BooleanArray(filterOptions.size) { false }
         return AlertDialog.Builder(requireContext())
             .setTitle(R.string.select_filters)
-            .setMultiChoiceItems(filterOptions, selectedFilters) { _, which, isChecked ->
+            .setMultiChoiceItems(filterOptions.toTypedArray(), selectedFilters) { _, which, isChecked ->
                 selectedFilters[which] = isChecked
             }
             .setPositiveButton(android.R.string.ok) { _, _ ->
