@@ -10,11 +10,12 @@ import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import android.view.ContextMenu
+import android.view.Menu
 import android.view.MenuItem
-import android.widget.SearchView
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SearchView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
@@ -23,8 +24,13 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
+import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import com.schwanitz.swan.databinding.ActivityLibraryBinding
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -39,16 +45,22 @@ class LibraryActivity : AppCompatActivity() {
     private val NOTIFICATION_PERMISSION_CODE = 100
     private val STORAGE_PERMISSION_CODE = 101
     private var filters = listOf<FilterEntity>()
+    private val _searchQuery = MutableStateFlow<String?>(null)
+    val searchQuery = _searchQuery.asStateFlow()
+    private var searchJob: Job? = null
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
             val binder = service as MusicPlaybackService.MusicPlaybackBinder
             musicService = binder.getService()
             isBound = true
+            Log.d(TAG, "MusicPlaybackService bound")
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
             isBound = false
+            musicService = null
+            Log.d(TAG, "MusicPlaybackService unbound")
         }
     }
 
@@ -114,12 +126,24 @@ class LibraryActivity : AppCompatActivity() {
             }
         }
 
+        // Initialisiere SearchView
         binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean = false
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                Log.d(TAG, "Search query submitted: $query")
+                _searchQuery.value = query
+                searchJob?.cancel()
+                applyFilter(query)
+                return true
+            }
+
             override fun onQueryTextChange(newText: String?): Boolean {
-                // Filterlogik im FilterFragment
-                (supportFragmentManager.findFragmentByTag("f${binding.viewPager.currentItem}") as? FilterFragment)
-                    ?.filter(newText)
+                Log.d(TAG, "Search query changed: $newText")
+                _searchQuery.value = newText
+                searchJob?.cancel()
+                searchJob = lifecycleScope.launch {
+                    delay(300) // Warte 300ms, um schnelles Tippen zu debouncen
+                    applyFilter(newText)
+                }
                 return true
             }
         })
@@ -136,6 +160,16 @@ class LibraryActivity : AppCompatActivity() {
 
         Intent(this, MusicPlaybackService::class.java).also { intent ->
             bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        }
+    }
+
+    private fun applyFilter(query: String?) {
+        val currentFragment = supportFragmentManager.findFragmentByTag("f${binding.viewPager.currentItem}") as? FilterFragment
+        if (currentFragment != null) {
+            Log.d(TAG, "Applying filter to fragment: $query")
+            currentFragment.filter(query)
+        } else {
+            Log.w(TAG, "No fragment found for current tab: ${binding.viewPager.currentItem}")
         }
     }
 
@@ -168,6 +202,16 @@ class LibraryActivity : AppCompatActivity() {
     override fun onCreateContextMenu(menu: ContextMenu, v: android.view.View, menuInfo: ContextMenu.ContextMenuInfo?) {
         super.onCreateContextMenu(menu, v, menuInfo)
         menuInflater.inflate(R.menu.context_menu, menu)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        // Setze den aktuellen Suchbegriff im SearchView
+        searchQuery.value?.let { query ->
+            Log.d(TAG, "Restoring search query in SearchView: $query")
+            binding.searchView.setQuery(query, false)
+            binding.searchView.isIconified = false
+        }
+        return true
     }
 
     override fun onContextItemSelected(item: MenuItem): Boolean {
@@ -227,6 +271,29 @@ class LibraryActivity : AppCompatActivity() {
                 FilterSettingsFragment().show(supportFragmentManager, "FilterSettingsFragment")
                 true // Ereignis als behandelt markieren
             }
+        }
+
+        // Tab-Wechsel-Listener, um den Suchbegriff anzuwenden
+        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                tab?.position?.let { position ->
+                    Log.d(TAG, "Tab selected: $position, applying search query: ${searchQuery.value}")
+                    val currentFragment = supportFragmentManager.findFragmentByTag("f$position") as? FilterFragment
+                    currentFragment?.filter(searchQuery.value)
+                }
+            }
+
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
+        })
+
+        // Wende den aktuellen Suchbegriff auf den initialen Tab an
+        val initialFragment = supportFragmentManager.findFragmentByTag("f${binding.viewPager.currentItem}") as? FilterFragment
+        if (initialFragment != null) {
+            Log.d(TAG, "Applying initial search query to tab ${binding.viewPager.currentItem}: ${searchQuery.value}")
+            initialFragment.filter(searchQuery.value)
+        } else {
+            Log.w(TAG, "Initial fragment not found for tab ${binding.viewPager.currentItem}")
         }
     }
 }

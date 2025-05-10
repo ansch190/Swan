@@ -61,6 +61,7 @@ class FilterFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         criterion = arguments?.getString(ARG_CRITERION)
+        Log.d(TAG, "Fragment created for criterion: $criterion")
     }
 
     override fun onCreateView(
@@ -75,6 +76,7 @@ class FilterFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         viewModel = ViewModelProvider(requireActivity(), MainViewModelFactory(requireContext(), MusicRepository(requireContext()))).get(MainViewModel::class.java)
 
+        val artistImageRepository = ArtistImageRepository(AppDatabase.getDatabase(requireContext()))
         adapter = FilterItemAdapter(
             items = emptyList(),
             onItemClick = { item ->
@@ -100,7 +102,9 @@ class FilterFragment : Fragment() {
                     adapter.setSelectedPosition(position)
                     binding.recyclerView.showContextMenu()
                 }
-            }
+            },
+            criterion = criterion,
+            artistImageRepository = artistImageRepository
         )
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(context)
@@ -125,6 +129,10 @@ class FilterFragment : Fragment() {
                 Log.d(TAG, "Loaded items for $criterion: ${items.size}")
                 adapter.updateItems(items)
                 updateEmptyState(items)
+                // Wende den aktuellen Suchbegriff an, falls vorhanden
+                val query = (activity as? LibraryActivity)?.searchQuery?.value
+                Log.d(TAG, "Applying initial filter for $criterion: $query")
+                filter(query)
             }
         }
 
