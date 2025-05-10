@@ -56,7 +56,7 @@ class SongsActivity : AppCompatActivity() {
 
         val criterion = intent.getStringExtra("criterion") ?: "title"
         val value = intent.getStringExtra("value") ?: ""
-        supportActionBar?.title = "$criterion: $value"
+        supportActionBar?.title = value // Nur der Album-Name als Titel
 
         adapter = MusicFileAdapter(
             musicFiles = emptyList(),
