@@ -1,34 +1,32 @@
 package com.schwanitz.swan
 
 import android.net.Uri
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity  // Erforderliche Importanweisung
+import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.RecyclerView
 
 class MusicFileAdapter(
     private var musicFiles: List<MusicFile>,
-    private val onItemClick: (Uri) -> Unit,
-    private val onShowMetadata: (MusicFile) -> Unit
+    private val onItemClick: (Uri) -> Unit
 ) : RecyclerView.Adapter<MusicFileAdapter.MusicViewHolder>() {
 
     var filteredFiles: List<MusicFile> = musicFiles
         private set
-    var selectedPosition: Int = RecyclerView.NO_POSITION
 
     class MusicViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val title: TextView = itemView.findViewById(android.R.id.text1)
 
-        fun bind(musicFile: MusicFile, position: Int, onItemClick: (Uri) -> Unit, onLongClick: (Int) -> Unit) {
+        fun bind(musicFile: MusicFile, onItemClick: (Uri) -> Unit, onLongClick: (MusicFile) -> Unit) {
             title.text = musicFile.title?.takeIf { it.isNotBlank() } ?: musicFile.name
             itemView.setOnClickListener { onItemClick(musicFile.uri) }
             itemView.setOnLongClickListener {
-                onLongClick(position)
+                onLongClick(musicFile)
                 true
             }
-            itemView.isLongClickable = true
         }
     }
 
@@ -40,12 +38,9 @@ class MusicFileAdapter(
 
     override fun onBindViewHolder(holder: MusicViewHolder, position: Int) {
         val musicFile = filteredFiles[position]
-        holder.bind(musicFile, position, onItemClick) { pos ->
-            selectedPosition = pos
-            Log.d("MusicFileAdapter", "Long click at position=$pos, uri=${musicFile.uri}, name=${musicFile.name}")
-            holder.itemView.showContextMenu()
+        holder.bind(musicFile, onItemClick) { selectedMusicFile ->
+            showPopupMenu(holder.itemView, selectedMusicFile)
         }
-        Log.d("MusicFileAdapter", "Bound position=$position, uri=${musicFile.uri}, title=${musicFile.title ?: musicFile.name}")
     }
 
     override fun getItemCount(): Int = filteredFiles.size
@@ -53,29 +48,25 @@ class MusicFileAdapter(
     fun updateFiles(newFiles: List<MusicFile>) {
         musicFiles = newFiles
         filteredFiles = newFiles
-        selectedPosition = RecyclerView.NO_POSITION
         notifyDataSetChanged()
     }
 
-    fun filter(query: String?, criterion: String = "title") {
-        filteredFiles = if (query.isNullOrBlank()) {
-            musicFiles
-        } else {
-            musicFiles.filter { file ->
-                when (criterion) {
-                    "artist" -> file.artist?.contains(query, ignoreCase = true) ?: false
-                    "album" -> file.album?.contains(query, ignoreCase = true) ?: false
-                    "genre" -> file.genre?.contains(query, ignoreCase = true) ?: false
-                    "title" -> (file.title?.contains(query, ignoreCase = true) ?: false) ||
-                            file.name.contains(query, ignoreCase = true) ||
-                            file.uri.lastPathSegment?.contains(query, ignoreCase = true) == true
-                    else -> (file.title?.contains(query, ignoreCase = true) ?: false) ||
-                            file.name.contains(query, ignoreCase = true) ||
-                            file.uri.lastPathSegment?.contains(query, ignoreCase = true) == true
+    private fun showPopupMenu(view: View, musicFile: MusicFile) {
+        val popup = PopupMenu(view.context, view)
+        popup.menuInflater.inflate(R.menu.context_menu, popup.menu)
+        popup.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.context_info -> {
+                    val fragmentManager = (view.context as? AppCompatActivity)?.supportFragmentManager
+                    fragmentManager?.let {
+                        MetadataFragment.newInstance(listOf(musicFile), 0)
+                            .show(it, "MetadataFragment")
+                    }
+                    true
                 }
+                else -> false
             }
         }
-        selectedPosition = RecyclerView.NO_POSITION
-        notifyDataSetChanged()
+        popup.show()
     }
 }

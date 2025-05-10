@@ -7,15 +7,11 @@ import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
-import android.view.ContextMenu
-import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
-import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayoutMediator
 import com.schwanitz.swan.databinding.ActivitySongsBinding
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +22,7 @@ class SongsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySongsBinding
     private lateinit var viewModel: MainViewModel
-    private lateinit var adapter: MusicFileAdapter
+    private var adapter: MusicFileAdapter? = null
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
     private val TAG = "SongsActivity"
@@ -87,8 +83,8 @@ class SongsActivity : AppCompatActivity() {
                                     !file.trackNumber.isNullOrBlank() && file.trackNumber.toIntOrNull() != null
                         }) {
                         filteredFiles.sortedWith(compareBy(
-                            { it.discNumber?.toIntOrNull() ?: Int.MAX_VALUE },
-                            { it.trackNumber?.toIntOrNull() ?: Int.MAX_VALUE }
+                            { it.discNumber?.trim()?.split("/")?.firstOrNull()?.toIntOrNull() ?: Int.MAX_VALUE },
+                            { it.trackNumber?.trim()?.split("/")?.firstOrNull()?.toIntOrNull() ?: Int.MAX_VALUE }
                         ))
                     } else {
                         filteredFiles.sortedBy { it.name }
@@ -116,56 +112,25 @@ class SongsActivity : AppCompatActivity() {
         binding.emptyText.visibility = View.GONE
     }
 
-    private fun setupListView(sortedFiles: List<MusicFile>) {
+    private fun setupListView(filteredFiles: List<MusicFile>) {
         adapter = MusicFileAdapter(
-            musicFiles = sortedFiles,
+            musicFiles = filteredFiles,
             onItemClick = { uri ->
                 Log.d(TAG, "Playing file with URI: $uri")
                 musicService?.play(uri)
-            },
-            onShowMetadata = { musicFile ->
-                Log.d(TAG, "Showing metadata for file: ${musicFile.name}")
-                val position = sortedFiles.indexOf(musicFile)
-                if (position >= 0) {
-                    MetadataFragment.newInstance(sortedFiles, position)
-                        .show(supportFragmentManager, "MetadataFragment")
-                }
             }
         )
         binding.songsRecyclerView.apply {
             layoutManager = LinearLayoutManager(this@SongsActivity)
             adapter = this@SongsActivity.adapter
-            registerForContextMenu(this)
         }
-        binding.songsRecyclerView.visibility = if (sortedFiles.isEmpty()) View.GONE else View.VISIBLE
-        binding.emptyText.visibility = if (sortedFiles.isEmpty()) View.VISIBLE else View.GONE
+        binding.songsRecyclerView.visibility = View.VISIBLE
+        binding.emptyText.visibility = if (filteredFiles.isEmpty()) View.VISIBLE else View.GONE
         binding.tabLayout.visibility = View.GONE
         binding.viewPager.visibility = View.GONE
     }
 
-    override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
-        super.onCreateContextMenu(menu, v, menuInfo)
-        menuInflater.inflate(R.menu.context_menu, menu)
-    }
-
-    override fun onContextItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.context_info -> {
-                val position = adapter.selectedPosition
-                if (position != RecyclerView.NO_POSITION) {
-                    val musicFile = adapter.filteredFiles[position]
-                    MetadataFragment.newInstance(listOf(musicFile), 0)
-                        .show(supportFragmentManager, "MetadataFragment")
-                    true
-                } else {
-                    false
-                }
-            }
-            else -> super.onContextItemSelected(item)
-        }
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
         return when (item.itemId) {
             android.R.id.home -> {
                 finish()
@@ -181,6 +146,5 @@ class SongsActivity : AppCompatActivity() {
             unbindService(connection)
             isBound = false
         }
-        unregisterForContextMenu(binding.songsRecyclerView)
     }
 }
