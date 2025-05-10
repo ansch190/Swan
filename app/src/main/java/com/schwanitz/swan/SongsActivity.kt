@@ -67,22 +67,23 @@ class SongsActivity : AppCompatActivity() {
                 val filteredFiles = files.filter { file ->
                     when (criterion) {
                         "album" -> file.album?.equals(value, ignoreCase = true) ?: false
+                        "artist" -> file.artist?.equals(value, ignoreCase = true) ?: false
                         else -> false
                     }
                 }
 
-                // Lade das Albumcover und alle Bilder für den Klick
-                loadAlbumArtwork(filteredFiles)
+                // Lade das Bild (Künstlerbild für "artist", Albumcover für "album")
+                loadImage(criterion, value, filteredFiles)
 
                 val discNumbers = filteredFiles.mapNotNull { it.discNumber }.distinct().sorted()
                 val hasDiscMetadata = discNumbers.isNotEmpty()
 
-                if (isTabViewEnabled && hasDiscMetadata) {
+                if (criterion == "album" && isTabViewEnabled && hasDiscMetadata) {
                     withContext(Dispatchers.Main) {
                         setupTabView(discNumbers, value)
                     }
                 } else {
-                    val sortedFiles = if (filteredFiles.all { file ->
+                    val sortedFiles = if (criterion == "album" && filteredFiles.all { file ->
                             !file.discNumber.isNullOrBlank() && file.discNumber.toIntOrNull() != null &&
                                     !file.trackNumber.isNullOrBlank() && file.trackNumber.toIntOrNull() != null
                         }) {
@@ -91,7 +92,7 @@ class SongsActivity : AppCompatActivity() {
                             { it.trackNumber?.trim()?.split("/")?.firstOrNull()?.toIntOrNull() ?: Int.MAX_VALUE }
                         ))
                     } else {
-                        filteredFiles.sortedBy { it.name }
+                        filteredFiles.sortedBy { it.title ?: it.name }
                     }
                     withContext(Dispatchers.Main) {
                         setupListView(sortedFiles)
@@ -105,7 +106,7 @@ class SongsActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun loadAlbumArtwork(files: List<MusicFile>) {
+    private suspend fun loadImage(criterion: String, value: String, files: List<MusicFile>) {
         if (files.isEmpty()) {
             withContext(Dispatchers.Main) {
                 binding.albumArtwork.visibility = View.GONE
@@ -113,60 +114,102 @@ class SongsActivity : AppCompatActivity() {
             return
         }
 
-        val firstFile = files.first()
-        val metadataExtractor = MetadataExtractor(this@SongsActivity)
-        val metadata = withContext(Dispatchers.IO) {
-            try {
-                metadataExtractor.extractMetadata(firstFile.uri)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to load metadata for ${firstFile.uri}: ${e.message}", e)
-                null
+        if (criterion == "artist") {
+            // Lade Künstlerbild von TheAudioDB
+            val artistImageRepository = ArtistImageRepository(AppDatabase.getDatabase(this@SongsActivity))
+            val imageUrl = withContext(Dispatchers.IO) {
+                try {
+                    artistImageRepository.getArtistImageUrl(value)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to load artist image for $value: ${e.message}", e)
+                    null
+                }
             }
-        }
 
-        val artworkBytes = withContext(Dispatchers.IO) {
-            try {
-                metadataExtractor.getArtworkBytes(firstFile.uri, 0)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to load artwork for ${firstFile.uri}: ${e.message}", e)
-                null
+            withContext(Dispatchers.Main) {
+                if (imageUrl != null) {
+                    Log.d(TAG, "Loading artist image for $value: $imageUrl")
+                    Glide.with(this@SongsActivity)
+                        .load(imageUrl)
+                        .error(android.R.drawable.ic_menu_close_clear_cancel)
+                        .into(binding.albumArtwork)
+                    binding.albumArtwork.visibility = View.VISIBLE
+
+                    // Öffne ImageViewerDialogFragment bei Klick mit Platzhalter
+                    binding.albumArtwork.setOnClickListener {
+                        android.widget.Toast.makeText(
+                            this@SongsActivity,
+                            "Artist image viewing not fully implemented",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } else {
+                    binding.albumArtwork.visibility = View.GONE
+                    android.widget.Toast.makeText(
+                        this@SongsActivity,
+                        "No artist image available for $value",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
-        }
+        } else {
+            // Lade Albumcover (für criterion == "album" oder andere)
+            val firstFile = files.first()
+            val metadataExtractor = MetadataExtractor(this@SongsActivity)
+            val metadata = withContext(Dispatchers.IO) {
+                try {
+                    metadataExtractor.extractMetadata(firstFile.uri)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to load metadata for ${firstFile.uri}: ${e.message}", e)
+                    null
+                }
+            }
 
-        val allArtworks = mutableListOf<ByteArray>()
-        if (metadata != null && metadata.artworkCount > 0) {
-            withContext(Dispatchers.IO) {
-                for (index in 0 until metadata.artworkCount) {
-                    try {
-                        metadataExtractor.getArtworkBytes(firstFile.uri, index)?.let { bytes ->
-                            if (bytes.isNotEmpty()) {
-                                allArtworks.add(bytes)
+            val artworkBytes = withContext(Dispatchers.IO) {
+                try {
+                    metadataExtractor.getArtworkBytes(firstFile.uri, 0)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to load artwork for ${firstFile.uri}: ${e.message}", e)
+                    null
+                }
+            }
+
+            val allArtworks = mutableListOf<ByteArray>()
+            if (metadata != null && metadata.artworkCount > 0) {
+                withContext(Dispatchers.IO) {
+                    for (index in 0 until metadata.artworkCount) {
+                        try {
+                            metadataExtractor.getArtworkBytes(firstFile.uri, index)?.let { bytes ->
+                                if (bytes.isNotEmpty()) {
+                                    allArtworks.add(bytes)
+                                }
                             }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to load artwork at index $index for ${firstFile.uri}: ${e.message}", e)
                         }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to load artwork at index $index for ${firstFile.uri}: ${e.message}", e)
                     }
                 }
             }
-        }
 
-        withContext(Dispatchers.Main) {
-            if (artworkBytes != null && artworkBytes.isNotEmpty()) {
-                Glide.with(this@SongsActivity)
-                    .load(artworkBytes)
-                    .error(android.R.drawable.ic_menu_close_clear_cancel)
-                    .into(binding.albumArtwork)
-                binding.albumArtwork.visibility = View.VISIBLE
+            withContext(Dispatchers.Main) {
+                if (artworkBytes != null && artworkBytes.isNotEmpty()) {
+                    Log.d(TAG, "Loading album artwork for ${firstFile.uri}")
+                    Glide.with(this@SongsActivity)
+                        .load(artworkBytes)
+                        .error(android.R.drawable.ic_menu_close_clear_cancel)
+                        .into(binding.albumArtwork)
+                    binding.albumArtwork.visibility = View.VISIBLE
 
-                // Füge OnClickListener hinzu, um ImageViewerDialogFragment zu öffnen
-                binding.albumArtwork.setOnClickListener {
-                    if (allArtworks.isNotEmpty()) {
-                        ImageViewerDialogFragment.newInstance(ArrayList(allArtworks), 0)
-                            .show(supportFragmentManager, "ImageViewerDialog")
+                    // Öffne ImageViewerDialogFragment bei Klick
+                    binding.albumArtwork.setOnClickListener {
+                        if (allArtworks.isNotEmpty()) {
+                            ImageViewerDialogFragment.newInstance(ArrayList(allArtworks), 0)
+                                .show(supportFragmentManager, "ImageViewerDialog")
+                        }
                     }
+                } else {
+                    binding.albumArtwork.visibility = View.GONE
                 }
-            } else {
-                binding.albumArtwork.visibility = View.GONE
             }
         }
     }
@@ -180,7 +223,6 @@ class SongsActivity : AppCompatActivity() {
         binding.viewPager.visibility = View.VISIBLE
         binding.songsRecyclerView.visibility = View.GONE
         binding.emptyText.visibility = View.GONE
-        // AlbumArtwork-Sichtbarkeit wird in loadAlbumArtwork gehandhabt
     }
 
     private fun setupListView(filteredFiles: List<MusicFile>) {
@@ -199,7 +241,6 @@ class SongsActivity : AppCompatActivity() {
         binding.emptyText.visibility = if (filteredFiles.isEmpty()) View.VISIBLE else View.GONE
         binding.tabLayout.visibility = View.GONE
         binding.viewPager.visibility = View.GONE
-        // AlbumArtwork-Sichtbarkeit wird in loadAlbumArtwork gehandhabt
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
