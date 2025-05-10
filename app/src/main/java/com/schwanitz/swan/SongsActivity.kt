@@ -11,10 +11,12 @@ import android.view.ContextMenu
 import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.tabs.TabLayoutMediator
 import com.schwanitz.swan.databinding.ActivitySongsBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,6 +30,9 @@ class SongsActivity : AppCompatActivity() {
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
     private val TAG = "SongsActivity"
+    private val prefs by lazy {
+        getSharedPreferences("swan_prefs", Context.MODE_PRIVATE)
+    }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
@@ -56,28 +61,9 @@ class SongsActivity : AppCompatActivity() {
 
         val criterion = intent.getStringExtra("criterion") ?: "title"
         val value = intent.getStringExtra("value") ?: ""
-        supportActionBar?.title = value // Nur der Album-Name als Titel
+        supportActionBar?.title = value
 
-        adapter = MusicFileAdapter(
-            musicFiles = emptyList(),
-            onItemClick = { uri ->
-                Log.d(TAG, "Playing file with URI: $uri")
-                musicService?.play(uri)
-            },
-            onShowMetadata = { musicFile ->
-                Log.d(TAG, "Showing metadata for file: ${musicFile.name}")
-                val position = adapter.filteredFiles.indexOf(musicFile)
-                if (position >= 0) {
-                    MetadataFragment.newInstance(adapter.filteredFiles, position)
-                        .show(supportFragmentManager, "MetadataFragment")
-                }
-            }
-        )
-        binding.songsRecyclerView.apply {
-            layoutManager = LinearLayoutManager(this@SongsActivity)
-            adapter = this@SongsActivity.adapter
-            registerForContextMenu(this)
-        }
+        val isTabViewEnabled = prefs.getBoolean("tab_view_enabled", false)
 
         viewModel.musicFiles.observe(this) { files ->
             lifecycleScope.launch(Dispatchers.Default) {
@@ -88,27 +74,28 @@ class SongsActivity : AppCompatActivity() {
                     }
                 }
 
-                // Prüfe, ob alle Lieder Metadaten für discNumber und trackNumber haben
-                val allHaveMetadata = filteredFiles.all { file ->
-                    !file.discNumber.isNullOrBlank() && file.discNumber.toIntOrNull() != null &&
-                            !file.trackNumber.isNullOrBlank() && file.trackNumber.toIntOrNull() != null
-                }
+                val discNumbers = filteredFiles.mapNotNull { it.discNumber }.distinct().sorted()
+                val hasDiscMetadata = discNumbers.isNotEmpty()
 
-                val sortedFiles = if (allHaveMetadata) {
-                    // Sortiere nach discNumber, dann nach trackNumber
-                    filteredFiles.sortedWith(compareBy(
-                        { it.discNumber?.toIntOrNull() ?: Int.MAX_VALUE },
-                        { it.trackNumber?.toIntOrNull() ?: Int.MAX_VALUE }
-                    ))
+                if (isTabViewEnabled && hasDiscMetadata) {
+                    withContext(Dispatchers.Main) {
+                        setupTabView(discNumbers, value)
+                    }
                 } else {
-                    // Fallback: Sortiere nach Dateiname
-                    filteredFiles.sortedBy { it.name }
-                }
-
-                withContext(Dispatchers.Main) {
-                    adapter.updateFiles(sortedFiles)
-                    binding.songsRecyclerView.visibility = if (sortedFiles.isEmpty()) View.GONE else View.VISIBLE
-                    binding.emptyText.visibility = if (sortedFiles.isEmpty()) View.VISIBLE else View.GONE
+                    val sortedFiles = if (filteredFiles.all { file ->
+                            !file.discNumber.isNullOrBlank() && file.discNumber.toIntOrNull() != null &&
+                                    !file.trackNumber.isNullOrBlank() && file.trackNumber.toIntOrNull() != null
+                        }) {
+                        filteredFiles.sortedWith(compareBy(
+                            { it.discNumber?.toIntOrNull() ?: Int.MAX_VALUE },
+                            { it.trackNumber?.toIntOrNull() ?: Int.MAX_VALUE }
+                        ))
+                    } else {
+                        filteredFiles.sortedBy { it.name }
+                    }
+                    withContext(Dispatchers.Main) {
+                        setupListView(sortedFiles)
+                    }
                 }
             }
         }
@@ -116,6 +103,44 @@ class SongsActivity : AppCompatActivity() {
         Intent(this, MusicPlaybackService::class.java).also { intent ->
             bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
+    }
+
+    private fun setupTabView(discNumbers: List<String>, albumName: String) {
+        binding.viewPager.adapter = DiscPagerAdapter(this, discNumbers, albumName)
+        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+            tab.text = "CD ${position + 1}"
+        }.attach()
+        binding.tabLayout.visibility = View.VISIBLE
+        binding.viewPager.visibility = View.VISIBLE
+        binding.songsRecyclerView.visibility = View.GONE
+        binding.emptyText.visibility = View.GONE
+    }
+
+    private fun setupListView(sortedFiles: List<MusicFile>) {
+        adapter = MusicFileAdapter(
+            musicFiles = sortedFiles,
+            onItemClick = { uri ->
+                Log.d(TAG, "Playing file with URI: $uri")
+                musicService?.play(uri)
+            },
+            onShowMetadata = { musicFile ->
+                Log.d(TAG, "Showing metadata for file: ${musicFile.name}")
+                val position = sortedFiles.indexOf(musicFile)
+                if (position >= 0) {
+                    MetadataFragment.newInstance(sortedFiles, position)
+                        .show(supportFragmentManager, "MetadataFragment")
+                }
+            }
+        )
+        binding.songsRecyclerView.apply {
+            layoutManager = LinearLayoutManager(this@SongsActivity)
+            adapter = this@SongsActivity.adapter
+            registerForContextMenu(this)
+        }
+        binding.songsRecyclerView.visibility = if (sortedFiles.isEmpty()) View.GONE else View.VISIBLE
+        binding.emptyText.visibility = if (sortedFiles.isEmpty()) View.VISIBLE else View.GONE
+        binding.tabLayout.visibility = View.GONE
+        binding.viewPager.visibility = View.GONE
     }
 
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {

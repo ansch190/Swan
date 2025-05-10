@@ -1,5 +1,6 @@
 package com.schwanitz.swan
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -11,6 +12,9 @@ class SettingsFragment : DialogFragment() {
 
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
+    private val prefs by lazy {
+        requireContext().getSharedPreferences("swan_prefs", Context.MODE_PRIVATE)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -29,6 +33,10 @@ class SettingsFragment : DialogFragment() {
         }
         binding.filtersButton.setOnClickListener {
             FilterSettingsFragment().show(parentFragmentManager, "FilterSettingsFragment")
+        }
+        binding.tabViewCheckbox.isChecked = prefs.getBoolean("tab_view_enabled", false)
+        binding.tabViewCheckbox.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("tab_view_enabled", isChecked).apply()
         }
     }
 
