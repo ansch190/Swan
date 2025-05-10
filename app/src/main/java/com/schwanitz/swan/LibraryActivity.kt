@@ -165,13 +165,6 @@ class LibraryActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupTabs() {
-        binding.viewPager.adapter = FilterPagerAdapter(this, filters)
-        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
-            tab.text = filters[position].displayName
-        }.attach()
-    }
-
     override fun onCreateContextMenu(menu: ContextMenu, v: android.view.View, menuInfo: ContextMenu.ContextMenuInfo?) {
         super.onCreateContextMenu(menu, v, menuInfo)
         menuInflater.inflate(R.menu.context_menu, menu)
@@ -213,6 +206,26 @@ class LibraryActivity : AppCompatActivity() {
             } else {
                 Log.w(TAG, "Required permissions denied")
                 Toast.makeText(this, "Required permissions not granted, some features may not work", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun setupTabs() {
+        // ViewPager und Adapter einrichten
+        binding.viewPager.adapter = FilterPagerAdapter(this, filters)
+
+        // TabLayout mit ViewPager verbinden
+        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+            tab.text = filters[position].displayName
+        }.attach()
+
+        // Long-Click-Listener für jeden Tab setzen
+        for (i in 0 until binding.tabLayout.tabCount) {
+            val tab = binding.tabLayout.getTabAt(i)
+            tab?.view?.setOnLongClickListener {
+                // Filterkonfigurationsseite anzeigen
+                FilterSettingsFragment().show(supportFragmentManager, "FilterSettingsFragment")
+                true // Ereignis als behandelt markieren
             }
         }
     }
