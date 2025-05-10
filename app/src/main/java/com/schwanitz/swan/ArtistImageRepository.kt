@@ -20,6 +20,12 @@ class ArtistImageRepository(private val db: AppDatabase) {
             return cachedArtist.imageUrl
         }
 
+        // Falls ein Eintrag existiert, aber imageUrl null ist, gib null zurück, ohne erneute API-Abfrage
+        if (cachedArtist != null) {
+            Log.d(TAG, "Cached artist $artistName has no image URL, skipping API call")
+            return null
+        }
+
         // Versuche mehrere Schreibweisen des Künstlernamens
         val attempts = listOf(
             artistName,
@@ -29,7 +35,7 @@ class ArtistImageRepository(private val db: AppDatabase) {
         )
 
         for (attempt in attempts) {
-            // Künstlernamen für den Link anpassen (wie im Java-Code)
+            // Künstlernamen für den Link anpassen
             val searchQueryForLink = attempt.replace(" ", "-").replace("'", "")
             val encodedSearchQuery = URLEncoder.encode(attempt, StandardCharsets.UTF_8.toString())
             Log.d(TAG, "Trying artist name: $artistName -> $attempt (encoded: $encodedSearchQuery, link format: $searchQueryForLink)")
@@ -91,7 +97,6 @@ class ArtistImageRepository(private val db: AppDatabase) {
                                             return imageUrl
                                         } catch (e: android.database.sqlite.SQLiteConstraintException) {
                                             Log.w(TAG, "UNIQUE constraint failed for $artistName, attempting to update existing entry")
-                                            // Fallback: Bestehenden Eintrag aktualisieren
                                             db.artistDao().insertArtist(ArtistEntity(artistName, imageUrl))
                                             return imageUrl
                                         }
@@ -114,23 +119,13 @@ class ArtistImageRepository(private val db: AppDatabase) {
             }
         }
 
-        // Cache ein leeres Ergebnis, wenn alle Versuche fehlschlagen
+        // Cache ein leeres Ergebnis, nur wenn kein Eintrag existiert
         try {
             db.artistDao().insertArtist(ArtistEntity(artistName, null))
-            Log.w(TAG, "No image found for artist: $artistName after all attempts")
+            Log.w(TAG, "No image found for artist: $artistName after all attempts, caching null")
         } catch (e: android.database.sqlite.SQLiteConstraintException) {
             Log.w(TAG, "UNIQUE constraint failed for $artistName when caching null, skipping")
         }
         return null
-    }
-
-    // Debugging-Methode zum Löschen des Cache für einen Künstler
-    suspend fun clearArtistCache(artistName: String) {
-        try {
-            db.artistDao().insertArtist(ArtistEntity(artistName, null))
-            Log.d(TAG, "Cleared cache for artist: $artistName")
-        } catch (e: android.database.sqlite.SQLiteConstraintException) {
-            Log.w(TAG, "UNIQUE constraint failed when clearing cache for $artistName, skipping")
-        }
     }
 }
