@@ -7,13 +7,16 @@ import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import android.view.ContextMenu
 import android.view.LayoutInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.schwanitz.swan.databinding.FragmentFilterBinding
 import kotlinx.coroutines.launch
 
@@ -24,9 +27,9 @@ class FilterFragment : Fragment() {
     private lateinit var viewModel: MainViewModel
     private lateinit var adapter: FilterItemAdapter
     private var criterion: String? = null
-    private val TAG = "FilterFragment"
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
+    private val TAG = "FilterFragment"
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
@@ -72,28 +75,37 @@ class FilterFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         viewModel = ViewModelProvider(requireActivity(), MainViewModelFactory(requireContext(), MusicRepository(requireContext()))).get(MainViewModel::class.java)
 
-        adapter = FilterItemAdapter(emptyList()) { item ->
-            Log.d(TAG, "Item selected: $item for criterion: $criterion")
-            if (criterion == "title") {
-                // Finde die Musikdatei mit dem entsprechenden Titel
-                viewModel.musicFiles.value?.find { file ->
-                    (file.title ?: file.name) == item
-                }?.let { musicFile ->
-                    Log.d(TAG, "Playing file: ${musicFile.uri}")
-                    musicService?.play(musicFile.uri)
-                } ?: Log.w(TAG, "No file found for title: $item")
-            } else {
-                // Für andere Filter: Navigiere zur SongsActivity
-                val intent = Intent(context, SongsActivity::class.java).apply {
-                    putExtra("criterion", criterion)
-                    putExtra("value", item)
+        adapter = FilterItemAdapter(
+            items = emptyList(),
+            onItemClick = { item ->
+                Log.d(TAG, "Item clicked: $item for criterion: $criterion")
+                if (criterion == "title") {
+                    viewModel.musicFiles.value?.find { file ->
+                        (file.title ?: file.name) == item
+                    }?.let { musicFile ->
+                        Log.d(TAG, "Playing file: ${musicFile.uri}")
+                        musicService?.play(musicFile.uri)
+                    } ?: Log.w(TAG, "No file found for title: $item")
+                } else {
+                    val intent = Intent(context, SongsActivity::class.java).apply {
+                        putExtra("criterion", criterion)
+                        putExtra("value", item)
+                    }
+                    startActivity(intent)
                 }
-                startActivity(intent)
+            },
+            onItemLongClick = { item, position ->
+                if (criterion == "title") {
+                    Log.d(TAG, "Long click on item: $item at position: $position")
+                    adapter.setSelectedPosition(position)
+                    binding.recyclerView.showContextMenu()
+                }
             }
-        }
+        )
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = this@FilterFragment.adapter
+            registerForContextMenu(this)
         }
 
         // Beobachte Musikdateien für Filterkriterien
@@ -119,6 +131,48 @@ class FilterFragment : Fragment() {
         // Binde den MusicPlaybackService
         Intent(requireContext(), MusicPlaybackService::class.java).also { intent ->
             requireContext().bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        }
+    }
+
+    override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
+        super.onCreateContextMenu(menu, v, menuInfo)
+        if (criterion == "title") {
+            Log.d(TAG, "Creating context menu for view: $v")
+            menu.clear() // Entferne vorhandene Einträge, um Duplikate zu vermeiden
+            requireActivity().menuInflater.inflate(R.menu.context_menu, menu)
+        }
+    }
+
+    override fun onContextItemSelected(item: MenuItem): Boolean {
+        if (criterion != "title") return super.onContextItemSelected(item)
+        return when (item.itemId) {
+            R.id.context_info -> {
+                val position = adapter.getSelectedPosition()
+                if (position != RecyclerView.NO_POSITION) {
+                    val selectedTitle = adapter.getItemAt(position)
+                    if (selectedTitle != null) {
+                        Log.d(TAG, "Context menu: Showing metadata for title: $selectedTitle at position: $position")
+                        viewModel.musicFiles.value?.filter { file ->
+                            (file.title ?: file.name) == selectedTitle
+                        }?.let { matchingFiles ->
+                            if (matchingFiles.isNotEmpty()) {
+                                MetadataFragment.newInstance(matchingFiles, 0)
+                                    .show(parentFragmentManager, "MetadataFragment")
+                            } else {
+                                Log.w(TAG, "No files found for title: $selectedTitle")
+                            }
+                        }
+                        true
+                    } else {
+                        Log.w(TAG, "No item found at position: $position")
+                        false
+                    }
+                } else {
+                    Log.w(TAG, "Invalid position for context menu: $position")
+                    false
+                }
+            }
+            else -> super.onContextItemSelected(item)
         }
     }
 
@@ -161,6 +215,7 @@ class FilterFragment : Fragment() {
             requireContext().unbindService(connection)
             isBound = false
         }
+        requireActivity().unregisterForContextMenu(binding.recyclerView)
         _binding = null
     }
 }
