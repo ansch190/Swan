@@ -4,6 +4,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
@@ -18,6 +20,9 @@ import com.schwanitz.swan.databinding.ActivitySongsBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.ByteArrayOutputStream
 
 class SongsActivity : AppCompatActivity() {
 
@@ -129,19 +134,48 @@ class SongsActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 if (imageUrl != null) {
                     Log.d(TAG, "Loading artist image for $value: $imageUrl")
+                    // Lade das Bild mit Glide
                     Glide.with(this@SongsActivity)
                         .load(imageUrl)
                         .error(android.R.drawable.ic_menu_close_clear_cancel)
                         .into(binding.albumArtwork)
                     binding.albumArtwork.visibility = View.VISIBLE
 
-                    // Öffne ImageViewerDialogFragment bei Klick mit Platzhalter
+                    // Lade das Bild als ByteArray für den ImageViewerDialogFragment
+                    val imageBytes = withContext(Dispatchers.IO) {
+                        try {
+                            val client = OkHttpClient()
+                            val request = Request.Builder().url(imageUrl).build()
+                            val bytes = client.newCall(request).execute().body?.bytes()
+                            if (bytes != null) {
+                                // Komprimiere das Bild, um Speicher zu sparen
+                                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                val outputStream = ByteArrayOutputStream()
+                                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+                                outputStream.toByteArray()
+                            } else {
+                                null
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to download artist image for $value: ${e.message}", e)
+                            null
+                        }
+                    }
+
+                    // Öffne ImageViewerDialogFragment bei Klick
                     binding.albumArtwork.setOnClickListener {
-                        android.widget.Toast.makeText(
-                            this@SongsActivity,
-                            "Artist image viewing not fully implemented",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
+                        if (imageBytes != null) {
+                            Log.d(TAG, "Opening ImageViewerDialogFragment for artist image: $value")
+                            ImageViewerDialogFragment.newInstance(ArrayList(listOf(imageBytes)), 0)
+                                .show(supportFragmentManager, "ImageViewerDialog")
+                        } else {
+                            Log.w(TAG, "No image bytes available for $value")
+                            android.widget.Toast.makeText(
+                                this@SongsActivity,
+                                "Failed to load artist image for viewing",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
                 } else {
                     binding.albumArtwork.visibility = View.GONE
@@ -203,6 +237,7 @@ class SongsActivity : AppCompatActivity() {
                     // Öffne ImageViewerDialogFragment bei Klick
                     binding.albumArtwork.setOnClickListener {
                         if (allArtworks.isNotEmpty()) {
+                            Log.d(TAG, "Opening ImageViewerDialogFragment for album artwork: ${firstFile.uri}")
                             ImageViewerDialogFragment.newInstance(ArrayList(allArtworks), 0)
                                 .show(supportFragmentManager, "ImageViewerDialog")
                         }
