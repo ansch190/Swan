@@ -103,7 +103,13 @@ class LibraryActivity : AppCompatActivity() {
                 ).show()
                 LibraryPathsFragment().show(supportFragmentManager, "LibraryPathsFragment")
             } else {
-                // Beobachte Filter aus der Datenbank, nur wenn Pfade vorhanden sind
+                // Stelle sicher, dass mindestens ein Filter vorhanden ist
+                val filtersFromDb = AppDatabase.getDatabase(this@LibraryActivity).filterDao().getAllFilters().first()
+                if (filtersFromDb.isEmpty()) {
+                    Log.d(TAG, "No filters found, adding default filter: Title")
+                    viewModel.addFilter("title", getString(R.string.filter_by_title))
+                }
+                // Beobachte Filter aus der Datenbank
                 AppDatabase.getDatabase(this@LibraryActivity).filterDao().getAllFilters().collectLatest { filterList ->
                     Log.d(TAG, "Loaded filters: ${filterList.map { it.displayName }}")
                     filters = filterList

@@ -8,7 +8,7 @@
     android:gravity="center_vertical">
 
     <TextView
-        android:id="@+id/pathText"
+        android:id="@+id/filterText"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
@@ -18,7 +18,7 @@
         android:id="@+id/removeButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/remove_path"
-        android:contentDescription="@string/remove_path_description" />
+        android:text="@string/remove_filter"
+        android:contentDescription="@string/remove_filter_description" />
 
 </LinearLayout>

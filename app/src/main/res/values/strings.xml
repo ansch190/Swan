@@ -18,6 +18,7 @@
     <string name="library_paths_title">Bibliothekspfade</string>
     <string name="add_path">Pfad hinzufügen</string>
     <string name="remove_path">Entfernen</string>
+    <string name="remove_path_description">Bibliothekspfad entfernen</string>
     <string name="library">Bibliothek</string>
     <string name="context_menu_info">Info</string>
     <string name="notification_channel_name">Musikwiedergabe</string>
@@ -47,6 +48,7 @@
     <string name="filter_settings_title">Filter-Einstellungen</string>
     <string name="add_filter">Filter hinzufügen</string>
     <string name="remove_filter">Entfernen</string>
+    <string name="remove_filter_description">Filter entfernen</string>
     <string name="select_filters">Filter auswählen</string>
     <string name="empty_filter_message">Keine Werte verfügbar</string>
     <string name="no_library_paths_message">Bitte definieren Sie zunächst Bibliothekspfade in den Einstellungen.</string>
@@ -54,4 +56,9 @@
     <string name="scan_progress_initial">Warte auf Scan...</string>
     <string name="scan_progress">%1$d von %2$d Dateien gescannt</string>
     <string name="scan_failed">Scan fehlgeschlagen: %1$s</string>
+    <string name="cancel_scan">Scan abbrechen</string>
+    <string name="cancel_scan_description">Scanvorgang abbrechen</string>
+    <string name="scan_cancelled">Scan abgebrochen</string>
+    <string name="path_already_exists">Pfad existiert bereits</string>
+    <string name="cannot_remove_last_filter">Mindestens ein Filter muss vorhanden bleiben</string>
 </resources>

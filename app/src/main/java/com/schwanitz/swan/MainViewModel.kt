@@ -10,7 +10,9 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class MainViewModel(
     private val context: Context,
@@ -23,7 +25,7 @@ class MainViewModel(
     private val TAG = "MainViewModel"
 
     init {
-        // Beobachte Datenbankänderungen
+        // Beobachte Datenbankänderungen für Musikdateien
         viewModelScope.launch {
             db.musicFileDao().getAllFiles().collectLatest { entities ->
                 val files = entities.map { entity ->
@@ -49,18 +51,27 @@ class MainViewModel(
                 musicFiles.value = files
             }
         }
+
+        // Initialisiere Standardfilter, falls keine Filter vorhanden sind
+        viewModelScope.launch {
+            val filters = db.filterDao().getAllFilters().first()
+            if (filters.isEmpty()) {
+                Log.d(TAG, "No filters found, adding default filter: Title")
+                db.filterDao().insertFilter(FilterEntity("title", context.getString(R.string.filter_by_title)))
+            }
+        }
     }
 
-    fun addLibraryPath(uri: String, displayName: String) {
+    fun addLibraryPath(uri: String, displayName: String): UUID {
         Log.d(TAG, "Adding library path: $uri")
-        viewModelScope.launch {
-            db.libraryPathDao().insertPath(LibraryPathEntity(uri, displayName))
-        }
 
         // Starte WorkManager-Job
         val workRequest = OneTimeWorkRequestBuilder<MusicScanWorker>()
             .setInputData(
-                workDataOf(MusicScanWorker.KEY_URI to uri)
+                workDataOf(
+                    MusicScanWorker.KEY_URI to uri,
+                    MusicScanWorker.KEY_DISPLAY_NAME to displayName
+                )
             )
             .build()
 
@@ -75,11 +86,25 @@ class MainViewModel(
                 if (scannedFiles > 0 || totalFiles > 0) {
                     scanProgress.value = MusicRepository.ScanProgress(scannedFiles, totalFiles)
                 }
-                if (workInfo.state == WorkInfo.State.SUCCEEDED || workInfo.state == WorkInfo.State.FAILED) {
+                if (workInfo.state == WorkInfo.State.SUCCEEDED || workInfo.state == WorkInfo.State.FAILED || workInfo.state == WorkInfo.State.CANCELLED) {
                     scanProgress.value = null // Fortschritt zurücksetzen
                     Log.d(TAG, "Scan completed with state: ${workInfo.state}")
+                    // Bereinige bei Abbruch oder Fehler
+                    if (workInfo.state == WorkInfo.State.CANCELLED || workInfo.state == WorkInfo.State.FAILED) {
+                        cleanupCancelledScan(uri)
+                    }
                 }
             }
+        }
+        return workRequest.id
+    }
+
+    fun cleanupCancelledScan(libraryPathUri: String) {
+        viewModelScope.launch {
+            Log.d(TAG, "Cleaning up cancelled scan for path: $libraryPathUri")
+            db.musicFileDao().deleteFilesByPath(libraryPathUri)
+            db.libraryPathDao().deletePath(libraryPathUri)
+            Log.d(TAG, "Deleted files and path for cancelled scan: $libraryPathUri")
         }
     }
 
@@ -94,8 +119,16 @@ class MainViewModel(
         db.filterDao().insertFilter(FilterEntity(criterion, displayName))
     }
 
-    suspend fun removeFilter(criterion: String) {
-        Log.d(TAG, "Removing filter: $criterion")
-        db.filterDao().deleteFilter(criterion)
+    suspend fun removeFilter(criterion: String): Boolean {
+        Log.d(TAG, "Attempting to remove filter: $criterion")
+        val filters = db.filterDao().getAllFilters().first()
+        return if (filters.size > 1) {
+            db.filterDao().deleteFilter(criterion)
+            Log.d(TAG, "Filter removed: $criterion")
+            true
+        } else {
+            Log.w(TAG, "Cannot remove filter: $criterion, at least one filter must remain")
+            false
+        }
     }
 }

@@ -7,15 +7,19 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.work.WorkManager
 import com.schwanitz.swan.databinding.FragmentLibraryPathsBinding
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class LibraryPathsFragment : DialogFragment() {
 
@@ -24,6 +28,8 @@ class LibraryPathsFragment : DialogFragment() {
     private lateinit var viewModel: MainViewModel
     private val libraryPaths = mutableListOf<LibraryPathEntity>()
     private lateinit var pathsAdapter: LibraryPathsAdapter
+    private var currentWorkId: UUID? = null
+    private var currentLibraryPathUri: String? = null
     private val TAG = "LibraryPathsFragment"
 
     private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -42,7 +48,7 @@ class LibraryPathsFragment : DialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         viewModel = ViewModelProvider(requireActivity(), MainViewModelFactory(requireContext(), MusicRepository(requireContext()))).get(MainViewModel::class.java)
-        pathsAdapter = LibraryPathsAdapter(libraryPaths, ::removePath, requireContext())
+        pathsAdapter = LibraryPathsAdapter(libraryPaths, ::onActionClick, requireContext())
         binding.pathsRecyclerView.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = pathsAdapter
@@ -56,8 +62,13 @@ class LibraryPathsFragment : DialogFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             AppDatabase.getDatabase(requireContext()).libraryPathDao().getAllPaths().collectLatest { paths ->
                 Log.d(TAG, "Loaded paths from database: ${paths.size}")
+                // Behalte temporäre Pfade, die noch gescannt werden
+                val tempPath = libraryPaths.find { it.uri == currentLibraryPathUri }
                 libraryPaths.clear()
                 libraryPaths.addAll(paths)
+                if (tempPath != null && !paths.any { it.uri == tempPath.uri }) {
+                    libraryPaths.add(tempPath)
+                }
                 pathsAdapter.notifyDataSetChanged()
             }
         }
@@ -74,12 +85,51 @@ class LibraryPathsFragment : DialogFragment() {
                     it.scannedFiles,
                     it.totalFiles
                 )
-                Log.d(TAG, "Scan progress: ${it.scannedFiles}/${it.totalFiles} ($percentage%)")
+                Log.d(TAG, "Scan progress: ${it.scannedFiles}/${it.totalFiles} ($percentage%), uri: $currentLibraryPathUri")
+                pathsAdapter.setScanningPath(currentLibraryPathUri)
             } ?: run {
                 binding.scanProgressContainer.visibility = View.GONE
                 binding.addPathButton.isEnabled = true
                 binding.scanProgressBar.progress = 0
                 binding.scanProgressText.text = getString(R.string.scan_progress_initial)
+                pathsAdapter.setScanningPath(null) // Kein Pfad wird gescannt
+                Log.d(TAG, "Scan finished or cancelled, resetting workId and uri")
+                currentWorkId = null
+                currentLibraryPathUri = null
+            }
+        }
+    }
+
+    private fun onActionClick(uri: String, isCancel: Boolean) {
+        Log.d(TAG, "onActionClick called with uri: $uri, isCancel: $isCancel, currentWorkId: $currentWorkId")
+        if (isCancel) {
+            currentWorkId?.let { workId ->
+                Log.d(TAG, "Cancelling scan for workId: $workId, uri: $uri")
+                WorkManager.getInstance(requireContext()).cancelWorkById(workId)
+                viewModel.cleanupCancelledScan(uri) // Bereinige Dateien und Pfad
+                Toast.makeText(requireContext(), R.string.scan_cancelled, Toast.LENGTH_SHORT).show()
+                Log.d(TAG, "Scan cancelled for uri: $uri")
+                viewModel.scanProgress.value = null // Fortschritt sofort zurücksetzen
+                // Entferne temporären Pfad aus der Liste
+                val index = libraryPaths.indexOfFirst { it.uri == uri }
+                if (index != -1) {
+                    libraryPaths.removeAt(index)
+                    pathsAdapter.notifyItemRemoved(index)
+                }
+            } ?: run {
+                Log.w(TAG, "No workId available for cancellation, uri: $uri")
+                Toast.makeText(requireContext(), "Keine laufende Scan-Aufgabe gefunden", Toast.LENGTH_SHORT).show()
+                // Entferne temporären Pfad, falls vorhanden
+                val index = libraryPaths.indexOfFirst { it.uri == uri }
+                if (index != -1) {
+                    libraryPaths.removeAt(index)
+                    pathsAdapter.notifyItemRemoved(index)
+                }
+            }
+        } else {
+            viewLifecycleOwner.lifecycleScope.launch {
+                Log.d(TAG, "Removing path: $uri")
+                viewModel.removeLibraryPath(uri)
             }
         }
     }
@@ -110,18 +160,31 @@ class LibraryPathsFragment : DialogFragment() {
                 return@launch
             }
             val uriString = uri.toString()
+            Log.d(TAG, "Checking if path exists: $uriString")
+
+            // Prüfe, ob der Pfad bereits existiert
+            val pathExists = libraryPaths.any { it.uri == uriString } ||
+                    AppDatabase.getDatabase(requireContext()).libraryPathDao()
+                        .getAllPaths().first().any { it.uri == uriString }
+            if (pathExists) {
+                Log.d(TAG, "Path already exists: $uriString")
+                Toast.makeText(requireContext(), R.string.path_already_exists, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
             val displayName = MusicRepository(requireContext()).getDisplayName(uri)
             Log.d(TAG, "Adding path: $uriString, displayName: $displayName")
 
-            // Starte den Scan über WorkManager
-            viewModel.addLibraryPath(uriString, displayName)
-        }
-    }
+            // Füge Pfad temporär zur Liste hinzu
+            val tempPath = LibraryPathEntity(uriString, displayName)
+            libraryPaths.add(tempPath)
+            pathsAdapter.notifyItemInserted(libraryPaths.size - 1)
 
-    private fun removePath(uri: String) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            Log.d(TAG, "Removing path: $uri")
-            viewModel.removeLibraryPath(uri)
+            // Starte den Scan über WorkManager
+            currentLibraryPathUri = uriString
+            pathsAdapter.setScanningPath(uriString) // Markiere Pfad als "scanning"
+            currentWorkId = viewModel.addLibraryPath(uriString, displayName)
+            Log.d(TAG, "Started scan with workId: $currentWorkId, uri: $uriString")
         }
     }
 

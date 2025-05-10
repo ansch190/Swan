@@ -5,6 +5,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -18,7 +19,6 @@ class FilterSettingsFragment : DialogFragment() {
     private var _binding: FragmentFilterSettingsBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: MainViewModel
-    private val filters = mutableListOf<FilterEntity>()
     private lateinit var filtersAdapter: FilterSettingsAdapter
     private val TAG = "FilterSettingsFragment"
 
@@ -34,7 +34,7 @@ class FilterSettingsFragment : DialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         viewModel = ViewModelProvider(requireActivity(), MainViewModelFactory(requireContext(), MusicRepository(requireContext()))).get(MainViewModel::class.java)
-        filtersAdapter = FilterSettingsAdapter(filters, ::removeFilter, requireContext())
+        filtersAdapter = FilterSettingsAdapter(requireContext(), ::removeFilter)
         binding.filtersRecyclerView.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = filtersAdapter
@@ -48,17 +48,18 @@ class FilterSettingsFragment : DialogFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             AppDatabase.getDatabase(requireContext()).filterDao().getAllFilters().collectLatest { filterList ->
                 Log.d(TAG, "Loaded filters from database: ${filterList.size}")
-                filters.clear()
-                filters.addAll(filterList)
-                filtersAdapter.notifyDataSetChanged()
+                filtersAdapter.setData(filterList)
             }
         }
     }
 
     private fun removeFilter(criterion: String) {
         viewLifecycleOwner.lifecycleScope.launch {
-            Log.d(TAG, "Removing filter: $criterion")
-            viewModel.removeFilter(criterion)
+            Log.d(TAG, "Attempting to remove filter: $criterion")
+            val removed = viewModel.removeFilter(criterion)
+            if (!removed) {
+                Toast.makeText(requireContext(), R.string.cannot_remove_last_filter, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
