@@ -27,10 +27,13 @@ class SongsActivity : AppCompatActivity() {
             val binder = service as MusicPlaybackService.MusicPlaybackBinder
             musicService = binder.getService()
             isBound = true
+            Log.d(TAG, "MusicPlaybackService bound")
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
             isBound = false
+            musicService = null
+            Log.d(TAG, "MusicPlaybackService unbound")
         }
     }
 
@@ -51,6 +54,7 @@ class SongsActivity : AppCompatActivity() {
         adapter = MusicFileAdapter(
             musicFiles = emptyList(),
             onItemClick = { uri ->
+                Log.d(TAG, "Playing file with URI: $uri")
                 musicService?.play(uri)
             },
             onShowMetadata = { musicFile ->

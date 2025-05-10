@@ -1,7 +1,11 @@
 package com.schwanitz.swan
 
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Bundle
+import android.os.IBinder
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -21,6 +25,23 @@ class FilterFragment : Fragment() {
     private lateinit var adapter: FilterItemAdapter
     private var criterion: String? = null
     private val TAG = "FilterFragment"
+    private var musicService: MusicPlaybackService? = null
+    private var isBound = false
+
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName, service: IBinder) {
+            val binder = service as MusicPlaybackService.MusicPlaybackBinder
+            musicService = binder.getService()
+            isBound = true
+            Log.d(TAG, "MusicPlaybackService bound")
+        }
+
+        override fun onServiceDisconnected(name: ComponentName) {
+            isBound = false
+            musicService = null
+            Log.d(TAG, "MusicPlaybackService unbound")
+        }
+    }
 
     companion object {
         private const val ARG_CRITERION = "criterion"
@@ -53,11 +74,22 @@ class FilterFragment : Fragment() {
 
         adapter = FilterItemAdapter(emptyList()) { item ->
             Log.d(TAG, "Item selected: $item for criterion: $criterion")
-            val intent = Intent(context, SongsActivity::class.java).apply {
-                putExtra("criterion", criterion)
-                putExtra("value", item)
+            if (criterion == "title") {
+                // Finde die Musikdatei mit dem entsprechenden Titel
+                viewModel.musicFiles.value?.find { file ->
+                    (file.title ?: file.name) == item
+                }?.let { musicFile ->
+                    Log.d(TAG, "Playing file: ${musicFile.uri}")
+                    musicService?.play(musicFile.uri)
+                } ?: Log.w(TAG, "No file found for title: $item")
+            } else {
+                // Für andere Filter: Navigiere zur SongsActivity
+                val intent = Intent(context, SongsActivity::class.java).apply {
+                    putExtra("criterion", criterion)
+                    putExtra("value", item)
+                }
+                startActivity(intent)
             }
-            startActivity(intent)
         }
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(context)
@@ -82,6 +114,11 @@ class FilterFragment : Fragment() {
                 adapter.updateItems(items)
                 updateEmptyState(items)
             }
+        }
+
+        // Binde den MusicPlaybackService
+        Intent(requireContext(), MusicPlaybackService::class.java).also { intent ->
+            requireContext().bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
     }
 
@@ -120,6 +157,10 @@ class FilterFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        if (isBound) {
+            requireContext().unbindService(connection)
+            isBound = false
+        }
         _binding = null
     }
 }
