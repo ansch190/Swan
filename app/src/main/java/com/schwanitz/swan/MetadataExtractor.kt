@@ -28,18 +28,18 @@ class MetadataExtractor(private val context: Context) {
 
             val artworkCount = tag?.getArtworkList()?.size ?: 0
             val tagVersion = getTagVersion(tag)
-            Log.d(TAG, "Extracted metadata for ${uri.path}, artwork count: $artworkCount, tag version: $tagVersion")
-            Log.d(TAG, "Title: ${tag?.getFirst("TIT2")}, Artist: ${tag?.getFirst("TPE1")}, Album: ${tag?.getFirst("TALB")}")
+            val year = getYear(tag)
+            Log.d(TAG, "Extracted metadata for ${uri.path}, artwork count: $artworkCount, tag version: $tagVersion, year: $year")
 
             return Metadata(
-                title = tag?.getFirst("TIT2") ?: "",
-                artist = tag?.getFirst("TPE1") ?: "",
-                album = tag?.getFirst("TALB") ?: "",
-                albumArtist = tag?.getFirst("TPE2") ?: "",
-                discNumber = tag?.getFirst("TPOS") ?: "",
-                trackNumber = tag?.getFirst("TRCK") ?: "",
-                year = tag?.getFirst("TYER") ?: "",
-                genre = tag?.getFirst("TCON") ?: "",
+                title = getFirstAsString(tag, "TIT2"),
+                artist = getFirstAsString(tag, "TPE1"),
+                album = getFirstAsString(tag, "TALB"),
+                albumArtist = getFirstAsString(tag, "TPE2"),
+                discNumber = getFirstAsString(tag, "TPOS"),
+                trackNumber = getFirstAsString(tag, "TRCK"),
+                year = year,
+                genre = getFirstAsString(tag, "TCON"),
                 artworkCount = artworkCount,
                 fileSize = tempFile.length().toInt(),
                 audioCodec = header?.format ?: "",
@@ -134,6 +134,58 @@ class MetadataExtractor(private val context: Context) {
             is ID3v22Tag -> "ID3v2.2"
             is ID3v1Tag -> "ID3v1"
             else -> "Unknown"
+        }
+    }
+
+    private fun getFirstAsString(tag: Tag?, fieldId: String): String {
+        if (tag == null) return ""
+        return try {
+            val value = tag.getFirst(fieldId)
+            if (value.isEmpty()) {
+                Log.d(TAG, "Field $fieldId is empty")
+                ""
+            } else {
+                value
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to get $fieldId as string: ${e.message}")
+            ""
+        }
+    }
+
+    private fun getYear(tag: Tag?): String {
+        if (tag == null) return ""
+        try {
+            // Liste der zu überprüfenden Felder
+            val fieldsToCheck = listOf("TDRC", "TYER", "TDAT")
+            for (fieldId in fieldsToCheck) {
+                val fields = tag.getFields(fieldId)
+                if (fields.isNotEmpty()) {
+                    // Ersten Wert als String extrahieren
+                    val rawValue = fields[0].toString()
+                    Log.d(TAG, "Found $fieldId: $rawValue")
+                    // 4-stelliges Jahr mit Regex finden
+                    val yearMatch = Regex("\\d{4}").find(rawValue)
+                    if (yearMatch != null) {
+                        val year: String = yearMatch.value
+                        if (year.length == 4 && year.all { it.isDigit() }) {
+                            return year
+                        }
+                    }
+                }
+            }
+            // Fallback für ID3v1-Tags
+            if (tag is ID3v1Tag && tag.year.isNotEmpty()) {
+                val year: String = tag.year.toString()
+                if (year.length == 4 && year.all { it.isDigit() }) {
+                    return year
+                }
+            }
+            Log.d(TAG, "No valid year found in tags")
+            return ""
+        } catch (e: Exception) {
+            Log.e(TAG, "Error extracting year: ${e.message}", e)
+            return ""
         }
     }
 }
