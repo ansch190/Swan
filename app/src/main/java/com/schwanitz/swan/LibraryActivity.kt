@@ -11,7 +11,6 @@ import android.os.IBinder
 import android.util.Log
 import android.view.ContextMenu
 import android.view.MenuItem
-import android.view.View
 import android.widget.SearchView
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
@@ -38,6 +37,7 @@ class LibraryActivity : AppCompatActivity() {
     private var isBound = false
     private val TAG = "LibraryActivity"
     private val NOTIFICATION_PERMISSION_CODE = 100
+    private val STORAGE_PERMISSION_CODE = 101
     private var filters = listOf<FilterEntity>()
 
     private val connection = object : ServiceConnection {
@@ -57,12 +57,8 @@ class LibraryActivity : AppCompatActivity() {
         binding = ActivityLibraryBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Request notification permission for Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_PERMISSION_CODE)
-            }
-        }
+        // Request permissions
+        requestPermissions()
 
         setSupportActionBar(binding.toolbar)
         val toggle = ActionBarDrawerToggle(
@@ -143,6 +139,32 @@ class LibraryActivity : AppCompatActivity() {
         }
     }
 
+    private fun requestPermissions() {
+        val permissionsToRequest = mutableListOf<String>()
+
+        // Notification permission for Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        // Storage permission
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(android.Manifest.permission.READ_MEDIA_AUDIO)
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, permissionsToRequest.toTypedArray(), STORAGE_PERMISSION_CODE)
+        }
+    }
+
     private fun setupTabs() {
         binding.viewPager.adapter = FilterPagerAdapter(this, filters)
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
@@ -150,7 +172,7 @@ class LibraryActivity : AppCompatActivity() {
         }.attach()
     }
 
-    override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
+    override fun onCreateContextMenu(menu: ContextMenu, v: android.view.View, menuInfo: ContextMenu.ContextMenuInfo?) {
         super.onCreateContextMenu(menu, v, menuInfo)
         menuInflater.inflate(R.menu.context_menu, menu)
     }
@@ -185,11 +207,12 @@ class LibraryActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == NOTIFICATION_PERMISSION_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "Notification permission granted")
+        if (requestCode == NOTIFICATION_PERMISSION_CODE || requestCode == STORAGE_PERMISSION_CODE) {
+            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                Log.d(TAG, "Required permissions granted")
             } else {
-                Log.w(TAG, "Notification permission denied")
+                Log.w(TAG, "Required permissions denied")
+                Toast.makeText(this, "Required permissions not granted, some features may not work", Toast.LENGTH_LONG).show()
             }
         }
     }
