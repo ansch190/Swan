@@ -5,13 +5,17 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import java.util.ArrayDeque
 
 class MusicRepository(private val context: Context) {
 
     private val TAG = "MusicRepository"
 
-    suspend fun scanAndStoreMusicFiles(libraryPathUri: String, db: AppDatabase) {
+    data class ScanProgress(val scannedFiles: Int, val totalFiles: Int)
+
+    suspend fun scanAndStoreMusicFiles(libraryPathUri: String, db: AppDatabase): Flow<ScanProgress> = flow {
         Log.d(TAG, "Scanning music files for URI: $libraryPathUri")
         try {
             db.musicFileDao().deleteFilesByPath(libraryPathUri)
@@ -19,37 +23,50 @@ class MusicRepository(private val context: Context) {
 
             val treeUri = Uri.parse(libraryPathUri)
             val initialDocumentId = DocumentsContract.getTreeDocumentId(treeUri)
-            val musicFiles = getMusicFiles(treeUri, initialDocumentId)
-            Log.d(TAG, "Found ${musicFiles.size} music files in $libraryPathUri, URIs: ${musicFiles.map { it.uri.toString() }}")
 
-            val entities = musicFiles.map { file ->
-                // Extrahiere Metadaten direkt hier
+            // Zähle zunächst alle Musikdateien, um die Gesamtanzahl zu kennen
+            val musicFiles = getMusicFiles(treeUri, initialDocumentId)
+            val totalFiles = musicFiles.size
+            Log.d(TAG, "Found $totalFiles music files in $libraryPathUri")
+
+            val entities = mutableListOf<MusicFileEntity>()
+            var scannedFiles = 0
+
+            // Verarbeite jede Datei und emittiere Fortschritt
+            musicFiles.forEach { file ->
                 val metadata = MetadataExtractor(context).extractMetadata(file.uri)
                 Log.d(TAG, "Extracted metadata for ${file.uri}: title=${metadata.title}, artist=${metadata.artist}, codec=${metadata.audioCodec}")
-                MusicFileEntity(
-                    uri = file.uri.toString(),
-                    libraryPathUri = libraryPathUri,
-                    name = file.name,
-                    title = metadata.title.takeIf { it.isNotEmpty() },
-                    artist = metadata.artist.takeIf { it.isNotEmpty() },
-                    album = metadata.album.takeIf { it.isNotEmpty() },
-                    albumArtist = metadata.albumArtist.takeIf { it.isNotEmpty() },
-                    discNumber = metadata.discNumber.takeIf { it.isNotEmpty() },
-                    trackNumber = metadata.trackNumber.takeIf { it.isNotEmpty() },
-                    year = metadata.year.takeIf { it.isNotEmpty() },
-                    genre = metadata.genre.takeIf { it.isNotEmpty() },
-                    fileSize = metadata.fileSize,
-                    audioCodec = metadata.audioCodec.takeIf { it.isNotEmpty() },
-                    sampleRate = metadata.sampleRate,
-                    bitrate = metadata.bitrate,
-                    tagVersion = metadata.tagVersion.takeIf { it.isNotEmpty() }
+                entities.add(
+                    MusicFileEntity(
+                        uri = file.uri.toString(),
+                        libraryPathUri = libraryPathUri,
+                        name = file.name,
+                        title = metadata.title.takeIf { it.isNotEmpty() },
+                        artist = metadata.artist.takeIf { it.isNotEmpty() },
+                        album = metadata.album.takeIf { it.isNotEmpty() },
+                        albumArtist = metadata.albumArtist.takeIf { it.isNotEmpty() },
+                        discNumber = metadata.discNumber.takeIf { it.isNotEmpty() },
+                        trackNumber = metadata.trackNumber.takeIf { it.isNotEmpty() },
+                        year = metadata.year.takeIf { it.isNotEmpty() },
+                        genre = metadata.genre.takeIf { it.isNotEmpty() },
+                        fileSize = metadata.fileSize,
+                        audioCodec = metadata.audioCodec.takeIf { it.isNotEmpty() },
+                        sampleRate = metadata.sampleRate,
+                        bitrate = metadata.bitrate,
+                        tagVersion = metadata.tagVersion.takeIf { it.isNotEmpty() }
+                    )
                 )
+                scannedFiles++
+                emit(ScanProgress(scannedFiles, totalFiles))
+                Log.d(TAG, "Scanned $scannedFiles/$totalFiles files")
             }
 
             db.musicFileDao().insertFiles(entities)
             Log.d(TAG, "Stored ${entities.size} music files for path: $libraryPathUri")
+            emit(ScanProgress(scannedFiles, totalFiles)) // Finaler Fortschritt
         } catch (e: Exception) {
             Log.e(TAG, "Failed to scan and store music files for URI: $libraryPathUri, error: ${e.message}", e)
+            throw e
         }
     }
 

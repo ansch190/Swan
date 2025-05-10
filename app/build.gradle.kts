@@ -54,4 +54,5 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     implementation("androidx.media:media:1.7.0") // Für MediaStyle
     kapt("androidx.room:room-compiler:2.6.1")
+    implementation ("androidx.work:work-runtime-ktx:2.9.1")
 }

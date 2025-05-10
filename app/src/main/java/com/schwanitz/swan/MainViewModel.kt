@@ -5,6 +5,10 @@ import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -15,6 +19,7 @@ class MainViewModel(
 ) : ViewModel() {
 
     val musicFiles = MutableLiveData<List<MusicFile>>()
+    val scanProgress = MutableLiveData<MusicRepository.ScanProgress?>(null)
     private val TAG = "MainViewModel"
 
     init {
@@ -46,10 +51,36 @@ class MainViewModel(
         }
     }
 
-    suspend fun addLibraryPath(uri: String, displayName: String) {
+    fun addLibraryPath(uri: String, displayName: String) {
         Log.d(TAG, "Adding library path: $uri")
-        db.libraryPathDao().insertPath(LibraryPathEntity(uri, displayName))
-        repository.scanAndStoreMusicFiles(uri, db)
+        viewModelScope.launch {
+            db.libraryPathDao().insertPath(LibraryPathEntity(uri, displayName))
+        }
+
+        // Starte WorkManager-Job
+        val workRequest = OneTimeWorkRequestBuilder<MusicScanWorker>()
+            .setInputData(
+                workDataOf(MusicScanWorker.KEY_URI to uri)
+            )
+            .build()
+
+        val workManager = WorkManager.getInstance(context)
+        workManager.enqueue(workRequest)
+
+        // Beobachte Fortschritt
+        workManager.getWorkInfoByIdLiveData(workRequest.id).observeForever { workInfo ->
+            if (workInfo != null) {
+                val scannedFiles = workInfo.progress.getInt(MusicScanWorker.KEY_PROGRESS_SCANNED, 0)
+                val totalFiles = workInfo.progress.getInt(MusicScanWorker.KEY_PROGRESS_TOTAL, 0)
+                if (scannedFiles > 0 || totalFiles > 0) {
+                    scanProgress.value = MusicRepository.ScanProgress(scannedFiles, totalFiles)
+                }
+                if (workInfo.state == WorkInfo.State.SUCCEEDED || workInfo.state == WorkInfo.State.FAILED) {
+                    scanProgress.value = null // Fortschritt zurücksetzen
+                    Log.d(TAG, "Scan completed with state: ${workInfo.state}")
+                }
+            }
+        }
     }
 
     suspend fun removeLibraryPath(uri: String) {

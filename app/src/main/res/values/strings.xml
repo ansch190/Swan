@@ -50,4 +50,8 @@
     <string name="select_filters">Filter auswählen</string>
     <string name="empty_filter_message">Keine Werte verfügbar</string>
     <string name="no_library_paths_message">Bitte definieren Sie zunächst Bibliothekspfade in den Einstellungen.</string>
+    <string name="scan_progress_description">Importiere Musikdateien, bitte warten</string>
+    <string name="scan_progress_initial">Warte auf Scan...</string>
+    <string name="scan_progress">%1$d von %2$d Dateien gescannt</string>
+    <string name="scan_failed">Scan fehlgeschlagen: %1$s</string>
 </resources>

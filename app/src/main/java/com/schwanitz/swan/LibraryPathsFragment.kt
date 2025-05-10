@@ -61,6 +61,27 @@ class LibraryPathsFragment : DialogFragment() {
                 pathsAdapter.notifyDataSetChanged()
             }
         }
+
+        // Beobachte Scan-Fortschritt
+        viewModel.scanProgress.observe(viewLifecycleOwner) { progress ->
+            progress?.let {
+                binding.scanProgressContainer.visibility = View.VISIBLE
+                binding.addPathButton.isEnabled = false
+                val percentage = if (it.totalFiles > 0) (it.scannedFiles * 100) / it.totalFiles else 0
+                binding.scanProgressBar.progress = percentage
+                binding.scanProgressText.text = getString(
+                    R.string.scan_progress,
+                    it.scannedFiles,
+                    it.totalFiles
+                )
+                Log.d(TAG, "Scan progress: ${it.scannedFiles}/${it.totalFiles} ($percentage%)")
+            } ?: run {
+                binding.scanProgressContainer.visibility = View.GONE
+                binding.addPathButton.isEnabled = true
+                binding.scanProgressBar.progress = 0
+                binding.scanProgressText.text = getString(R.string.scan_progress_initial)
+            }
+        }
     }
 
     private fun addPath(uri: Uri) {
@@ -85,10 +106,14 @@ class LibraryPathsFragment : DialogFragment() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to take permission for URI: $uri, error: ${e.message}", e)
+                binding.scanProgressText.text = getString(R.string.scan_failed, e.message)
+                return@launch
             }
             val uriString = uri.toString()
             val displayName = MusicRepository(requireContext()).getDisplayName(uri)
             Log.d(TAG, "Adding path: $uriString, displayName: $displayName")
+
+            // Starte den Scan über WorkManager
             viewModel.addLibraryPath(uriString, displayName)
         }
     }
