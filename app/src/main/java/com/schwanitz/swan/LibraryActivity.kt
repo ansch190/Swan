@@ -13,6 +13,7 @@ import android.view.ContextMenu
 import android.view.MenuItem
 import android.view.View
 import android.widget.SearchView
+import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -26,6 +27,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.google.android.material.tabs.TabLayoutMediator
 import com.schwanitz.swan.databinding.ActivityLibraryBinding
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class LibraryActivity : AppCompatActivity() {
@@ -89,12 +91,24 @@ class LibraryActivity : AppCompatActivity() {
 
         viewModel = ViewModelProvider(this, MainViewModelFactory(this, MusicRepository(this))).get(MainViewModel::class.java)
 
-        // Beobachte Filter aus der Datenbank
+        // Prüfe, ob Bibliothekspfade vorhanden sind
         lifecycleScope.launch {
-            AppDatabase.getDatabase(this@LibraryActivity).filterDao().getAllFilters().collectLatest { filterList ->
-                Log.d(TAG, "Loaded filters: ${filterList.map { it.displayName }}")
-                filters = filterList
-                setupTabs()
+            val libraryPaths = AppDatabase.getDatabase(this@LibraryActivity).libraryPathDao().getAllPaths().first()
+            if (libraryPaths.isEmpty()) {
+                Log.d(TAG, "No library paths defined, showing message and navigating to LibraryPathsFragment")
+                Toast.makeText(
+                    this@LibraryActivity,
+                    R.string.no_library_paths_message,
+                    Toast.LENGTH_LONG
+                ).show()
+                LibraryPathsFragment().show(supportFragmentManager, "LibraryPathsFragment")
+            } else {
+                // Beobachte Filter aus der Datenbank, nur wenn Pfade vorhanden sind
+                AppDatabase.getDatabase(this@LibraryActivity).filterDao().getAllFilters().collectLatest { filterList ->
+                    Log.d(TAG, "Loaded filters: ${filterList.map { it.displayName }}")
+                    filters = filterList
+                    setupTabs()
+                }
             }
         }
 
