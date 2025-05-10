@@ -86,13 +86,29 @@ class SongsActivity : AppCompatActivity() {
                         "album" -> file.album?.equals(value, ignoreCase = true) ?: false
                         else -> false
                     }
-                }.sortedBy { file ->
-                    file.trackNumber?.toIntOrNull() ?: Int.MAX_VALUE
                 }
+
+                // Prüfe, ob alle Lieder Metadaten für discNumber und trackNumber haben
+                val allHaveMetadata = filteredFiles.all { file ->
+                    !file.discNumber.isNullOrBlank() && file.discNumber.toIntOrNull() != null &&
+                            !file.trackNumber.isNullOrBlank() && file.trackNumber.toIntOrNull() != null
+                }
+
+                val sortedFiles = if (allHaveMetadata) {
+                    // Sortiere nach discNumber, dann nach trackNumber
+                    filteredFiles.sortedWith(compareBy(
+                        { it.discNumber?.toIntOrNull() ?: Int.MAX_VALUE },
+                        { it.trackNumber?.toIntOrNull() ?: Int.MAX_VALUE }
+                    ))
+                } else {
+                    // Fallback: Sortiere nach Dateiname
+                    filteredFiles.sortedBy { it.name }
+                }
+
                 withContext(Dispatchers.Main) {
-                    adapter.updateFiles(filteredFiles)
-                    binding.songsRecyclerView.visibility = if (filteredFiles.isEmpty()) View.GONE else View.VISIBLE
-                    binding.emptyText.visibility = if (filteredFiles.isEmpty()) View.VISIBLE else View.GONE
+                    adapter.updateFiles(sortedFiles)
+                    binding.songsRecyclerView.visibility = if (sortedFiles.isEmpty()) View.GONE else View.VISIBLE
+                    binding.emptyText.visibility = if (sortedFiles.isEmpty()) View.VISIBLE else View.GONE
                 }
             }
         }
