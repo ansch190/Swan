@@ -7,11 +7,18 @@ import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import android.view.ContextMenu
 import android.view.MenuItem
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.schwanitz.swan.databinding.ActivitySongsBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SongsActivity : AppCompatActivity() {
 
@@ -68,29 +75,52 @@ class SongsActivity : AppCompatActivity() {
         )
         binding.songsRecyclerView.apply {
             layoutManager = LinearLayoutManager(this@SongsActivity)
-            this.adapter = adapter
+            adapter = this@SongsActivity.adapter
+            registerForContextMenu(this)
         }
 
         viewModel.musicFiles.observe(this) { files ->
-            val filteredFiles = files.filter { file ->
-                when (criterion) {
-                    "title" -> (file.title ?: file.name) == value
-                    "artist" -> file.artist == value
-                    "album" -> file.album == value
-                    "albumArtist" -> file.albumArtist == value
-                    "discNumber" -> file.discNumber?.toString() == value
-                    "trackNumber" -> file.trackNumber?.toString() == value
-                    "year" -> file.year?.toString() == value
-                    "genre" -> file.genre == value
-                    else -> false
+            lifecycleScope.launch(Dispatchers.Default) {
+                val filteredFiles = files.filter { file ->
+                    when (criterion) {
+                        "album" -> file.album?.equals(value, ignoreCase = true) ?: false
+                        else -> false
+                    }
+                }.sortedBy { file ->
+                    file.trackNumber?.toIntOrNull() ?: Int.MAX_VALUE
+                }
+                withContext(Dispatchers.Main) {
+                    adapter.updateFiles(filteredFiles)
+                    binding.songsRecyclerView.visibility = if (filteredFiles.isEmpty()) View.GONE else View.VISIBLE
+                    binding.emptyText.visibility = if (filteredFiles.isEmpty()) View.VISIBLE else View.GONE
                 }
             }
-            Log.d(TAG, "Loaded songs for $criterion=$value: ${filteredFiles.size}")
-            adapter.updateFiles(filteredFiles)
         }
 
         Intent(this, MusicPlaybackService::class.java).also { intent ->
             bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        }
+    }
+
+    override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
+        super.onCreateContextMenu(menu, v, menuInfo)
+        menuInflater.inflate(R.menu.context_menu, menu)
+    }
+
+    override fun onContextItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.context_info -> {
+                val position = adapter.selectedPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    val musicFile = adapter.filteredFiles[position]
+                    MetadataFragment.newInstance(listOf(musicFile), 0)
+                        .show(supportFragmentManager, "MetadataFragment")
+                    true
+                } else {
+                    false
+                }
+            }
+            else -> super.onContextItemSelected(item)
         }
     }
 
@@ -110,5 +140,6 @@ class SongsActivity : AppCompatActivity() {
             unbindService(connection)
             isBound = false
         }
+        unregisterForContextMenu(binding.songsRecyclerView)
     }
 }
