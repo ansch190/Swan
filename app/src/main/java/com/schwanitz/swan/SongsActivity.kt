@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
 import com.google.android.material.tabs.TabLayoutMediator
 import com.schwanitz.swan.databinding.ActivitySongsBinding
 import kotlinx.coroutines.Dispatchers
@@ -70,6 +71,9 @@ class SongsActivity : AppCompatActivity() {
                     }
                 }
 
+                // Lade das Albumcover und alle Bilder für den Klick
+                loadAlbumArtwork(filteredFiles)
+
                 val discNumbers = filteredFiles.mapNotNull { it.discNumber }.distinct().sorted()
                 val hasDiscMetadata = discNumbers.isNotEmpty()
 
@@ -101,6 +105,72 @@ class SongsActivity : AppCompatActivity() {
         }
     }
 
+    private suspend fun loadAlbumArtwork(files: List<MusicFile>) {
+        if (files.isEmpty()) {
+            withContext(Dispatchers.Main) {
+                binding.albumArtwork.visibility = View.GONE
+            }
+            return
+        }
+
+        val firstFile = files.first()
+        val metadataExtractor = MetadataExtractor(this@SongsActivity)
+        val metadata = withContext(Dispatchers.IO) {
+            try {
+                metadataExtractor.extractMetadata(firstFile.uri)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load metadata for ${firstFile.uri}: ${e.message}", e)
+                null
+            }
+        }
+
+        val artworkBytes = withContext(Dispatchers.IO) {
+            try {
+                metadataExtractor.getArtworkBytes(firstFile.uri, 0)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load artwork for ${firstFile.uri}: ${e.message}", e)
+                null
+            }
+        }
+
+        val allArtworks = mutableListOf<ByteArray>()
+        if (metadata != null && metadata.artworkCount > 0) {
+            withContext(Dispatchers.IO) {
+                for (index in 0 until metadata.artworkCount) {
+                    try {
+                        metadataExtractor.getArtworkBytes(firstFile.uri, index)?.let { bytes ->
+                            if (bytes.isNotEmpty()) {
+                                allArtworks.add(bytes)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to load artwork at index $index for ${firstFile.uri}: ${e.message}", e)
+                    }
+                }
+            }
+        }
+
+        withContext(Dispatchers.Main) {
+            if (artworkBytes != null && artworkBytes.isNotEmpty()) {
+                Glide.with(this@SongsActivity)
+                    .load(artworkBytes)
+                    .error(android.R.drawable.ic_menu_close_clear_cancel)
+                    .into(binding.albumArtwork)
+                binding.albumArtwork.visibility = View.VISIBLE
+
+                // Füge OnClickListener hinzu, um ImageViewerDialogFragment zu öffnen
+                binding.albumArtwork.setOnClickListener {
+                    if (allArtworks.isNotEmpty()) {
+                        ImageViewerDialogFragment.newInstance(ArrayList(allArtworks), 0)
+                            .show(supportFragmentManager, "ImageViewerDialog")
+                    }
+                }
+            } else {
+                binding.albumArtwork.visibility = View.GONE
+            }
+        }
+    }
+
     private fun setupTabView(discNumbers: List<String>, albumName: String) {
         binding.viewPager.adapter = DiscPagerAdapter(this, discNumbers, albumName)
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
@@ -110,6 +180,7 @@ class SongsActivity : AppCompatActivity() {
         binding.viewPager.visibility = View.VISIBLE
         binding.songsRecyclerView.visibility = View.GONE
         binding.emptyText.visibility = View.GONE
+        // AlbumArtwork-Sichtbarkeit wird in loadAlbumArtwork gehandhabt
     }
 
     private fun setupListView(filteredFiles: List<MusicFile>) {
@@ -128,6 +199,7 @@ class SongsActivity : AppCompatActivity() {
         binding.emptyText.visibility = if (filteredFiles.isEmpty()) View.VISIBLE else View.GONE
         binding.tabLayout.visibility = View.GONE
         binding.viewPager.visibility = View.GONE
+        // AlbumArtwork-Sichtbarkeit wird in loadAlbumArtwork gehandhabt
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
