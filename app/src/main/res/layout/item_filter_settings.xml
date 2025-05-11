@@ -7,20 +7,18 @@
     android:padding="8dp"
     android:gravity="center_vertical">
 
-    <ImageView
-        android:id="@+id/artistImage"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:scaleType="centerCrop"
-        android:contentDescription="@string/artwork_description"
-        android:visibility="gone"
-        android:layout_marginEnd="8dp" />
-
     <TextView
         android:id="@+id/filterText"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/removeButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/remove_filter"
+        android:contentDescription="@string/remove_filter_description" />
 
 </LinearLayout>

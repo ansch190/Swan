@@ -23,7 +23,7 @@ class FilterSettingsAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FilterViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_filter, parent, false)
+            .inflate(R.layout.item_filter_settings, parent, false)
         return FilterViewHolder(view)
     }
 
