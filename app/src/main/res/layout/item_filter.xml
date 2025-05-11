@@ -23,4 +23,11 @@
         android:layout_weight="1"
         android:textSize="16sp" />
 
+    <Button
+        android:id="@+id/removeButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/remove_filter"
+        android:contentDescription="@string/remove_filter_description" />
+
 </LinearLayout>
