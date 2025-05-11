@@ -29,11 +29,11 @@
         android:text="@string/filters"
         android:layout_marginBottom="8dp" />
 
-    <CheckBox
-        android:id="@+id/tabViewCheckbox"
-        android:layout_width="wrap_content"
+    <Button
+        android:id="@+id/viewSettingsButton"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Tab-Ansicht für Disks aktivieren"
+        android:text="@string/view_settings"
         android:layout_marginBottom="8dp" />
 
 </LinearLayout>
