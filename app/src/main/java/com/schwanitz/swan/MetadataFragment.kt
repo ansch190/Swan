@@ -161,10 +161,11 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
             // Klick-Listener für den Album-TextView
             binding.albumValue.setOnClickListener { _ ->
                 if (!it.album.isNullOrBlank()) {
-                    Log.d(TAG, "Navigating to album: ${it.album}")
+                    Log.d(TAG, "Navigating to album: ${it.album} with song URI: ${it.uri}")
                     val intent = Intent(context, SongsActivity::class.java).apply {
                         putExtra("criterion", "album")
                         putExtra("value", it.album)
+                        putExtra("highlight_song_uri", it.uri.toString()) // URI des Liedes hinzufügen
                     }
                     startActivity(intent)
                 } else {

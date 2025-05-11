@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
@@ -18,6 +19,7 @@ import com.bumptech.glide.Glide
 import com.google.android.material.tabs.TabLayoutMediator
 import com.schwanitz.swan.databinding.ActivitySongsBinding
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -63,6 +65,8 @@ class SongsActivity : AppCompatActivity() {
 
         val criterion = intent.getStringExtra("criterion") ?: "title"
         val value = intent.getStringExtra("value") ?: ""
+        val highlightSongUri = intent.getStringExtra("highlight_song_uri") // URI des zu hervorhebenden Liedes
+        Log.d(TAG, "Received intent: criterion=$criterion, value=$value, highlightSongUri=$highlightSongUri")
         supportActionBar?.title = value
 
         val isTabViewEnabled = prefs.getBoolean("tab_view_enabled", false)
@@ -80,12 +84,19 @@ class SongsActivity : AppCompatActivity() {
                 // Lade das Bild (Künstlerbild für "artist", Albumcover für "album")
                 loadImage(criterion, value, filteredFiles)
 
-                val discNumbers = filteredFiles.mapNotNull { it.discNumber }.distinct().sorted()
+                val discNumbers = filteredFiles
+                    .mapNotNull { file ->
+                        file.discNumber?.trim()?.split("/")?.firstOrNull()?.trim()?.toIntOrNull()
+                    }
+                    .distinct()
+                    .sorted()
+                    .map { it.toString() }
                 val hasDiscMetadata = discNumbers.isNotEmpty()
+                Log.d(TAG, "Disc numbers: $discNumbers, hasDiscMetadata: $hasDiscMetadata")
 
                 if (criterion == "album" && isTabViewEnabled && hasDiscMetadata) {
                     withContext(Dispatchers.Main) {
-                        setupTabView(discNumbers, value)
+                        setupTabView(discNumbers, value, highlightSongUri, filteredFiles)
                     }
                 } else {
                     val sortedFiles = if (criterion == "album" && filteredFiles.all { file ->
@@ -100,7 +111,7 @@ class SongsActivity : AppCompatActivity() {
                         filteredFiles.sortedBy { it.title ?: it.name }
                     }
                     withContext(Dispatchers.Main) {
-                        setupListView(sortedFiles)
+                        setupListView(sortedFiles, highlightSongUri)
                     }
                 }
             }
@@ -249,8 +260,9 @@ class SongsActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupTabView(discNumbers: List<String>, albumName: String) {
-        binding.viewPager.adapter = DiscPagerAdapter(this, discNumbers, albumName)
+    private fun setupTabView(discNumbers: List<String>, albumName: String, highlightSongUri: String?, files: List<MusicFile>) {
+        binding.viewPager.offscreenPageLimit = discNumbers.size // Cache alle Fragmente
+        binding.viewPager.adapter = DiscPagerAdapter(this, discNumbers, albumName, highlightSongUri)
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             tab.text = "CD ${position + 1}"
         }.attach()
@@ -258,9 +270,27 @@ class SongsActivity : AppCompatActivity() {
         binding.viewPager.visibility = View.VISIBLE
         binding.songsRecyclerView.visibility = View.GONE
         binding.emptyText.visibility = View.GONE
+
+        // Scrolle zur richtigen Disc, wenn ein Lied hervorgehoben werden soll
+        if (highlightSongUri != null) {
+            val highlightUri = Uri.parse(highlightSongUri)
+            val highlightFile = files.find { it.uri == highlightUri }
+            if (highlightFile != null) {
+                val highlightDiscNumber = highlightFile.discNumber?.trim()?.split("/")?.firstOrNull()?.trim()?.toIntOrNull()?.toString()
+                val discIndex = discNumbers.indexOf(highlightDiscNumber)
+                if (discIndex >= 0) {
+                    Log.d(TAG, "Navigating to disc index $discIndex for disc number $highlightDiscNumber")
+                    binding.viewPager.setCurrentItem(discIndex, false)
+                } else {
+                    Log.w(TAG, "Disc number $highlightDiscNumber not found in discNumbers: $discNumbers")
+                }
+            } else {
+                Log.w(TAG, "Highlight file not found for URI: $highlightSongUri")
+            }
+        }
     }
 
-    private fun setupListView(filteredFiles: List<MusicFile>) {
+    private fun setupListView(filteredFiles: List<MusicFile>, highlightSongUri: String?) {
         adapter = MusicFileAdapter(
             musicFiles = filteredFiles,
             onItemClick = { uri ->
@@ -276,6 +306,24 @@ class SongsActivity : AppCompatActivity() {
         binding.emptyText.visibility = if (filteredFiles.isEmpty()) View.VISIBLE else View.GONE
         binding.tabLayout.visibility = View.GONE
         binding.viewPager.visibility = View.GONE
+
+        // Scrolle zum Lied und hebe es hervor, wenn highlightSongUri gesetzt ist
+        if (highlightSongUri != null) {
+            val highlightUri = Uri.parse(highlightSongUri)
+            val position = filteredFiles.indexOfFirst { it.uri == highlightUri }
+            Log.d(TAG, "Attempting to highlight song in list view with URI: $highlightSongUri, position: $position")
+            if (position >= 0) {
+                binding.songsRecyclerView.layoutManager?.scrollToPosition(position)
+                // Verzögere die Hervorhebung, um sicherzustellen, dass die RecyclerView gerendert ist
+                lifecycleScope.launch(Dispatchers.Main) {
+                    delay(100) // 100ms Verzögerung
+                    adapter?.highlightItem(binding.songsRecyclerView, position)
+                    Log.d(TAG, "Highlighted song in list view at position $position for URI: $highlightSongUri")
+                }
+            } else {
+                Log.w(TAG, "Highlight song not found in filtered files for list view: $highlightSongUri")
+            }
+        }
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {

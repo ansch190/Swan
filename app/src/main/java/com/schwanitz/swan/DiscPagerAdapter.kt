@@ -8,14 +8,15 @@ import android.util.Log
 class DiscPagerAdapter(
     fragmentActivity: FragmentActivity,
     private val discNumbers: List<String>,
-    private val albumName: String
+    private val albumName: String,
+    private val highlightSongUri: String? = null
 ) : FragmentStateAdapter(fragmentActivity) {
 
     override fun getItemCount(): Int = discNumbers.size
 
     override fun createFragment(position: Int): Fragment {
-        val discNumber = discNumbers[position]
-        Log.d("DiscPagerAdapter", "Creating fragment for disc: $discNumber, album: $albumName")
-        return DiscFragment.newInstance(discNumber, albumName)
+        val discNumber = discNumbers.getOrNull(position) ?: throw IllegalStateException("Invalid disc number at position $position")
+        Log.d("DiscPagerAdapter", "Creating fragment for disc: $discNumber, position: $position, album: $albumName, highlightSongUri: $highlightSongUri")
+        return DiscFragment.newInstance(discNumber, albumName, highlightSongUri)
     }
 }

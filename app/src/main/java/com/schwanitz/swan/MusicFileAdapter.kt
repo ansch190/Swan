@@ -1,12 +1,16 @@
 package com.schwanitz.swan
 
+import android.animation.ArgbEvaluator
+import android.animation.ValueAnimator
 import android.net.Uri
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity  // Erforderliche Importanweisung
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 
 class MusicFileAdapter(
@@ -18,7 +22,7 @@ class MusicFileAdapter(
         private set
 
     class MusicViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val title: TextView = itemView.findViewById(android.R.id.text1)
+        val title: TextView = itemView.findViewById(R.id.music_title)
 
         fun bind(musicFile: MusicFile, onItemClick: (Uri) -> Unit, onLongClick: (MusicFile) -> Unit) {
             title.text = musicFile.title?.takeIf { it.isNotBlank() } ?: musicFile.name
@@ -32,7 +36,7 @@ class MusicFileAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MusicViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(android.R.layout.simple_list_item_1, parent, false)
+            .inflate(R.layout.item_music_file, parent, false)
         return MusicViewHolder(view)
     }
 
@@ -49,6 +53,33 @@ class MusicFileAdapter(
         musicFiles = newFiles
         filteredFiles = newFiles
         notifyDataSetChanged()
+    }
+
+    fun highlightItem(recyclerView: RecyclerView, position: Int) {
+        if (position < 0 || position >= filteredFiles.size) {
+            Log.w("MusicFileAdapter", "Invalid position for highlight: $position, file count: ${filteredFiles.size}")
+            return
+        }
+        val viewHolder = recyclerView.findViewHolderForAdapterPosition(position) as? MusicViewHolder
+        if (viewHolder == null) {
+            Log.w("MusicFileAdapter", "ViewHolder not found for position: $position")
+            return
+        }
+        val view = viewHolder.itemView
+        val context = view.context
+
+        // Animierte Hervorhebung mit Türkis für grauen Hintergrund
+        val colorFrom = ContextCompat.getColor(context, android.R.color.transparent)
+        val colorTo = ContextCompat.getColor(context, R.color.highlight_songs) // Türkis
+        val animator = ValueAnimator.ofObject(ArgbEvaluator(), colorFrom, colorTo)
+        animator.duration = 1000 // 1 Sekunde für den Hinweg
+        animator.repeatCount = 1
+        animator.repeatMode = ValueAnimator.REVERSE
+        animator.addUpdateListener { animation ->
+            view.setBackgroundColor(animation.animatedValue as Int)
+        }
+        animator.start()
+        Log.d("MusicFileAdapter", "Highlighted item at position $position: ${filteredFiles[position].name}")
     }
 
     private fun showPopupMenu(view: View, musicFile: MusicFile) {
