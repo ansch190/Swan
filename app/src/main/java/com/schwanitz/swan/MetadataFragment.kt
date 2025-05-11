@@ -1,5 +1,6 @@
 package com.schwanitz.swan
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -40,7 +41,7 @@ class MetadataFragment : DialogFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            musicFiles = it.getParcelableArrayList<MusicFile>(ARG_MUSIC_FILES) ?: emptyList()
+            musicFiles = it.getParcelableArrayList(ARG_MUSIC_FILES, MusicFile::class.java) ?: emptyList()
             currentPosition = it.getInt(ARG_POSITION, 0)
         }
     }
@@ -146,7 +147,7 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val binding = com.schwanitz.swan.databinding.FragmentMetadataBinding.inflate(inflater, container, false)
-        val musicFile = arguments?.getParcelable<MusicFile>(ARG_MUSIC_FILE)
+        val musicFile = arguments?.getParcelable(ARG_MUSIC_FILE, MusicFile::class.java)
         musicFile?.let {
             binding.titleValue.text = it.title ?: "Unbekannt"
             binding.artistValue.text = it.artist ?: "Unbekannt"
@@ -156,6 +157,20 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
             binding.trackNumberValue.text = it.trackNumber ?: "Unbekannt"
             binding.yearValue.text = it.year ?: "Unbekannt"
             binding.genreValue.text = it.genre ?: "Unbekannt"
+
+            // Klick-Listener für den Album-TextView
+            binding.albumValue.setOnClickListener { _ ->
+                if (!it.album.isNullOrBlank()) {
+                    Log.d(TAG, "Navigating to album: ${it.album}")
+                    val intent = Intent(context, SongsActivity::class.java).apply {
+                        putExtra("criterion", "album")
+                        putExtra("value", it.album)
+                    }
+                    startActivity(intent)
+                } else {
+                    Log.w(TAG, "No album name available for navigation")
+                }
+            }
 
             // Asynchrones Laden der Bilder aus ID3v2.4-Tags
             val metadataExtractor = MetadataExtractor(requireContext())
@@ -229,26 +244,28 @@ class MetadataTechnicalFragment : androidx.fragment.app.Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val binding = com.schwanitz.swan.databinding.FragmentTechnicalBinding.inflate(inflater, container, false)
-        val musicFile = arguments?.getParcelable<MusicFile>(ARG_MUSIC_FILE)
+        val musicFile = arguments?.getParcelable(ARG_MUSIC_FILE, MusicFile::class.java)
         musicFile?.let {
-            binding.filenameValue.text = it.name ?: "Unbekannt"
+            binding.filenameValue.text = it.name
             binding.pathValue.text = it.uri.path?.let { path ->
                 val cleanPath = path.substringAfterLast("primary:", path)
-                cleanPath.substringBeforeLast("/") ?: "Unbekannt"
+                cleanPath.substringBeforeLast("/")
             } ?: "Unbekannt"
-            binding.fileSizeValue.text = it.fileSize?.let { size ->
-                when {
-                    size < 1024 -> String.format("%.1f B", size.toDouble())
-                    size < 1024 * 1024 -> String.format("%.1f KB", size.toDouble() / 1024)
-                    size < 1024 * 1024 * 1024 -> String.format("%.1f MB", size.toDouble() / (1024 * 1024))
-                    else -> String.format("%.1f GB", size.toDouble() / (1024 * 1024 * 1024))
-                }
-            } ?: "Unbekannt"
+            binding.fileSizeValue.text = formatFileSize(it.fileSize)
             binding.codecValue.text = it.audioCodec ?: "Unbekannt"
-            binding.sampleRateValue.text = it.sampleRate?.let { "$it Hz" } ?: "Unbekannt"
-            binding.bitrateValue.text = it.bitrate?.let { "$it kbps" } ?: "Unbekannt"
+            binding.sampleRateValue.text = "${it.sampleRate} Hz"
+            binding.bitrateValue.text = "${it.bitrate} kbps"
             binding.tagVersionValue.text = it.tagVersion?.takeIf { it.isNotEmpty() } ?: "Unbekannt"
         }
         return binding.root
+    }
+
+    private fun formatFileSize(size: Int): String {
+        return when {
+            size < 1024 -> String.format("%.1f B", size.toDouble())
+            size < 1024 * 1024 -> String.format("%.1f KB", size.toDouble() / 1024)
+            size < 1024 * 1024 * 1024 -> String.format("%.1f MB", size.toDouble() / (1024 * 1024))
+            else -> String.format("%.1f GB", size.toDouble() / (1024 * 1024 * 1024))
+        }
     }
 }
