@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.UUID
+import android.app.AlertDialog
 
 class LibraryPathsFragment : DialogFragment() {
 
@@ -54,7 +55,7 @@ class LibraryPathsFragment : DialogFragment() {
             adapter = pathsAdapter
         }
         binding.addPathButton.setOnClickListener {
-            folderPicker.launch(null)
+            showSourceSelectionDialog()
         }
         binding.pathsTitle.text = getString(R.string.library_paths_title)
 
@@ -98,6 +99,34 @@ class LibraryPathsFragment : DialogFragment() {
                 currentLibraryPathUri = null
             }
         }
+    }
+
+    private fun showSourceSelectionDialog() {
+        val options = arrayOf(
+            getString(R.string.source_local),
+            getString(R.string.source_cloud)
+        )
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.select_source_title)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> { // Lokal
+                        Log.d(TAG, "Local source selected")
+                        folderPicker.launch(null)
+                    }
+                    1 -> { // Cloud
+                        Log.d(TAG, "Cloud source selected")
+                        Toast.makeText(
+                            requireContext(),
+                            "Cloud-Option ist noch nicht implementiert",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        // Hier kann später die Cloud-Logik implementiert werden
+                    }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun onActionClick(uri: String, isCancel: Boolean) {

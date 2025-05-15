@@ -63,4 +63,7 @@
     <string name="cannot_remove_last_filter">Mindestens ein Filter muss vorhanden bleiben</string>
     <string name="view_settings">Ansicht</string>
     <string name="tab_view_toggle_label">Albumansicht mit Tabs für CDs</string>
+    <string name="select_source_title">Quelle auswählen</string>
+    <string name="source_local">Lokal</string>
+    <string name="source_cloud">Cloud</string>
 </resources>
