@@ -66,4 +66,8 @@
     <string name="select_source_title">Quelle auswählen</string>
     <string name="source_local">Lokal</string>
     <string name="source_cloud">Cloud</string>
+    <string name="select_cloud_provider_title">Cloud-Anbieter auswählen</string>
+    <string name="cloud_provider_pcloud">pCloud</string>
+    <string name="cloud_provider_nextcloud">Nextcloud</string>
+    <string name="cloud_provider_google_drive">Google Drive</string>
 </resources>

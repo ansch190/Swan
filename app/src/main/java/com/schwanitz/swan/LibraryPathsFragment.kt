@@ -116,12 +116,50 @@ class LibraryPathsFragment : DialogFragment() {
                     }
                     1 -> { // Cloud
                         Log.d(TAG, "Cloud source selected")
+                        showCloudProviderDialog()
+                    }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showCloudProviderDialog() {
+        val options = arrayOf(
+            getString(R.string.cloud_provider_pcloud),
+            getString(R.string.cloud_provider_nextcloud),
+            getString(R.string.cloud_provider_google_drive)
+        )
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.select_cloud_provider_title)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> { // pCloud
+                        Log.d(TAG, "pCloud selected")
                         Toast.makeText(
                             requireContext(),
-                            "Cloud-Option ist noch nicht implementiert",
+                            "pCloud-Integration ist noch nicht implementiert",
                             Toast.LENGTH_SHORT
                         ).show()
-                        // Hier kann später die Cloud-Logik implementiert werden
+                        // Hier kann später die pCloud-Logik implementiert werden
+                    }
+                    1 -> { // Nextcloud
+                        Log.d(TAG, "Nextcloud selected")
+                        Toast.makeText(
+                            requireContext(),
+                            "Nextcloud-Integration ist noch nicht implementiert",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        // Hier kann später die Nextcloud-Logik implementiert werden
+                    }
+                    2 -> { // Google Drive
+                        Log.d(TAG, "Google Drive selected")
+                        Toast.makeText(
+                            requireContext(),
+                            "Google Drive-Integration ist noch nicht implementiert",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        // Hier kann später die Google Drive-Logik implementiert werden
                     }
                 }
             }
