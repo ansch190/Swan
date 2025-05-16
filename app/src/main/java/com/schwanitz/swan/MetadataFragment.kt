@@ -160,16 +160,31 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
 
             // Klick-Listener für den Album-TextView
             binding.albumValue.setOnClickListener { _ ->
-                if (!it.album.isNullOrBlank()) {
+                if (!it.album.isNullOrBlank() && it.album != "Unbekannt") {
                     Log.d(TAG, "Navigating to album: ${it.album} with song URI: ${it.uri}")
                     val intent = Intent(context, SongsActivity::class.java).apply {
                         putExtra("criterion", "album")
                         putExtra("value", it.album)
-                        putExtra("highlight_song_uri", it.uri.toString()) // URI des Liedes hinzufügen
+                        putExtra("highlight_song_uri", it.uri.toString())
                     }
                     startActivity(intent)
                 } else {
                     Log.w(TAG, "No album name available for navigation")
+                }
+            }
+
+            // Klick-Listener für den Künstler-TextView
+            binding.artistValue.setOnClickListener { _ ->
+                if (!it.artist.isNullOrBlank() && it.artist != "Unbekannt") {
+                    Log.d(TAG, "Navigating to artist: ${it.artist} with song URI: ${it.uri}")
+                    val intent = Intent(context, SongsActivity::class.java).apply {
+                        putExtra("criterion", "artist")
+                        putExtra("value", it.artist)
+                        putExtra("highlight_song_uri", it.uri.toString())
+                    }
+                    startActivity(intent)
+                } else {
+                    Log.w(TAG, "No artist name available for navigation")
                 }
             }
 
