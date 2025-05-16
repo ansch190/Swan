@@ -26,7 +26,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
-import com.schwanitz.swan.R // Expliziter Import für Sicherheit
+import com.schwanitz.swan.R
 import com.schwanitz.swan.data.local.database.AppDatabase
 import com.schwanitz.swan.data.local.entity.FilterEntity
 import com.schwanitz.swan.data.local.repository.MusicRepository
@@ -35,6 +35,7 @@ import com.schwanitz.swan.service.MusicPlaybackService
 import com.schwanitz.swan.ui.fragment.FilterFragment
 import com.schwanitz.swan.ui.fragment.FilterSettingsFragment
 import com.schwanitz.swan.ui.fragment.LibraryPathsFragment
+import com.schwanitz.swan.ui.fragment.PlaylistsFragment
 import com.schwanitz.swan.ui.fragment.SettingsFragment
 import com.schwanitz.swan.ui.viewmodel.MainViewModel
 import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
@@ -96,6 +97,12 @@ class LibraryActivity : AppCompatActivity() {
             when (menuItem.itemId) {
                 R.id.nav_library -> {
                     Log.d(TAG, "Already in library, closing drawer")
+                    binding.drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.nav_playlists -> {
+                    Log.d(TAG, "Opening playlists")
+                    PlaylistsFragment().show(supportFragmentManager, "PlaylistsFragment")
                     binding.drawerLayout.closeDrawer(GravityCompat.START)
                     true
                 }

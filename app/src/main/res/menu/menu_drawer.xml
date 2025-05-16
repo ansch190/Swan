@@ -6,6 +6,10 @@
             android:title="@string/library"
             android:icon="@android:drawable/ic_menu_gallery" />
         <item
+            android:id="@+id/nav_playlists"
+            android:title="@string/playlists"
+            android:icon="@android:drawable/ic_menu_agenda" />
+        <item
             android:id="@+id/nav_settings"
             android:title="@string/settings"
             android:icon="@android:drawable/ic_menu_preferences" />

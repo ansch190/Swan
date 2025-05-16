@@ -20,6 +20,7 @@
     <string name="remove_path">Entfernen</string>
     <string name="remove_path_description">Quelle entfernen</string>
     <string name="library">Bibliothek</string>
+    <string name="playlists">Playlists</string>
     <string name="context_menu_info">Info</string>
     <string name="notification_channel_name">Musikwiedergabe</string>
     <string name="notification_title">Swan Musik</string>
@@ -73,5 +74,4 @@
     <string name="cloud_provider_pcloud">pCloud</string>
     <string name="cloud_provider_nextcloud">Nextcloud</string>
     <string name="cloud_provider_google_drive">Google Drive</string>
-    <string name="no_songs_for_album">Keine Lieder für dieses Album gefunden</string>
 </resources>
