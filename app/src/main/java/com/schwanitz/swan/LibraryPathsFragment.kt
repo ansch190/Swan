@@ -14,6 +14,7 @@ import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.schwanitz.swan.databinding.FragmentLibraryPathsBinding
 import kotlinx.coroutines.flow.collectLatest
@@ -97,6 +98,15 @@ class LibraryPathsFragment : DialogFragment() {
                 Log.d(TAG, "Scan finished or cancelled, resetting workId and uri")
                 currentWorkId = null
                 currentLibraryPathUri = null
+                // Nach erfolgreichem Scan die App neu starten
+                if (libraryPaths.isNotEmpty()) {
+                    Log.d(TAG, "Scan completed, restarting app")
+                    val intent = Intent(requireContext(), LibraryActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    requireActivity().finish()
+                    startActivity(intent)
+                }
             }
         }
     }
@@ -141,7 +151,6 @@ class LibraryPathsFragment : DialogFragment() {
                             "pCloud-Integration ist noch nicht implementiert",
                             Toast.LENGTH_SHORT
                         ).show()
-                        // Hier kann später die pCloud-Logik implementiert werden
                     }
                     1 -> { // Nextcloud
                         Log.d(TAG, "Nextcloud selected")
@@ -150,7 +159,6 @@ class LibraryPathsFragment : DialogFragment() {
                             "Nextcloud-Integration ist noch nicht implementiert",
                             Toast.LENGTH_SHORT
                         ).show()
-                        // Hier kann später die Nextcloud-Logik implementiert werden
                     }
                     2 -> { // Google Drive
                         Log.d(TAG, "Google Drive selected")
@@ -159,7 +167,6 @@ class LibraryPathsFragment : DialogFragment() {
                             "Google Drive-Integration ist noch nicht implementiert",
                             Toast.LENGTH_SHORT
                         ).show()
-                        // Hier kann später die Google Drive-Logik implementiert werden
                     }
                 }
             }

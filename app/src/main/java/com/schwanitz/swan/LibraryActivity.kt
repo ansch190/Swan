@@ -114,14 +114,29 @@ class LibraryActivity : AppCompatActivity() {
                 // Stelle sicher, dass mindestens ein Filter vorhanden ist
                 val filtersFromDb = AppDatabase.getDatabase(this@LibraryActivity).filterDao().getAllFilters().first()
                 if (filtersFromDb.isEmpty()) {
-                    Log.d(TAG, "No filters found, adding default filter: Title")
+                    Log.d(TAG, "No filters found, adding default filters")
                     viewModel.addFilter("title", getString(R.string.filter_by_title))
+                    viewModel.addFilter("artist", getString(R.string.filter_by_artist))
+                    viewModel.addFilter("album", getString(R.string.filter_by_album))
                 }
                 // Beobachte Filter aus der Datenbank
                 AppDatabase.getDatabase(this@LibraryActivity).filterDao().getAllFilters().collectLatest { filterList ->
                     Log.d(TAG, "Loaded filters: ${filterList.map { it.displayName }}")
                     filters = filterList
                     setupTabs()
+                }
+                // Beobachte Musikdateien, um Tabs nach Scan zu aktualisieren
+                // In LibraryActivity.kt, innerhalb von onCreate
+                viewModel.musicFiles.observe(this@LibraryActivity) { files ->
+                    Log.d(TAG, "Music files updated: ${files.size} files")
+                    setupTabs() // Initialisiert die Tabs mit den Filtern
+                    // Explizit FilterFragmente aktualisieren
+                    (binding.viewPager.adapter as? FilterPagerAdapter)?.let { adapter ->
+                        for (i in 0 until adapter.itemCount) {
+                            val fragment = supportFragmentManager.findFragmentByTag("f$i") as? FilterFragment
+                            fragment?.filter(searchQuery.value) // Aktualisiert jedes Fragment mit den neuen Daten
+                        }
+                    }
                 }
             }
         }
@@ -260,7 +275,7 @@ class LibraryActivity : AppCompatActivity() {
 
         // TabLayout mit ViewPager verbinden
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
-            tab.text = filters[position].displayName
+            tab.text = filters.getOrNull(position)?.displayName ?: ""
         }.attach()
 
         // Long-Click-Listener für jeden Tab setzen

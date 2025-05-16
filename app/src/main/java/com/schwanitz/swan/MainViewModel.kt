@@ -56,8 +56,10 @@ class MainViewModel(
         viewModelScope.launch {
             val filters = db.filterDao().getAllFilters().first()
             if (filters.isEmpty()) {
-                Log.d(TAG, "No filters found, adding default filter: Title")
+                Log.d(TAG, "No filters found, adding default filters: Title, Artist, Album")
                 db.filterDao().insertFilter(FilterEntity("title", context.getString(R.string.filter_by_title)))
+                db.filterDao().insertFilter(FilterEntity("artist", context.getString(R.string.filter_by_artist)))
+                db.filterDao().insertFilter(FilterEntity("album", context.getString(R.string.filter_by_album)))
             }
         }
     }
@@ -86,13 +88,37 @@ class MainViewModel(
                 if (scannedFiles > 0 || totalFiles > 0) {
                     scanProgress.value = MusicRepository.ScanProgress(scannedFiles, totalFiles)
                 }
-                if (workInfo.state == WorkInfo.State.SUCCEEDED || workInfo.state == WorkInfo.State.FAILED || workInfo.state == WorkInfo.State.CANCELLED) {
+                if (workInfo.state == WorkInfo.State.SUCCEEDED) {
                     scanProgress.value = null // Fortschritt zurücksetzen
-                    Log.d(TAG, "Scan completed with state: ${workInfo.state}")
-                    // Bereinige bei Abbruch oder Fehler
-                    if (workInfo.state == WorkInfo.State.CANCELLED || workInfo.state == WorkInfo.State.FAILED) {
-                        cleanupCancelledScan(uri)
+                    Log.d(TAG, "Scan completed successfully for path: $uri")
+                    // Erzwinge UI-Aktualisierung
+                    viewModelScope.launch {
+                        val files = db.musicFileDao().getAllFiles().first()
+                        musicFiles.value = files.map { entity ->
+                            MusicFile(
+                                uri = android.net.Uri.parse(entity.uri),
+                                name = entity.name,
+                                title = entity.title,
+                                artist = entity.artist,
+                                album = entity.album,
+                                albumArtist = entity.albumArtist,
+                                discNumber = entity.discNumber,
+                                trackNumber = entity.trackNumber,
+                                year = entity.year,
+                                genre = entity.genre,
+                                fileSize = entity.fileSize,
+                                audioCodec = entity.audioCodec,
+                                sampleRate = entity.sampleRate,
+                                bitrate = entity.bitrate,
+                                tagVersion = entity.tagVersion
+                            )
+                        }
+                        Log.d(TAG, "Forced UI update after scan, files: ${musicFiles.value?.size}")
                     }
+                } else if (workInfo.state == WorkInfo.State.FAILED || workInfo.state == WorkInfo.State.CANCELLED) {
+                    scanProgress.value = null // Fortschritt zurücksetzen
+                    Log.d(TAG, "Scan failed or cancelled for path: $uri")
+                    cleanupCancelledScan(uri)
                 }
             }
         }
