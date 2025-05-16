@@ -10,15 +10,27 @@ import com.schwanitz.swan.data.local.dao.ArtistDao
 import com.schwanitz.swan.data.local.dao.FilterDao
 import com.schwanitz.swan.data.local.dao.LibraryPathDao
 import com.schwanitz.swan.data.local.dao.MusicFileDao
-import com.schwanitz.swan.data.local.entity.LibraryPathEntity
+import com.schwanitz.swan.data.local.dao.PlaylistDao
 import com.schwanitz.swan.data.local.entity.*
 
-@Database(entities = [LibraryPathEntity::class, MusicFileEntity::class, FilterEntity::class, ArtistEntity::class], version = 4, exportSchema = false)
+@Database(
+    entities = [
+        LibraryPathEntity::class,
+        MusicFileEntity::class,
+        FilterEntity::class,
+        ArtistEntity::class,
+        PlaylistEntity::class,
+        PlaylistSongEntity::class
+    ],
+    version = 5,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun libraryPathDao(): LibraryPathDao
     abstract fun musicFileDao(): MusicFileDao
     abstract fun filterDao(): FilterDao
     abstract fun artistDao(): ArtistDao
+    abstract fun playlistDao(): PlaylistDao
 
     companion object {
         @Volatile
@@ -31,7 +43,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "swan_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                 INSTANCE = instance
                 instance
@@ -53,6 +65,24 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE TABLE IF NOT EXISTS artists (artistName TEXT NOT NULL, imageUrl TEXT, PRIMARY KEY(artistName))")
+            }
+        }
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS playlists (id TEXT NOT NULL, name TEXT NOT NULL, createdAt INTEGER NOT NULL, PRIMARY KEY(id))")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS playlist_songs (
+                        playlistId TEXT NOT NULL,
+                        songUri TEXT NOT NULL,
+                        PRIMARY KEY(playlistId, songUri),
+                        FOREIGN KEY(playlistId) REFERENCES playlists(id) ON DELETE CASCADE,
+                        FOREIGN KEY(songUri) REFERENCES music_files(uri) ON DELETE CASCADE
+                    )
+                    """
+                )
+                db.execSQL("CREATE INDEX index_playlist_songs_songUri ON playlist_songs(songUri)")
             }
         }
     }

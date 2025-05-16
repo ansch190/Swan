@@ -12,6 +12,8 @@ import androidx.work.workDataOf
 import com.schwanitz.swan.R
 import com.schwanitz.swan.data.local.database.AppDatabase
 import com.schwanitz.swan.data.local.entity.FilterEntity
+import com.schwanitz.swan.data.local.entity.PlaylistEntity
+import com.schwanitz.swan.data.local.entity.PlaylistSongEntity
 import com.schwanitz.swan.data.local.repository.MusicRepository
 import com.schwanitz.swan.data.worker.MusicScanWorker
 import com.schwanitz.swan.domain.model.MusicFile
@@ -162,5 +164,29 @@ class MainViewModel(
             Log.w(TAG, "Cannot remove filter: $criterion, at least one filter must remain")
             false
         }
+    }
+
+    suspend fun createPlaylist(name: String, songUris: List<String>) {
+        Log.d(TAG, "Creating playlist: $name with ${songUris.size} songs")
+        val playlistId = UUID.randomUUID().toString()
+        val playlist = PlaylistEntity(
+            id = playlistId,
+            name = name,
+            createdAt = System.currentTimeMillis()
+        )
+        db.playlistDao().insertPlaylist(playlist)
+        if (songUris.isNotEmpty()) {
+            val playlistSongs = songUris.map { uri ->
+                PlaylistSongEntity(playlistId = playlistId, songUri = uri)
+            }
+            db.playlistDao().insertPlaylistSongs(playlistSongs)
+        }
+        Log.d(TAG, "Playlist created: $name, id: $playlistId")
+    }
+
+    suspend fun deletePlaylist(playlistId: String) {
+        Log.d(TAG, "Deleting playlist: $playlistId")
+        db.playlistDao().deletePlaylist(playlistId)
+        // Songs werden durch ForeignKey CASCADE automatisch gelöscht
     }
 }

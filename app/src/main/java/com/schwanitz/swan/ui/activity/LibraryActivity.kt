@@ -35,7 +35,6 @@ import com.schwanitz.swan.service.MusicPlaybackService
 import com.schwanitz.swan.ui.fragment.FilterFragment
 import com.schwanitz.swan.ui.fragment.FilterSettingsFragment
 import com.schwanitz.swan.ui.fragment.LibraryPathsFragment
-import com.schwanitz.swan.ui.fragment.PlaylistsFragment
 import com.schwanitz.swan.ui.fragment.SettingsFragment
 import com.schwanitz.swan.ui.viewmodel.MainViewModel
 import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
@@ -101,8 +100,8 @@ class LibraryActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_playlists -> {
-                    Log.d(TAG, "Opening playlists")
-                    PlaylistsFragment().show(supportFragmentManager, "PlaylistsFragment")
+                    Log.d(TAG, "Navigating to playlists")
+                    startActivity(Intent(this, PlaylistsActivity::class.java))
                     binding.drawerLayout.closeDrawer(GravityCompat.START)
                     true
                 }
