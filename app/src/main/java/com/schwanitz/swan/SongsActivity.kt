@@ -65,7 +65,7 @@ class SongsActivity : AppCompatActivity() {
 
         val criterion = intent.getStringExtra("criterion") ?: "title"
         val value = intent.getStringExtra("value") ?: ""
-        val highlightSongUri = intent.getStringExtra("highlight_song_uri") // URI des zu hervorhebenden Liedes
+        val highlightSongUri = intent.getStringExtra("highlight_song_uri")
         Log.d(TAG, "Received intent: criterion=$criterion, value=$value, highlightSongUri=$highlightSongUri")
         supportActionBar?.title = value
 
@@ -77,9 +77,11 @@ class SongsActivity : AppCompatActivity() {
                     when (criterion) {
                         "album" -> file.album?.equals(value, ignoreCase = true) ?: false
                         "artist" -> file.artist?.equals(value, ignoreCase = true) ?: false
+                        "genre" -> file.genre?.equals(value, ignoreCase = true) ?: false
                         else -> false
                     }
                 }
+                Log.d(TAG, "Filtered files for $criterion=$value: ${filteredFiles.size} files")
 
                 // Lade das Bild (Künstlerbild für "artist", Albumcover für "album")
                 loadImage(criterion, value, filteredFiles)
@@ -149,21 +151,18 @@ class SongsActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 if (imageUrl != null) {
                     Log.d(TAG, "Loading artist image for $value: $imageUrl")
-                    // Lade das Bild mit Glide
                     Glide.with(this@SongsActivity)
                         .load(imageUrl)
                         .error(android.R.drawable.ic_menu_close_clear_cancel)
                         .into(binding.albumArtwork)
                     binding.albumArtwork.visibility = View.VISIBLE
 
-                    // Lade das Bild als ByteArray für den ImageViewerDialogFragment
                     val imageBytes = withContext(Dispatchers.IO) {
                         try {
                             val client = OkHttpClient()
                             val request = Request.Builder().url(imageUrl).build()
                             val bytes = client.newCall(request).execute().body?.bytes()
                             if (bytes != null) {
-                                // Komprimiere das Bild, um Speicher zu sparen
                                 val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                                 val outputStream = ByteArrayOutputStream()
                                 bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
@@ -177,7 +176,6 @@ class SongsActivity : AppCompatActivity() {
                         }
                     }
 
-                    // Öffne ImageViewerDialogFragment bei Klick
                     binding.albumArtwork.setOnClickListener {
                         if (imageBytes != null) {
                             Log.d(TAG, "Opening ImageViewerDialogFragment for artist image: $value")
@@ -201,8 +199,7 @@ class SongsActivity : AppCompatActivity() {
                     ).show()
                 }
             }
-        } else {
-            // Lade Albumcover (für criterion == "album" oder andere)
+        } else if (criterion == "album") {
             val firstFile = files.first()
             val metadataExtractor = MetadataExtractor(this@SongsActivity)
             val metadata = withContext(Dispatchers.IO) {
@@ -249,7 +246,6 @@ class SongsActivity : AppCompatActivity() {
                         .into(binding.albumArtwork)
                     binding.albumArtwork.visibility = View.VISIBLE
 
-                    // Öffne ImageViewerDialogFragment bei Klick
                     binding.albumArtwork.setOnClickListener {
                         if (allArtworks.isNotEmpty()) {
                             Log.d(TAG, "Opening ImageViewerDialogFragment for album artwork: ${firstFile.uri}")
@@ -261,11 +257,16 @@ class SongsActivity : AppCompatActivity() {
                     binding.albumArtwork.visibility = View.GONE
                 }
             }
+        } else {
+            // Kein Bild für Genre oder andere Kriterien
+            withContext(Dispatchers.Main) {
+                binding.albumArtwork.visibility = View.GONE
+            }
         }
     }
 
     private fun setupTabView(discNumbers: List<String>, albumName: String, highlightSongUri: String?, files: List<MusicFile>) {
-        binding.viewPager.offscreenPageLimit = discNumbers.size // Cache alle Fragmente
+        binding.viewPager.offscreenPageLimit = discNumbers.size
         binding.viewPager.adapter = DiscPagerAdapter(this, discNumbers, albumName, highlightSongUri)
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             tab.text = "CD ${position + 1}"
@@ -275,7 +276,6 @@ class SongsActivity : AppCompatActivity() {
         binding.songsRecyclerView.visibility = View.GONE
         binding.emptyText.visibility = View.GONE
 
-        // Scrolle zur richtigen Disc, wenn ein Lied hervorgehoben werden soll
         if (highlightSongUri != null) {
             val highlightUri = Uri.parse(highlightSongUri)
             val highlightFile = files.find { it.uri == highlightUri }
@@ -295,7 +295,7 @@ class SongsActivity : AppCompatActivity() {
     }
 
     private fun setupArtistTabView(artistName: String, highlightSongUri: String?, files: List<MusicFile>) {
-        binding.viewPager.offscreenPageLimit = 2 // Cache beide Fragmente
+        binding.viewPager.offscreenPageLimit = 2
         binding.viewPager.adapter = ArtistPagerAdapter(this, artistName, highlightSongUri)
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             tab.text = when (position) {
@@ -327,16 +327,14 @@ class SongsActivity : AppCompatActivity() {
         binding.tabLayout.visibility = View.GONE
         binding.viewPager.visibility = View.GONE
 
-        // Scrolle zum Lied und hebe es hervor, wenn highlightSongUri gesetzt ist
         if (highlightSongUri != null) {
             val highlightUri = Uri.parse(highlightSongUri)
             val position = filteredFiles.indexOfFirst { it.uri == highlightUri }
             Log.d(TAG, "Attempting to highlight song in list view with URI: $highlightSongUri, position: $position")
             if (position >= 0) {
                 binding.songsRecyclerView.layoutManager?.scrollToPosition(position)
-                // Verzögere die Hervorhebung, um sicherzustellen, dass die RecyclerView gerendert ist
                 lifecycleScope.launch(Dispatchers.Main) {
-                    delay(100) // 100ms Verzögerung
+                    delay(100)
                     adapter?.highlightItem(binding.songsRecyclerView, position)
                     Log.d(TAG, "Highlighted song in list view at position $position for URI: $highlightSongUri")
                 }

@@ -90,6 +90,7 @@ class FilterFragment : Fragment() {
                         musicService?.play(musicFile.uri)
                     } ?: Log.w(TAG, "No file found for title: $item")
                 } else {
+                    Log.d(TAG, "Starting SongsActivity for criterion: $criterion, value: $item")
                     val intent = Intent(context, SongsActivity::class.java).apply {
                         putExtra("criterion", criterion)
                         putExtra("value", item)
