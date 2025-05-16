@@ -43,7 +43,8 @@ class ImageViewerDialogFragment : DialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val artworks = arguments?.getParcelableArrayList<ParcelableByteArray>(ARG_ARTWORKS)?.map { it.bytes } ?: emptyList()
+        // Verwende typsichere getParcelableArrayList mit Klasse
+        val artworks = arguments?.getParcelableArrayList(ARG_ARTWORKS, ParcelableByteArray::class.java)?.map { it.bytes } ?: emptyList()
         val initialPosition = arguments?.getInt(ARG_INITIAL_POSITION) ?: 0
 
         val adapter = ImageViewerAdapter(requireContext(), artworks)

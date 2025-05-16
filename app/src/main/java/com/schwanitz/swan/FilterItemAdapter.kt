@@ -104,7 +104,7 @@ class FilterItemAdapter(
     override fun onViewRecycled(holder: ItemViewHolder) {
         super.onViewRecycled(holder)
         // Breche den Lade-Job ab, wenn der ViewHolder recycelt wird
-        val position = holder.adapterPosition
+        val position = holder.bindingAdapterPosition // Ersetzt getAdapterPosition()
         if (position != RecyclerView.NO_POSITION) {
             imageLoadJobs[position]?.cancel()
             imageLoadJobs.remove(position)
