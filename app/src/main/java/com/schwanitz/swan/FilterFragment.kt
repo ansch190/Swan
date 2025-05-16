@@ -77,6 +77,7 @@ class FilterFragment : Fragment() {
         viewModel = ViewModelProvider(requireActivity(), MainViewModelFactory(requireContext(), MusicRepository(requireContext()))).get(MainViewModel::class.java)
 
         val artistImageRepository = ArtistImageRepository(AppDatabase.getDatabase(requireContext()))
+        val metadataExtractor = MetadataExtractor(requireContext())
         adapter = FilterItemAdapter(
             items = emptyList(),
             onItemClick = { item ->
@@ -104,7 +105,9 @@ class FilterFragment : Fragment() {
                 }
             },
             criterion = criterion,
-            artistImageRepository = artistImageRepository
+            artistImageRepository = artistImageRepository,
+            metadataExtractor = metadataExtractor,
+            musicFiles = viewModel.musicFiles.value ?: emptyList()
         )
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(context)
@@ -128,6 +131,16 @@ class FilterFragment : Fragment() {
                 }
                 Log.d(TAG, "Loaded items for $criterion: ${items.size}")
                 adapter.updateItems(items)
+                adapter = FilterItemAdapter(
+                    items = items,
+                    onItemClick = adapter.onItemClick,
+                    onItemLongClick = adapter.onItemLongClick,
+                    criterion = criterion,
+                    artistImageRepository = artistImageRepository,
+                    metadataExtractor = metadataExtractor,
+                    musicFiles = files
+                )
+                binding.recyclerView.adapter = adapter
                 updateEmptyState(items)
                 // Wende den aktuellen Suchbegriff an, falls vorhanden
                 val query = (activity as? LibraryActivity)?.searchQuery?.value
