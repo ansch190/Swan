@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.schwanitz.swan.R
 import com.schwanitz.swan.domain.model.MusicFile
+import com.schwanitz.swan.ui.fragment.AddToPlaylistDialogFragment
 import com.schwanitz.swan.ui.fragment.MetadataFragment
 
 class MusicFileAdapter(
@@ -95,6 +96,14 @@ class MusicFileAdapter(
                     fragmentManager?.let {
                         MetadataFragment.newInstance(listOf(musicFile), 0)
                             .show(it, "MetadataFragment")
+                    }
+                    true
+                }
+                R.id.context_add_to_playlist -> {
+                    val fragmentManager = (view.context as? AppCompatActivity)?.supportFragmentManager
+                    fragmentManager?.let {
+                        AddToPlaylistDialogFragment.newInstance(musicFile)
+                            .show(it, "AddToPlaylistDialog")
                     }
                     true
                 }

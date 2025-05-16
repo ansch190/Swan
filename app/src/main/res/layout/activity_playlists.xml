@@ -23,12 +23,6 @@
                 android:background="?attr/colorPrimary"
                 app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 
-            <com.google.android.material.tabs.TabLayout
-                android:id="@+id/tabLayout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_margin="8dp" />
-
             <androidx.appcompat.widget.SearchView
                 android:id="@+id/searchView"
                 android:layout_width="match_parent"
@@ -36,12 +30,13 @@
                 android:layout_margin="8dp"
                 app:queryHint="Suche Playlists..." />
 
-            <androidx.viewpager2.widget.ViewPager2
-                android:id="@+id/viewPager"
+            <androidx.fragment.app.FragmentContainerView
+                android:id="@+id/fragment_container"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:layout_margin="8dp" />
+                android:layout_margin="8dp"
+                android:name="com.schwanitz.swan.ui.fragment.PlaylistsListFragment" />
 
             <LinearLayout
                 android:layout_width="match_parent"

@@ -95,6 +95,10 @@ class PlaylistsListFragment : Fragment() {
         searchQuery.value = query
     }
 
+    fun getPlaylistAdapter(): PlaylistAdapter? {
+        return binding.playlistsRecyclerView.adapter as? PlaylistAdapter
+    }
+
     private fun applyFilter(query: String?) {
         val filteredPlaylists = if (query.isNullOrEmpty()) {
             allPlaylists

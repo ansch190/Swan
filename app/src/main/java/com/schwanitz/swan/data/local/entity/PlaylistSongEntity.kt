@@ -6,7 +6,6 @@ import androidx.room.Index
 
 @Entity(
     tableName = "playlist_songs",
-    primaryKeys = ["playlistId", "songUri"],
     foreignKeys = [
         ForeignKey(
             entity = PlaylistEntity::class,
@@ -21,9 +20,11 @@ import androidx.room.Index
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["songUri"])]
+    indices = [Index(value = ["songUri"]), Index(value = ["playlistId"])]
 )
 data class PlaylistSongEntity(
+    @androidx.room.PrimaryKey val id: String, // Neu: Eindeutige ID für jeden Eintrag
     val playlistId: String,
-    val songUri: String
+    val songUri: String,
+    val position: Int // Neu: Reihenfolge innerhalb der Playlist
 )

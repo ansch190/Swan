@@ -78,11 +78,11 @@
     <string name="delete_playlist_description">Playlist löschen</string>
     <string name="no_playlists_available">Keine Playlists vorhanden</string>
     <string name="playlists_tab_all">Alle Playlists</string>
-    <string name="playlists_tab_placeholder1">Platzhalter 1</string>
-    <string name="playlists_tab_placeholder2">Platzhalter 2</string>
     <string name="create_playlist">Playlist erstellen</string>
     <string name="playlist_name_hint">Playlist-Name</string>
     <string name="create_playlist_dialog_title">Neue Playlist</string>
     <string name="create_playlist_dialog_message">Name der Playlist eingeben:</string>
     <string name="create_playlist_error_empty">Bitte einen Namen eingeben</string>
+    <string name="add_to_playlist">Zur Playlist hinzufügen</string>
+    <string name="no_playlist_selected">-keine Playlist ausgewählt</string>
 </resources>

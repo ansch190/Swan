@@ -26,6 +26,8 @@ class MusicPlaybackService : Service() {
     private var currentUri: Uri? = null
     private var isPlaying: Boolean = false
     private val metadataExtractor by lazy { MetadataExtractor(this) }
+    private var playbackQueue: List<Uri> = emptyList() // Neu
+    private var currentTrackIndex: Int = -1 // Neu
 
     companion object {
         private const val NOTIFICATION_ID = 1
@@ -48,6 +50,15 @@ class MusicPlaybackService : Service() {
         Log.d("MusicPlaybackService", "Service created, notification channel initialized")
     }
 
+    fun setQueue(uris: List<Uri>, startIndex: Int = 0) {
+        playbackQueue = uris
+        currentTrackIndex = if (startIndex in uris.indices) startIndex else 0
+        Log.d("MusicPlaybackService", "Set queue with ${uris.size} tracks, starting at index $currentTrackIndex")
+        if (uris.isNotEmpty() && currentTrackIndex in uris.indices) {
+            play(uris[currentTrackIndex])
+        }
+    }
+
     fun play(uri: Uri) {
         try {
             // Nur neuen MediaPlayer erstellen, wenn uri sich ändert oder kein MediaPlayer existiert
@@ -59,6 +70,10 @@ class MusicPlaybackService : Service() {
                     return
                 }
                 currentUri = uri
+                // Setze Completion Listener für automatische Wiedergabe des nächsten Tracks
+                mediaPlayer?.setOnCompletionListener {
+                    playNext()
+                }
             }
             mediaPlayer?.start()
             isPlaying = true
@@ -68,6 +83,25 @@ class MusicPlaybackService : Service() {
         } catch (e: Exception) {
             Log.e("MusicPlaybackService", "Error playing: $uri", e)
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        }
+    }
+
+    fun playNext() {
+        if (currentTrackIndex < playbackQueue.size - 1) {
+            currentTrackIndex++
+            play(playbackQueue[currentTrackIndex])
+            Log.d("MusicPlaybackService", "Playing next track at index $currentTrackIndex")
+        } else {
+            stop()
+            Log.d("MusicPlaybackService", "Reached end of queue, stopping")
+        }
+    }
+
+    fun playPrevious() {
+        if (currentTrackIndex > 0) {
+            currentTrackIndex--
+            play(playbackQueue[currentTrackIndex])
+            Log.d("MusicPlaybackService", "Playing previous track at index $currentTrackIndex")
         }
     }
 
@@ -93,6 +127,8 @@ class MusicPlaybackService : Service() {
         mediaPlayer = null
         currentUri = null
         isPlaying = false
+        playbackQueue = emptyList() // Zurücksetzen der Warteschlange
+        currentTrackIndex = -1
         Log.d("MusicPlaybackService", "Stopped")
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -103,6 +139,8 @@ class MusicPlaybackService : Service() {
         mediaPlayer = null
         currentUri = null
         isPlaying = false
+        playbackQueue = emptyList()
+        currentTrackIndex = -1
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         Log.d("MusicPlaybackService", "Service destroyed")
         super.onDestroy()

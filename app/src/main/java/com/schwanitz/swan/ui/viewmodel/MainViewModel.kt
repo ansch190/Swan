@@ -176,12 +176,32 @@ class MainViewModel(
         )
         db.playlistDao().insertPlaylist(playlist)
         if (songUris.isNotEmpty()) {
-            val playlistSongs = songUris.map { uri ->
-                PlaylistSongEntity(playlistId = playlistId, songUri = uri)
+            val playlistSongs = songUris.mapIndexed { index, uri ->
+                PlaylistSongEntity(
+                    id = UUID.randomUUID().toString(),
+                    playlistId = playlistId,
+                    songUri = uri,
+                    position = index
+                )
             }
             db.playlistDao().insertPlaylistSongs(playlistSongs)
         }
         Log.d(TAG, "Playlist created: $name, id: $playlistId")
+    }
+
+    suspend fun addSongToPlaylist(playlistId: String, songUri: String) {
+        Log.d(TAG, "Adding song $songUri to playlist $playlistId")
+        // Ermittle die aktuelle höchste Position
+        val currentSongs = db.playlistDao().getSongsForPlaylist(playlistId)
+        val nextPosition = currentSongs.maxOfOrNull { it.position }?.plus(1) ?: 0
+        val playlistSong = PlaylistSongEntity(
+            id = UUID.randomUUID().toString(),
+            playlistId = playlistId,
+            songUri = songUri,
+            position = nextPosition
+        )
+        db.playlistDao().insertPlaylistSongs(listOf(playlistSong))
+        Log.d(TAG, "Added song $songUri to playlist $playlistId at position $nextPosition")
     }
 
     suspend fun deletePlaylist(playlistId: String) {

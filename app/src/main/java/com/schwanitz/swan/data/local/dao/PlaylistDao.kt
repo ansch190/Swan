@@ -18,7 +18,7 @@ interface PlaylistDao {
     @Insert
     suspend fun insertPlaylistSongs(songs: List<PlaylistSongEntity>)
 
-    @Query("SELECT * FROM playlist_songs WHERE playlistId = :playlistId")
+    @Query("SELECT * FROM playlist_songs WHERE playlistId = :playlistId ORDER BY position ASC")
     suspend fun getSongsForPlaylist(playlistId: String): List<PlaylistSongEntity>
 
     @Query("DELETE FROM playlists WHERE id = :playlistId")

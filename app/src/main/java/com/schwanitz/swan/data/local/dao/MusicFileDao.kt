@@ -16,4 +16,8 @@ interface MusicFileDao {
 
     @Query("DELETE FROM music_files WHERE libraryPathUri = :libraryPathUri")
     suspend fun deleteFilesByPath(libraryPathUri: String)
+
+    @Query("SELECT * FROM music_files WHERE uri = :uri")
+    fun getFileByUri(uri: String): Flow<MusicFileEntity?>
+
 }

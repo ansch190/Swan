@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -15,18 +16,14 @@ import androidx.appcompat.widget.SearchView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
-import androidx.viewpager2.adapter.FragmentStateAdapter
-import com.google.android.material.tabs.TabLayout
-import com.google.android.material.tabs.TabLayoutMediator
+import androidx.recyclerview.widget.RecyclerView
 import com.schwanitz.swan.R
+import com.schwanitz.swan.data.local.database.AppDatabase
 import com.schwanitz.swan.databinding.ActivityPlaylistsBinding
 import com.schwanitz.swan.service.MusicPlaybackService
 import com.schwanitz.swan.ui.fragment.LibraryPathsFragment
 import com.schwanitz.swan.ui.fragment.PlaylistsListFragment
-import com.schwanitz.swan.ui.fragment.PlaceholderFragment
 import com.schwanitz.swan.ui.fragment.SettingsFragment
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -101,9 +98,6 @@ class PlaylistsActivity : AppCompatActivity() {
             }
         }
 
-        // Setup tabs
-        setupTabs()
-
         // Initialize SearchView
         binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
@@ -125,23 +119,38 @@ class PlaylistsActivity : AppCompatActivity() {
             }
         })
 
-        // Stelle sicher, dass der aktuelle Suchbegriff angewendet wird
-        binding.viewPager.registerOnPageChangeCallback(object : androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback() {
-            override fun onPageSelected(position: Int) {
-                Log.d(TAG, "Tab selected: $position, applying search query: ${searchQuery.value}")
-                applySearchQuery(searchQuery.value)
-            }
-        })
-
         // Initiale Anwendung des Suchbegriffs
         lifecycleScope.launch {
-            delay(100) // Warte kurz, bis Fragmente initialisiert sind
+            delay(100) // Warte kurz, bis Fragment initialisiert ist
             applySearchQuery(searchQuery.value)
         }
 
-        // Initialize buttons (placeholders for now)
+        // Initialize buttons
         binding.playButton.setOnClickListener {
-            // To be implemented
+            val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container) as? PlaylistsListFragment
+            val adapter = fragment?.getPlaylistAdapter()
+            val selectedPosition = adapter?.selectedPosition ?: RecyclerView.NO_POSITION
+            val selectedPlaylist = adapter?.getPlaylistAt(selectedPosition)
+            if (selectedPlaylist != null) {
+                lifecycleScope.launch {
+                    val songs = AppDatabase.getDatabase(this@PlaylistsActivity).playlistDao().getSongsForPlaylist(selectedPlaylist.id)
+                    if (songs.isNotEmpty()) {
+                        musicService?.setQueue(songs.map { Uri.parse(it.songUri) })
+                    } else {
+                        android.widget.Toast.makeText(
+                            this@PlaylistsActivity,
+                            "Playlist ist leer",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            } else {
+                android.widget.Toast.makeText(
+                    this@PlaylistsActivity,
+                    "Keine Playlist ausgewählt",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
         }
         binding.pauseButton.setOnClickListener {
             musicService?.pause()
@@ -157,10 +166,10 @@ class PlaylistsActivity : AppCompatActivity() {
 
     private fun applySearchQuery(query: String?) {
         Log.d(TAG, "Applying search query to fragment: $query")
-        val currentFragment = supportFragmentManager.findFragmentByTag("f${binding.viewPager.currentItem}") as? PlaylistsListFragment
-        currentFragment?.updateSearchQuery(query)
-        if (currentFragment == null && binding.viewPager.currentItem == 0) {
-            Log.w(TAG, "No PlaylistsListFragment found for tab ${binding.viewPager.currentItem}")
+        val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container) as? PlaylistsListFragment
+        fragment?.updateSearchQuery(query)
+        if (fragment == null) {
+            Log.w(TAG, "No PlaylistsListFragment found")
         }
     }
 
@@ -224,33 +233,6 @@ class PlaylistsActivity : AppCompatActivity() {
                 Log.w(TAG, "Required permissions denied")
                 android.widget.Toast.makeText(this, "Required permissions not granted, some features may not work", android.widget.Toast.LENGTH_LONG).show()
             }
-        }
-    }
-
-    private fun setupTabs() {
-        val tabTitles = listOf(
-            getString(R.string.playlists_tab_all),
-            getString(R.string.playlists_tab_placeholder1),
-            getString(R.string.playlists_tab_placeholder2)
-        )
-        binding.viewPager.adapter = PlaylistsPagerAdapter(this, tabTitles.size)
-        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
-            tab.text = tabTitles[position]
-        }.attach()
-        Log.d(TAG, "ViewPager adapter set with ${tabTitles.size} tabs")
-    }
-}
-
-class PlaylistsPagerAdapter(
-    activity: FragmentActivity,
-    private val tabCount: Int
-) : FragmentStateAdapter(activity) {
-    override fun getItemCount(): Int = tabCount
-
-    override fun createFragment(position: Int): Fragment {
-        return when (position) {
-            0 -> PlaylistsListFragment()
-            else -> PlaceholderFragment()
         }
     }
 }

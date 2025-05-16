@@ -23,6 +23,10 @@
             android:name=".ui.activity.PlaylistsActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.activity.PlaylistSongsActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme" />
+        <activity
             android:name=".ui.activity.LibraryActivity"
             android:exported="true">
             <intent-filter>

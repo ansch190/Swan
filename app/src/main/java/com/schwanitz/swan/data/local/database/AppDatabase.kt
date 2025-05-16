@@ -22,7 +22,7 @@ import com.schwanitz.swan.data.local.entity.*
         PlaylistEntity::class,
         PlaylistSongEntity::class
     ],
-    version = 5,
+    version = 6, // Erhöht von 5 auf 6
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -43,13 +43,14 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "swan_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build()
                 INSTANCE = instance
                 instance
             }
         }
 
+        // Bestehende Migrationen bleiben unverändert
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE INDEX index_music_files_libraryPathUri ON music_files(libraryPathUri)")
@@ -83,6 +84,39 @@ abstract class AppDatabase : RoomDatabase() {
                     """
                 )
                 db.execSQL("CREATE INDEX index_playlist_songs_songUri ON playlist_songs(songUri)")
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Erstelle eine temporäre Tabelle mit der neuen Struktur
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS playlist_songs_temp (
+                        id TEXT NOT NULL,
+                        playlistId TEXT NOT NULL,
+                        songUri TEXT NOT NULL,
+                        position INTEGER NOT NULL,
+                        PRIMARY KEY(id),
+                        FOREIGN KEY(playlistId) REFERENCES playlists(id) ON DELETE CASCADE,
+                        FOREIGN KEY(songUri) REFERENCES music_files(uri) ON DELETE CASCADE
+                    )
+                    """
+                )
+                // Kopiere bestehende Daten und setze position basierend auf der Reihenfolge
+                db.execSQL(
+                    """
+                    INSERT INTO playlist_songs_temp (id, playlistId, songUri, position)
+                    SELECT uuid(), playlistId, songUri, rowid FROM playlist_songs
+                    """
+                )
+                // Lösche die alte Tabelle
+                db.execSQL("DROP TABLE playlist_songs")
+                // Benenne die temporäre Tabelle um
+                db.execSQL("ALTER TABLE playlist_songs_temp RENAME TO playlist_songs")
+                // Erstelle Indizes
+                db.execSQL("CREATE INDEX index_playlist_songs_songUri ON playlist_songs(songUri)")
+                db.execSQL("CREATE INDEX index_playlist_songs_playlistId ON playlist_songs(playlistId)")
             }
         }
     }
