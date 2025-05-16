@@ -2,17 +2,17 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("kotlin-parcelize")
-    id("kotlin-kapt")
+    id("com.google.devtools.ksp") version "2.0.21-1.0.25"
 }
 
 android {
     namespace = "com.schwanitz.swan"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.schwanitz.swan"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
     }
@@ -24,11 +24,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "21"
     }
     buildFeatures {
         viewBinding = true
@@ -36,29 +36,27 @@ android {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.21")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.activity:activity-ktx:1.9.0")
-    implementation("androidx.fragment:fragment-ktx:1.8.0")
-    implementation("androidx.documentfile:documentfile:1.0.1")
-    implementation("net.jthink:jaudiotagger:3.0.1")
-    implementation("androidx.viewpager2:viewpager2:1.1.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.0")
-    implementation("com.github.bumptech.glide:glide:4.16.0")
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    implementation("androidx.media:media:1.7.0") // Für MediaStyle
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0") // Falls Sie JSON verwenden
-    kapt("androidx.room:room-compiler:2.6.1")
-    implementation ("androidx.work:work-runtime-ktx:2.9.1")
-    annotationProcessor("androidx.room:room-compiler:2.6.1")
-    implementation("com.squareup.okhttp3:okhttp:4.10.0")
-    implementation("org.jsoup:jsoup:1.17.2")
-    implementation("com.squareup.okhttp3:okhttp:4.10.0")
+    implementation(libs.kotlin.stdlib)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.documentfile)
+    implementation(libs.jaudiotagger)
+    implementation(libs.androidx.viewpager2)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation(libs.glide)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.media)
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.okhttp)
+    implementation(libs.jsoup)
 }

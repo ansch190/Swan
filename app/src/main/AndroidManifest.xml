@@ -18,10 +18,10 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".SongsActivity"
+            android:name=".ui.activity.SongsActivity"
             android:exported="false" />
         <activity
-            android:name=".LibraryActivity"
+            android:name=".ui.activity.LibraryActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -29,10 +29,10 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".FullScreenImageActivity"
+            android:name=".ui.activity.FullScreenImageActivity"
             android:exported="false" />
         <service
-            android:name=".MusicPlaybackService"
+            android:name=".service.MusicPlaybackService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
     </application>
