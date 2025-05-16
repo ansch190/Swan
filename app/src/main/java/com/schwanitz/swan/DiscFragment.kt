@@ -127,8 +127,14 @@ class DiscFragment : Fragment() {
                         }
                         else -> false
                     }
-                }.sortedBy { file ->
-                    file.trackNumber?.trim()?.split("/")?.firstOrNull()?.toIntOrNull() ?: Int.MAX_VALUE
+                }.let { filtered ->
+                    if (filterType == "artist") {
+                        filtered.sortedBy { it.title ?: it.name } // Alphabetische Sortierung für Künstlerfilter
+                    } else {
+                        filtered.sortedBy {
+                            it.trackNumber?.trim()?.split("/")?.firstOrNull()?.toIntOrNull() ?: Int.MAX_VALUE
+                        } // Sortierung nach Track-Nummer für Albumfilter
+                    }
                 }
                 Log.d(TAG, "Filtered files for disc $discNumber, filterType: $filterType: ${filteredFiles.size}, files: ${filteredFiles.map { "${it.name}, artist=${it.artist}" }}")
                 adapter.updateFiles(filteredFiles)
