@@ -98,6 +98,10 @@ class SongsActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         setupTabView(discNumbers, value, highlightSongUri, filteredFiles)
                     }
+                } else if (criterion == "artist" && isTabViewEnabled) {
+                    withContext(Dispatchers.Main) {
+                        setupArtistTabView(value, highlightSongUri, filteredFiles)
+                    }
                 } else {
                     val sortedFiles = if (criterion == "album" && filteredFiles.all { file ->
                             !file.discNumber.isNullOrBlank() && file.discNumber.toIntOrNull() != null &&
@@ -288,6 +292,22 @@ class SongsActivity : AppCompatActivity() {
                 Log.w(TAG, "Highlight file not found for URI: $highlightSongUri")
             }
         }
+    }
+
+    private fun setupArtistTabView(artistName: String, highlightSongUri: String?, files: List<MusicFile>) {
+        binding.viewPager.offscreenPageLimit = 2 // Cache beide Fragmente
+        binding.viewPager.adapter = ArtistPagerAdapter(this, artistName, highlightSongUri)
+        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+            tab.text = when (position) {
+                0 -> "Titel"
+                1 -> "Alben"
+                else -> ""
+            }
+        }.attach()
+        binding.tabLayout.visibility = View.VISIBLE
+        binding.viewPager.visibility = View.VISIBLE
+        binding.songsRecyclerView.visibility = View.GONE
+        binding.emptyText.visibility = View.GONE
     }
 
     private fun setupListView(filteredFiles: List<MusicFile>, highlightSongUri: String?) {

@@ -27,7 +27,8 @@ class DiscFragment : Fragment() {
     private lateinit var viewModel: MainViewModel
     private lateinit var adapter: MusicFileAdapter
     private var discNumber: String? = null
-    private var albumName: String? = null
+    private var filterValue: String? = null
+    private var filterType: String? = null // "album" oder "artist"
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
     private val TAG = "DiscFragment"
@@ -38,27 +39,29 @@ class DiscFragment : Fragment() {
             val binder = service as MusicPlaybackService.MusicPlaybackBinder
             musicService = binder.getService()
             isBound = true
-            Log.d(TAG, "MusicPlaybackService bound for disc: $discNumber")
+            Log.d(TAG, "MusicPlaybackService bound for disc: $discNumber, filterType: $filterType")
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
             isBound = false
             musicService = null
-            Log.d(TAG, "MusicPlaybackService unbound for disc: $discNumber")
+            Log.d(TAG, "MusicPlaybackService unbound for disc: $discNumber, filterType: $filterType")
         }
     }
 
     companion object {
         private const val ARG_DISC_NUMBER = "disc_number"
-        private const val ARG_ALBUM_NAME = "album_name"
+        private const val ARG_FILTER_VALUE = "filter_value"
+        private const val ARG_FILTER_TYPE = "filter_type"
         private const val ARG_HIGHLIGHT_SONG_URI = "highlight_song_uri"
 
-        fun newInstance(discNumber: String, albumName: String, highlightSongUri: String? = null): DiscFragment {
+        fun newInstance(discNumber: String, filterValue: String, highlightSongUri: String? = null, filterType: String = "album"): DiscFragment {
             return DiscFragment().apply {
                 arguments = Bundle().apply {
                     putString(ARG_DISC_NUMBER, discNumber)
-                    putString(ARG_ALBUM_NAME, albumName)
+                    putString(ARG_FILTER_VALUE, filterValue)
                     putString(ARG_HIGHLIGHT_SONG_URI, highlightSongUri)
+                    putString(ARG_FILTER_TYPE, filterType)
                 }
             }
         }
@@ -67,13 +70,14 @@ class DiscFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         discNumber = arguments?.getString(ARG_DISC_NUMBER)
-        albumName = arguments?.getString(ARG_ALBUM_NAME)
+        filterValue = arguments?.getString(ARG_FILTER_VALUE)
+        filterType = arguments?.getString(ARG_FILTER_TYPE) ?: "album"
         highlightSongUri = arguments?.getString(ARG_HIGHLIGHT_SONG_URI)
         viewModel = ViewModelProvider(
             requireActivity(),
             MainViewModelFactory(requireContext(), MusicRepository(requireContext()))
         ).get(MainViewModel::class.java)
-        Log.d(TAG, "DiscFragment created for disc: $discNumber, album: $albumName, highlightSongUri: $highlightSongUri")
+        Log.d(TAG, "DiscFragment created for disc: $discNumber, filterValue: $filterValue, filterType: $filterType, highlightSongUri: $highlightSongUri")
     }
 
     override fun onCreateView(
@@ -87,10 +91,13 @@ class DiscFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Setze die Fehlermeldung für eine leere Liste
+        binding.emptyText.text = getString(R.string.no_songs_found) // "Keine Lieder gefunden"
+
         adapter = MusicFileAdapter(
             musicFiles = emptyList(),
             onItemClick = { uri ->
-                Log.d(TAG, "Playing file with URI: $uri for disc: $discNumber")
+                Log.d(TAG, "Playing file with URI: $uri for disc: $discNumber, filterType: $filterType")
                 musicService?.play(uri)
             }
         )
@@ -101,19 +108,29 @@ class DiscFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.musicFiles.observe(viewLifecycleOwner) { files ->
-                Log.d(TAG, "Received files for disc $discNumber: ${files.size}, discNumbers: ${files.mapNotNull { it.discNumber }.distinct()}")
+                Log.d(TAG, "Received files for disc $discNumber, filterType: $filterType, total: ${files.size}, filterValue: $filterValue")
                 val filteredFiles = files.filter { file ->
-                    val isAlbumMatch = file.album?.equals(albumName, ignoreCase = true) == true
-                    // Normalisiere discNumber zu einem Integer
-                    val fileDiscNumber = file.discNumber?.trim()?.split("/")?.firstOrNull()?.trim()?.toIntOrNull()
-                    val fragmentDiscNumber = discNumber?.toIntOrNull()
-                    val isDiscMatch = fileDiscNumber == fragmentDiscNumber
-                    Log.d(TAG, "File: ${file.name}, album: ${file.album}, disc: ${file.discNumber}, normalizedDisc: $fileDiscNumber, fragmentDisc: $fragmentDiscNumber, discMatch: $isDiscMatch, albumMatch: $isAlbumMatch")
-                    isAlbumMatch && isDiscMatch
+                    when (filterType) {
+                        "album" -> {
+                            val isAlbumMatch = file.album?.equals(filterValue, ignoreCase = true) == true
+                            // Normalisiere discNumber zu einem Integer
+                            val fileDiscNumber = file.discNumber?.trim()?.split("/")?.firstOrNull()?.trim()?.toIntOrNull()
+                            val fragmentDiscNumber = discNumber?.toIntOrNull()
+                            val isDiscMatch = fileDiscNumber == fragmentDiscNumber
+                            Log.d(TAG, "File: ${file.name}, album: ${file.album}, disc: ${file.discNumber}, normalizedDisc: $fileDiscNumber, fragmentDisc: $fragmentDiscNumber, discMatch: $isDiscMatch, albumMatch: $isAlbumMatch")
+                            isAlbumMatch && isDiscMatch
+                        }
+                        "artist" -> {
+                            val isArtistMatch = file.artist?.equals(filterValue, ignoreCase = true) == true
+                            Log.d(TAG, "File: ${file.name}, artist: ${file.artist}, artistMatch: $isArtistMatch")
+                            isArtistMatch
+                        }
+                        else -> false
+                    }
                 }.sortedBy { file ->
                     file.trackNumber?.trim()?.split("/")?.firstOrNull()?.toIntOrNull() ?: Int.MAX_VALUE
                 }
-                Log.d(TAG, "Filtered files for disc $discNumber: ${filteredFiles.size}, files: ${filteredFiles.map { "${it.name}, disc=${it.discNumber}" }}")
+                Log.d(TAG, "Filtered files for disc $discNumber, filterType: $filterType: ${filteredFiles.size}, files: ${filteredFiles.map { "${it.name}, artist=${it.artist}" }}")
                 adapter.updateFiles(filteredFiles)
                 binding.recyclerView.visibility = if (filteredFiles.isEmpty()) View.GONE else View.VISIBLE
                 binding.emptyText.visibility = if (filteredFiles.isEmpty()) View.VISIBLE else View.GONE
@@ -132,7 +149,7 @@ class DiscFragment : Fragment() {
                             Log.d(TAG, "Highlighted song at position $position for URI: $highlightSongUri")
                         }
                     } else {
-                        Log.w(TAG, "Highlight song not found in filtered files for disc $discNumber: $highlightSongUri")
+                        Log.w(TAG, "Highlight song not found in filtered files for disc $discNumber, filterType: $filterType: $highlightSongUri")
                     }
                 }
             }
