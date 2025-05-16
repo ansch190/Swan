@@ -58,11 +58,14 @@ class LibraryPathsFragment : DialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         viewModel = ViewModelProvider(requireActivity(), MainViewModelFactory(requireContext(), MusicRepository(requireContext()))).get(MainViewModel::class.java)
+
+        // Initialisiere Adapter frühzeitig, um RecyclerView-Warnung zu vermeiden
         pathsAdapter = LibraryPathsAdapter(libraryPaths, ::onActionClick, requireContext())
         binding.pathsRecyclerView.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = pathsAdapter
         }
+
         binding.addPathButton.setOnClickListener {
             showSourceSelectionDialog()
         }
@@ -106,14 +109,10 @@ class LibraryPathsFragment : DialogFragment() {
                 Log.d(TAG, "Scan finished or cancelled, resetting workId and uri")
                 currentWorkId = null
                 currentLibraryPathUri = null
-                // Nach erfolgreichem Scan die App neu starten
+                // Schließe das Fragment, um zur Hauptansicht zurückzukehren
                 if (libraryPaths.isNotEmpty()) {
-                    Log.d(TAG, "Scan completed, restarting app")
-                    val intent = Intent(requireContext(), LibraryActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    }
-                    requireActivity().finish()
-                    startActivity(intent)
+                    Log.d(TAG, "Scan completed, closing fragment")
+                    dismiss()
                 }
             }
         }

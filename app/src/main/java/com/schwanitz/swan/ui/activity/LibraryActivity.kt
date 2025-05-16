@@ -26,7 +26,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
-import com.schwanitz.swan.R
+import com.schwanitz.swan.R // Expliziter Import für Sicherheit
 import com.schwanitz.swan.data.local.database.AppDatabase
 import com.schwanitz.swan.data.local.entity.FilterEntity
 import com.schwanitz.swan.data.local.repository.MusicRepository
@@ -79,6 +79,7 @@ class LibraryActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityLibraryBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        Log.d(TAG, "Activity created, status bar flags: ${window.decorView.systemUiVisibility}")
 
         // Request permissions
         requestPermissions()
@@ -94,7 +95,7 @@ class LibraryActivity : AppCompatActivity() {
         binding.navView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.nav_library -> {
-                    Log.d(TAG, "Already in library")
+                    Log.d(TAG, "Already in library, closing drawer")
                     binding.drawerLayout.closeDrawer(GravityCompat.START)
                     true
                 }
@@ -137,7 +138,6 @@ class LibraryActivity : AppCompatActivity() {
                     setupTabs()
                 }
                 // Beobachte Musikdateien, um Tabs nach Scan zu aktualisieren
-                // In LibraryActivity.kt, innerhalb von onCreate
                 viewModel.musicFiles.observe(this@LibraryActivity) { files ->
                     Log.d(TAG, "Music files updated: ${files.size} files")
                     setupTabs() // Initialisiert die Tabs mit den Filtern
@@ -146,6 +146,9 @@ class LibraryActivity : AppCompatActivity() {
                         for (i in 0 until adapter.itemCount) {
                             val fragment = supportFragmentManager.findFragmentByTag("f$i") as? FilterFragment
                             fragment?.filter(searchQuery.value) // Aktualisiert jedes Fragment mit den neuen Daten
+                            if (fragment == null) {
+                                Log.w(TAG, "Fragment not found for tab $i during music files update")
+                            }
                         }
                     }
                 }
@@ -222,6 +225,8 @@ class LibraryActivity : AppCompatActivity() {
 
         if (permissionsToRequest.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissionsToRequest.toTypedArray(), STORAGE_PERMISSION_CODE)
+        } else {
+            Log.d(TAG, "All required permissions already granted")
         }
     }
 
@@ -253,6 +258,7 @@ class LibraryActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             android.R.id.home -> {
+                Log.d(TAG, "Opening drawer, current state: ${if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) "open" else "closed"}")
                 binding.drawerLayout.openDrawer(GravityCompat.START)
                 true
             }
@@ -266,6 +272,11 @@ class LibraryActivity : AppCompatActivity() {
             unbindService(connection)
             isBound = false
         }
+        // Stoppe den MusicPlaybackService
+        Intent(this, MusicPlaybackService::class.java).also { intent ->
+            stopService(intent)
+        }
+        Log.d(TAG, "Service stopped, activity destroyed")
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -283,6 +294,7 @@ class LibraryActivity : AppCompatActivity() {
     private fun setupTabs() {
         // ViewPager und Adapter einrichten
         binding.viewPager.adapter = FilterPagerAdapter(this, filters)
+        Log.d(TAG, "ViewPager adapter set with ${filters.size} filters")
 
         // TabLayout mit ViewPager verbinden
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
@@ -293,7 +305,7 @@ class LibraryActivity : AppCompatActivity() {
         for (i in 0 until binding.tabLayout.tabCount) {
             val tab = binding.tabLayout.getTabAt(i)
             tab?.view?.setOnLongClickListener {
-                // Filterkonfigurationsseite anzeigen
+                Log.d(TAG, "Long click on tab $i, opening FilterSettingsFragment")
                 FilterSettingsFragment().show(supportFragmentManager, "FilterSettingsFragment")
                 true // Ereignis als behandelt markieren
             }
@@ -306,6 +318,9 @@ class LibraryActivity : AppCompatActivity() {
                     Log.d(TAG, "Tab selected: $position, applying search query: ${searchQuery.value}")
                     val currentFragment = supportFragmentManager.findFragmentByTag("f$position") as? FilterFragment
                     currentFragment?.filter(searchQuery.value)
+                    if (currentFragment == null) {
+                        Log.w(TAG, "Fragment not found for tab $position on selection")
+                    }
                 }
             }
 
@@ -314,12 +329,16 @@ class LibraryActivity : AppCompatActivity() {
         })
 
         // Wende den aktuellen Suchbegriff auf den initialen Tab an
-        val initialFragment = supportFragmentManager.findFragmentByTag("f${binding.viewPager.currentItem}") as? FilterFragment
-        if (initialFragment != null) {
-            Log.d(TAG, "Applying initial search query to tab ${binding.viewPager.currentItem}: ${searchQuery.value}")
-            initialFragment.filter(searchQuery.value)
-        } else {
-            Log.w(TAG, "Initial fragment not found for tab ${binding.viewPager.currentItem}")
+        lifecycleScope.launch {
+            // Warte kurz, um sicherzustellen, dass Fragmente initialisiert sind
+            delay(100)
+            val initialFragment = supportFragmentManager.findFragmentByTag("f${binding.viewPager.currentItem}") as? FilterFragment
+            if (initialFragment != null) {
+                Log.d(TAG, "Applying initial search query to tab ${binding.viewPager.currentItem}: ${searchQuery.value}")
+                initialFragment.filter(searchQuery.value)
+            } else {
+                Log.w(TAG, "Initial fragment not found for tab ${binding.viewPager.currentItem} after delay")
+            }
         }
     }
 }
