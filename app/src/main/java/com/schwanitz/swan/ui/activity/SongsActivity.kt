@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import android.view.View
+import android.view.ViewTreeObserver
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -71,8 +72,23 @@ class SongsActivity : AppCompatActivity() {
         binding = ActivitySongsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Stelle sicher, dass die Statusleiste berücksichtigt wird
+        binding.root.setPadding(0, getStatusBarHeight(), 0, 0)
+
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
+        // Debugging: Layout-Positionen loggen
+        binding.root.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                Log.d(TAG, "Toolbar bounds: top=${binding.toolbar.top}, bottom=${binding.toolbar.bottom}")
+                Log.d(TAG, "AlbumArtwork bounds: top=${binding.albumArtwork.top}, bottom=${binding.albumArtwork.bottom}")
+                Log.d(TAG, "TabLayout bounds: top=${binding.tabLayout.top}, bottom=${binding.tabLayout.bottom}")
+                Log.d(TAG, "ViewPager bounds: top=${binding.viewPager.top}, bottom=${binding.viewPager.bottom}")
+                Log.d(TAG, "RecyclerView bounds: top=${binding.songsRecyclerView.top}, bottom=${binding.songsRecyclerView.bottom}")
+                binding.root.viewTreeObserver.removeOnGlobalLayoutListener(this)
+            }
+        })
 
         viewModel = ViewModelProvider(this, MainViewModelFactory(this, MusicRepository(this))).get(MainViewModel::class.java)
 
@@ -286,6 +302,8 @@ class SongsActivity : AppCompatActivity() {
         binding.viewPager.visibility = View.VISIBLE
         binding.songsRecyclerView.visibility = View.GONE
         binding.emptyText.visibility = View.GONE
+        // Stelle sicher, dass albumArtwork für Albumansicht sichtbar ist, wenn ein Bild geladen wurde
+        binding.albumArtwork.visibility = View.VISIBLE
 
         if (highlightSongUri != null) {
             val highlightUri = Uri.parse(highlightSongUri)
@@ -319,6 +337,7 @@ class SongsActivity : AppCompatActivity() {
         binding.viewPager.visibility = View.VISIBLE
         binding.songsRecyclerView.visibility = View.GONE
         binding.emptyText.visibility = View.GONE
+        binding.albumArtwork.visibility = if (binding.albumArtwork.drawable != null) View.VISIBLE else View.GONE
     }
 
     private fun setupGenreTabView(genre: String, highlightSongUri: String?, files: List<MusicFile>) {
@@ -335,6 +354,7 @@ class SongsActivity : AppCompatActivity() {
         binding.viewPager.visibility = View.VISIBLE
         binding.songsRecyclerView.visibility = View.GONE
         binding.emptyText.visibility = View.GONE
+        binding.albumArtwork.visibility = if (binding.albumArtwork.drawable != null) View.VISIBLE else View.GONE
     }
 
     private fun setupListView(filteredFiles: List<MusicFile>, highlightSongUri: String?) {
@@ -353,6 +373,8 @@ class SongsActivity : AppCompatActivity() {
         binding.emptyText.visibility = if (filteredFiles.isEmpty()) View.VISIBLE else View.GONE
         binding.tabLayout.visibility = View.GONE
         binding.viewPager.visibility = View.GONE
+        // Stelle sicher, dass albumArtwork für Albumansicht sichtbar ist, wenn ein Bild geladen wurde
+        binding.albumArtwork.visibility = View.VISIBLE
 
         if (highlightSongUri != null) {
             val highlightUri = Uri.parse(highlightSongUri)
@@ -387,5 +409,10 @@ class SongsActivity : AppCompatActivity() {
             unbindService(connection)
             isBound = false
         }
+    }
+
+    private fun getStatusBarHeight(): Int {
+        val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (resourceId > 0) resources.getDimensionPixelSize(resourceId) else 0
     }
 }

@@ -73,4 +73,5 @@
     <string name="cloud_provider_pcloud">pCloud</string>
     <string name="cloud_provider_nextcloud">Nextcloud</string>
     <string name="cloud_provider_google_drive">Google Drive</string>
+    <string name="no_songs_for_album">Keine Lieder für dieses Album gefunden</string>
 </resources>
