@@ -53,6 +53,7 @@
     <string name="empty_filter_message">Keine Werte verfügbar</string>
     <string name="no_songs_found">Keine Lieder gefunden</string>
     <string name="no_albums_available">Keine Alben gefunden</string>
+    <string name="no_artists_available">Keine Künstler gefunden</string>
     <string name="no_library_paths_message">Bitte definieren Sie zunächst Quellen in den Einstellungen.</string>
     <string name="scan_progress_description">Importiere Musikdateien, bitte warten</string>
     <string name="scan_progress_initial">Warte auf Scan...</string>

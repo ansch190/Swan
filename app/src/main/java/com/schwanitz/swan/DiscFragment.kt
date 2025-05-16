@@ -28,7 +28,7 @@ class DiscFragment : Fragment() {
     private lateinit var adapter: MusicFileAdapter
     private var discNumber: String? = null
     private var filterValue: String? = null
-    private var filterType: String? = null // "album" oder "artist"
+    private var filterType: String? = null // "album", "artist" oder "genre"
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
     private val TAG = "DiscFragment"
@@ -92,7 +92,7 @@ class DiscFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         // Setze die Fehlermeldung für eine leere Liste
-        binding.emptyText.text = getString(R.string.no_songs_found) // "Keine Lieder gefunden"
+        binding.emptyText.text = getString(R.string.no_songs_found)
 
         adapter = MusicFileAdapter(
             musicFiles = emptyList(),
@@ -113,7 +113,6 @@ class DiscFragment : Fragment() {
                     when (filterType) {
                         "album" -> {
                             val isAlbumMatch = file.album?.equals(filterValue, ignoreCase = true) == true
-                            // Normalisiere discNumber zu einem Integer
                             val fileDiscNumber = file.discNumber?.trim()?.split("/")?.firstOrNull()?.trim()?.toIntOrNull()
                             val fragmentDiscNumber = discNumber?.toIntOrNull()
                             val isDiscMatch = fileDiscNumber == fragmentDiscNumber
@@ -125,18 +124,15 @@ class DiscFragment : Fragment() {
                             Log.d(TAG, "File: ${file.name}, artist: ${file.artist}, artistMatch: $isArtistMatch")
                             isArtistMatch
                         }
+                        "genre" -> {
+                            val isGenreMatch = file.genre?.equals(filterValue, ignoreCase = true) == true
+                            Log.d(TAG, "File: ${file.name}, genre: ${file.genre}, genreMatch: $isGenreMatch")
+                            isGenreMatch
+                        }
                         else -> false
                     }
-                }.let { filtered ->
-                    if (filterType == "artist") {
-                        filtered.sortedBy { it.title ?: it.name } // Alphabetische Sortierung für Künstlerfilter
-                    } else {
-                        filtered.sortedBy {
-                            it.trackNumber?.trim()?.split("/")?.firstOrNull()?.toIntOrNull() ?: Int.MAX_VALUE
-                        } // Sortierung nach Track-Nummer für Albumfilter
-                    }
-                }
-                Log.d(TAG, "Filtered files for disc $discNumber, filterType: $filterType: ${filteredFiles.size}, files: ${filteredFiles.map { "${it.name}, artist=${it.artist}" }}")
+                }.sortedBy { it.title ?: it.name } // Alphabetische Sortierung für alle Filtertypen
+                Log.d(TAG, "Filtered files for disc $discNumber, filterType: $filterType: ${filteredFiles.size}, files: ${filteredFiles.map { "${it.name}, genre=${it.genre}" }}")
                 adapter.updateFiles(filteredFiles)
                 binding.recyclerView.visibility = if (filteredFiles.isEmpty()) View.GONE else View.VISIBLE
                 binding.emptyText.visibility = if (filteredFiles.isEmpty()) View.VISIBLE else View.GONE
@@ -148,9 +144,8 @@ class DiscFragment : Fragment() {
                     Log.d(TAG, "Attempting to highlight song with URI: $highlightSongUri, position: $position")
                     if (position >= 0) {
                         binding.recyclerView.layoutManager?.scrollToPosition(position)
-                        // Verzögere die Hervorhebung, um sicherzustellen, dass die RecyclerView gerendert ist
                         lifecycleScope.launch(Dispatchers.Main) {
-                            delay(100) // 100ms Verzögerung
+                            delay(100)
                             adapter.highlightItem(binding.recyclerView, position)
                             Log.d(TAG, "Highlighted song at position $position for URI: $highlightSongUri")
                         }

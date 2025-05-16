@@ -96,28 +96,26 @@ class SongsActivity : AppCompatActivity() {
                 val hasDiscMetadata = discNumbers.isNotEmpty()
                 Log.d(TAG, "Disc numbers: $discNumbers, hasDiscMetadata: $hasDiscMetadata")
 
-                if (criterion == "album" && isTabViewEnabled && hasDiscMetadata) {
-                    withContext(Dispatchers.Main) {
-                        setupTabView(discNumbers, value, highlightSongUri, filteredFiles)
-                    }
-                } else if (criterion == "artist" && isTabViewEnabled) {
-                    withContext(Dispatchers.Main) {
-                        setupArtistTabView(value, highlightSongUri, filteredFiles)
-                    }
-                } else {
-                    val sortedFiles = if (criterion == "album" && filteredFiles.all { file ->
-                            !file.discNumber.isNullOrBlank() && file.discNumber.toIntOrNull() != null &&
-                                    !file.trackNumber.isNullOrBlank() && file.trackNumber.toIntOrNull() != null
-                        }) {
-                        filteredFiles.sortedWith(compareBy(
-                            { it.discNumber?.trim()?.split("/")?.firstOrNull()?.toIntOrNull() ?: Int.MAX_VALUE },
-                            { it.trackNumber?.trim()?.split("/")?.firstOrNull()?.toIntOrNull() ?: Int.MAX_VALUE }
-                        ))
-                    } else {
-                        filteredFiles.sortedBy { it.title ?: it.name }
-                    }
-                    withContext(Dispatchers.Main) {
-                        setupListView(sortedFiles, highlightSongUri)
+                withContext(Dispatchers.Main) {
+                    when (criterion) {
+                        "album" -> {
+                            if (hasDiscMetadata) {
+                                setupTabView(discNumbers, value, highlightSongUri, filteredFiles)
+                            } else {
+                                val sortedFiles = filteredFiles.sortedBy { it.title ?: it.name }
+                                setupListView(sortedFiles, highlightSongUri)
+                            }
+                        }
+                        "artist" -> {
+                            setupArtistTabView(value, highlightSongUri, filteredFiles)
+                        }
+                        "genre" -> {
+                            setupGenreTabView(value, highlightSongUri, filteredFiles)
+                        }
+                        else -> {
+                            val sortedFiles = filteredFiles.sortedBy { it.title ?: it.name }
+                            setupListView(sortedFiles, highlightSongUri)
+                        }
                     }
                 }
             }
@@ -301,6 +299,22 @@ class SongsActivity : AppCompatActivity() {
             tab.text = when (position) {
                 0 -> "Titel"
                 1 -> "Alben"
+                else -> ""
+            }
+        }.attach()
+        binding.tabLayout.visibility = View.VISIBLE
+        binding.viewPager.visibility = View.VISIBLE
+        binding.songsRecyclerView.visibility = View.GONE
+        binding.emptyText.visibility = View.GONE
+    }
+
+    private fun setupGenreTabView(genre: String, highlightSongUri: String?, files: List<MusicFile>) {
+        binding.viewPager.offscreenPageLimit = 2
+        binding.viewPager.adapter = GenrePagerAdapter(this, genre, highlightSongUri)
+        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+            tab.text = when (position) {
+                0 -> "Titel"
+                1 -> "Künstler"
                 else -> ""
             }
         }.attach()
