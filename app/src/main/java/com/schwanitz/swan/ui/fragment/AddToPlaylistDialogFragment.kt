@@ -14,6 +14,7 @@ import com.schwanitz.swan.ui.viewmodel.MainViewModel
 import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class AddToPlaylistDialogFragment : DialogFragment() {
 
@@ -30,53 +31,43 @@ class AddToPlaylistDialogFragment : DialogFragment() {
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        // Erstelle einen Builder für den Dialog
-        val builder = AlertDialog.Builder(requireContext())
-            .setTitle(R.string.add_to_playlist)
-            .setMessage("Playlisten werden geladen...")
-            .setNegativeButton(android.R.string.cancel, null)
-
         val musicFile = arguments?.getParcelable<MusicFile>(ARG_MUSIC_FILE)
         val viewModel = ViewModelProvider(
             requireActivity(),
             MainViewModelFactory(requireContext(), MusicRepository(requireContext()))
         ).get(MainViewModel::class.java)
 
-        // Lade Playlisten asynchron und konfiguriere den Dialog
-        lifecycleScope.launch {
-            val playlists = AppDatabase.getDatabase(requireContext()).playlistDao().getAllPlaylists().first()
-            val playlistNames = playlists.map { it.name }.toTypedArray()
-
-            // Aktualisiere den Builder mit der Playlist-Liste
-            builder.setMessage(null) // Entferne Lade-Nachricht
-            if (playlistNames.isNotEmpty()) {
-                builder.setItems(playlistNames) { _, which ->
-                    val selectedPlaylist = playlists[which]
-                    lifecycleScope.launch {
-                        musicFile?.uri?.toString()?.let { songUri ->
-                            viewModel.addSongToPlaylist(selectedPlaylist.id, songUri)
-                            android.widget.Toast.makeText(
-                                requireContext(),
-                                "Song zu ${selectedPlaylist.name} hinzugefügt",
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                }
-            } else {
-                builder.setMessage("Keine Playlisten verfügbar")
+        val builder = AlertDialog.Builder(requireContext())
+            .setTitle(R.string.add_to_playlist)
+            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
+                dialog.dismiss()
             }
 
-            // Erstelle und zeige den Dialog
-            val dialog = builder.create()
-            dialog.show()
-            dialog.window?.setLayout(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+        // Synchrones Laden der Playlisten
+        val playlists = runBlocking {
+            AppDatabase.getDatabase(requireContext()).playlistDao().getAllPlaylists().first()
+        }
+        val playlistNames = playlists.map { it.name }.toTypedArray()
+
+        if (playlistNames.isNotEmpty()) {
+            builder.setItems(playlistNames) { _, which ->
+                val selectedPlaylist = playlists[which]
+                lifecycleScope.launch {
+                    musicFile?.uri?.toString()?.let { songUri ->
+                        viewModel.addSongToPlaylist(selectedPlaylist.id, songUri)
+                    }
+                }
+                dismiss() // Dialog nach Auswahl schließen
+            }
+        } else {
+            builder.setMessage("Keine Playlisten verfügbar")
         }
 
-        // Gib einen temporären Dialog zurück
-        return builder.create()
+        val dialog = builder.create()
+        dialog.window?.setLayout(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        return dialog
     }
 }
