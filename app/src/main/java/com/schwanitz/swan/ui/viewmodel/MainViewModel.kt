@@ -69,6 +69,10 @@ class MainViewModel(
                 db.filterDao().insertFilter(FilterEntity("artist", context.getString(R.string.filter_by_artist)))
                 db.filterDao().insertFilter(FilterEntity("album", context.getString(R.string.filter_by_album)))
             }
+            // Entferne bestehende discNumber und trackNumber Filter
+            db.filterDao().deleteFilter("discNumber")
+            db.filterDao().deleteFilter("trackNumber")
+            Log.d(TAG, "Removed discNumber and trackNumber filters from database")
         }
     }
 

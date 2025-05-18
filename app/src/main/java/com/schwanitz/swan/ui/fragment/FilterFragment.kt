@@ -8,8 +8,8 @@ import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import android.view.ContextMenu
-import android.view.LayoutInflater
 import android.view.MenuItem
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
@@ -135,8 +135,6 @@ class FilterFragment : Fragment() {
                     "artist" -> files.mapNotNull { it.artist }.distinct().sorted()
                     "album" -> files.mapNotNull { it.album }.distinct().sorted()
                     "albumArtist" -> files.mapNotNull { it.albumArtist }.distinct().sorted()
-                    "discNumber" -> files.mapNotNull { it.discNumber?.toString() }.distinct().sorted()
-                    "trackNumber" -> files.mapNotNull { it.trackNumber?.toString() }.distinct().sorted()
                     "year" -> files.mapNotNull { it.year?.toString() }.distinct().sorted()
                     "genre" -> files.mapNotNull { it.genre }.distinct().sorted()
                     else -> emptyList()
@@ -216,8 +214,6 @@ class FilterFragment : Fragment() {
             "artist" -> files.mapNotNull { it.artist }.distinct().sorted()
             "album" -> files.mapNotNull { it.album }.distinct().sorted()
             "albumArtist" -> files.mapNotNull { it.albumArtist }.distinct().sorted()
-            "discNumber" -> files.mapNotNull { it.discNumber?.toString() }.distinct().sorted()
-            "trackNumber" -> files.mapNotNull { it.trackNumber?.toString() }.distinct().sorted()
             "year" -> files.mapNotNull { it.year?.toString() }.distinct().sorted()
             "genre" -> files.mapNotNull { it.genre }.distinct().sorted()
             else -> emptyList()

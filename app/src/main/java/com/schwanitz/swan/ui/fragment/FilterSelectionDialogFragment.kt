@@ -32,8 +32,6 @@ class FilterSelectionDialogFragment : DialogFragment() {
             getString(R.string.filter_by_artist),
             getString(R.string.filter_by_album),
             getString(R.string.filter_by_album_artist),
-            getString(R.string.filter_by_disc_number),
-            getString(R.string.filter_by_track_number),
             getString(R.string.filter_by_year),
             getString(R.string.filter_by_genre)
         )
@@ -42,8 +40,6 @@ class FilterSelectionDialogFragment : DialogFragment() {
             "artist",
             "album",
             "albumArtist",
-            "discNumber",
-            "trackNumber",
             "year",
             "genre"
         )

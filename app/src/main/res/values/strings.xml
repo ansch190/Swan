@@ -42,8 +42,6 @@
     <string name="filter_by_album">Album</string>
     <string name="filter_by_genre">Genre</string>
     <string name="filter_by_album_artist">Albumkünstler</string>
-    <string name="filter_by_disc_number">Disc-Nummer</string>
-    <string name="filter_by_track_number">Track-Nummer</string>
     <string name="filter_by_year">Jahr</string>
     <string name="filters">Filter</string>
     <string name="filter_settings_title">Filter-Einstellungen</string>
