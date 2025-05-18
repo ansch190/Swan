@@ -208,6 +208,21 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
                 }
             }
 
+            // Klick-Listener für den Genre-TextView
+            binding.genreValue.setOnClickListener { _ ->
+                if (!it.genre.isNullOrBlank() && it.genre != "Unbekannt") {
+                    Log.d(TAG, "Navigating to genre: ${it.genre} with song URI: ${it.uri}")
+                    val intent = Intent(context, SongsActivity::class.java).apply {
+                        putExtra("criterion", "genre")
+                        putExtra("value", it.genre)
+                        putExtra("highlight_song_uri", it.uri.toString())
+                    }
+                    startActivity(intent)
+                } else {
+                    Log.w(TAG, "No genre available for navigation")
+                }
+            }
+
             // Asynchrones Laden der Bilder aus ID3v2.4-Tags
             val metadataExtractor = MetadataExtractor(requireContext())
             try {
