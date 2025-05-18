@@ -29,6 +29,7 @@ import com.schwanitz.swan.ui.adapter.ArtistPagerAdapter
 import com.schwanitz.swan.ui.adapter.DiscPagerAdapter
 import com.schwanitz.swan.ui.adapter.GenrePagerAdapter
 import com.schwanitz.swan.ui.adapter.MusicFileAdapter
+import com.schwanitz.swan.ui.adapter.YearPagerAdapter // Neu hinzugefügt
 import com.schwanitz.swan.ui.fragment.ImageViewerDialogFragment
 import com.schwanitz.swan.ui.viewmodel.MainViewModel
 import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
@@ -107,6 +108,7 @@ class SongsActivity : AppCompatActivity() {
                         "album" -> file.album?.equals(value, ignoreCase = true) ?: false
                         "artist" -> file.artist?.equals(value, ignoreCase = true) ?: false
                         "genre" -> file.genre?.equals(value, ignoreCase = true) ?: false
+                        "year" -> file.year?.equals(value, ignoreCase = true) ?: false // Neu hinzugefügt
                         else -> false
                     }
                 }
@@ -140,6 +142,9 @@ class SongsActivity : AppCompatActivity() {
                         }
                         "genre" -> {
                             setupGenreTabView(value, highlightSongUri, filteredFiles)
+                        }
+                        "year" -> { // Neu hinzugefügt
+                            setupYearTabView(value, highlightSongUri, filteredFiles)
                         }
                         else -> {
                             val sortedFiles = filteredFiles.sortedBy { it.title ?: it.name }
@@ -285,7 +290,7 @@ class SongsActivity : AppCompatActivity() {
                 }
             }
         } else {
-            // Kein Bild für Genre oder andere Kriterien
+            // Kein Bild für Genre, Jahr oder andere Kriterien
             withContext(Dispatchers.Main) {
                 binding.albumArtwork.visibility = View.GONE
             }
@@ -355,6 +360,23 @@ class SongsActivity : AppCompatActivity() {
         binding.songsRecyclerView.visibility = View.GONE
         binding.emptyText.visibility = View.GONE
         binding.albumArtwork.visibility = if (binding.albumArtwork.drawable != null) View.VISIBLE else View.GONE
+    }
+
+    private fun setupYearTabView(year: String, highlightSongUri: String?, files: List<MusicFile>) { // Neu hinzugefügt
+        binding.viewPager.offscreenPageLimit = 2
+        binding.viewPager.adapter = YearPagerAdapter(this, year, highlightSongUri)
+        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+            tab.text = when (position) {
+                0 -> "Titel"
+                1 -> "Alben"
+                else -> ""
+            }
+        }.attach()
+        binding.tabLayout.visibility = View.VISIBLE
+        binding.viewPager.visibility = View.VISIBLE
+        binding.songsRecyclerView.visibility = View.GONE
+        binding.emptyText.visibility = View.GONE
+        binding.albumArtwork.visibility = View.GONE // Kein Bild für Jahr
     }
 
     private fun setupListView(filteredFiles: List<MusicFile>, highlightSongUri: String?) {

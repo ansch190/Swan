@@ -33,7 +33,7 @@ class DiscFragment : Fragment() {
     private lateinit var adapter: MusicFileAdapter
     private var discNumber: String? = null
     private var filterValue: String? = null
-    private var filterType: String? = null // "album", "artist" oder "genre"
+    private var filterType: String? = null // "album", "artist", "genre" oder "year"
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
     private val TAG = "DiscFragment"
@@ -134,10 +134,15 @@ class DiscFragment : Fragment() {
                             Log.d(TAG, "File: ${file.name}, genre: ${file.genre}, genreMatch: $isGenreMatch")
                             isGenreMatch
                         }
+                        "year" -> { // Neu hinzugefügt
+                            val isYearMatch = file.year?.equals(filterValue, ignoreCase = true) == true
+                            Log.d(TAG, "File: ${file.name}, year: ${file.year}, yearMatch: $isYearMatch")
+                            isYearMatch
+                        }
                         else -> false
                     }
                 }.sortedBy { it.title ?: it.name } // Alphabetische Sortierung für alle Filtertypen
-                Log.d(TAG, "Filtered files for disc $discNumber, filterType: $filterType: ${filteredFiles.size}, files: ${filteredFiles.map { "${it.name}, genre=${it.genre}" }}")
+                Log.d(TAG, "Filtered files for disc $discNumber, filterType: $filterType: ${filteredFiles.size}, files: ${filteredFiles.map { "${it.name}, year=${it.year}" }}")
                 adapter.updateFiles(filteredFiles)
                 binding.recyclerView.visibility = if (filteredFiles.isEmpty()) View.GONE else View.VISIBLE
                 binding.emptyText.visibility = if (filteredFiles.isEmpty()) View.VISIBLE else View.GONE

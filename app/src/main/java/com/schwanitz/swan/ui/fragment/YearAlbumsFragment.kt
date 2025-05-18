@@ -18,22 +18,22 @@ import com.schwanitz.swan.ui.adapter.ArtistAlbumsAdapter
 import com.schwanitz.swan.ui.viewmodel.MainViewModel
 import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
 
-class ArtistAlbumsFragment : Fragment() {
+class YearAlbumsFragment : Fragment() {
 
     private var _binding: FragmentFilterBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: MainViewModel
     private lateinit var adapter: ArtistAlbumsAdapter
-    private var artistName: String? = null
-    private val TAG = "ArtistAlbumsFragment" // Neu: TAG definiert
+    private var year: String? = null
+    private val TAG = "YearAlbumsFragment"
 
     companion object {
-        private const val ARG_ARTIST_NAME = "artist_name"
+        private const val ARG_YEAR = "year"
 
-        fun newInstance(artistName: String): ArtistAlbumsFragment {
-            return ArtistAlbumsFragment().apply {
+        fun newInstance(year: String): YearAlbumsFragment {
+            return YearAlbumsFragment().apply {
                 arguments = Bundle().apply {
-                    putString(ARG_ARTIST_NAME, artistName)
+                    putString(ARG_YEAR, year)
                 }
             }
         }
@@ -41,8 +41,8 @@ class ArtistAlbumsFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        artistName = arguments?.getString(ARG_ARTIST_NAME)
-        Log.d(TAG, "Fragment created for artist: $artistName")
+        year = arguments?.getString(ARG_YEAR)
+        Log.d(TAG, "Fragment created for year: $year")
     }
 
     override fun onCreateView(
@@ -71,21 +71,22 @@ class ArtistAlbumsFragment : Fragment() {
                 startActivity(intent)
             },
             metadataExtractor = MetadataExtractor(requireContext()),
-            artistName = artistName ?: ""
+            artistName = "", // Kein Künstlername nötig
+            year = year // Übergib das Jahr
         )
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(context)
-            adapter = this@ArtistAlbumsFragment.adapter
+            adapter = this@YearAlbumsFragment.adapter
         }
 
         viewModel.musicFiles.observe(viewLifecycleOwner) { files ->
-            artistName?.let { artist ->
+            year?.let { selectedYear ->
                 val albums = files
-                    .filter { it.albumArtist?.equals(artist, ignoreCase = true) == true }
+                    .filter { it.year?.equals(selectedYear, ignoreCase = true) == true }
                     .mapNotNull { it.album }
                     .distinct()
                     .sorted()
-                Log.d(TAG, "Loaded albums for albumArtist $artist: ${albums.size}, albums: $albums")
+                Log.d(TAG, "Loaded albums for year $selectedYear: ${albums.size}, albums: $albums")
                 adapter.updateAlbums(albums, files)
                 binding.recyclerView.visibility = if (albums.isEmpty()) View.GONE else View.VISIBLE
                 binding.emptyText.visibility = if (albums.isEmpty()) View.VISIBLE else View.GONE
