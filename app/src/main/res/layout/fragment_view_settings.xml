@@ -15,11 +15,4 @@
         android:textStyle="bold"
         android:layout_marginBottom="16dp" />
 
-    <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/tabViewSwitch"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/tab_view_toggle_label"
-        android:layout_marginBottom="8dp" />
-
 </LinearLayout>
