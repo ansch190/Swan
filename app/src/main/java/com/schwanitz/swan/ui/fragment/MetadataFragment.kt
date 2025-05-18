@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.tabs.TabLayoutMediator
 import com.schwanitz.swan.databinding.FragmentMetadataTabBinding
 import com.schwanitz.swan.domain.model.MusicFile
-import com.schwanitz.swan.domain.usecase.Metadata // Import hinzugefügt
+import com.schwanitz.swan.domain.usecase.Metadata
 import com.schwanitz.swan.domain.usecase.MetadataExtractor
 import com.schwanitz.swan.ui.activity.SongsActivity
 import com.schwanitz.swan.ui.adapter.ArtworkAdapter
@@ -190,6 +190,21 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
                     startActivity(intent)
                 } else {
                     Log.w(TAG, "No artist name available for navigation")
+                }
+            }
+
+            // Klick-Listener für den Jahr-TextView
+            binding.yearValue.setOnClickListener { _ ->
+                if (!it.year.isNullOrBlank() && it.year != "Unbekannt") {
+                    Log.d(TAG, "Navigating to year: ${it.year} with song URI: ${it.uri}")
+                    val intent = Intent(context, SongsActivity::class.java).apply {
+                        putExtra("criterion", "year")
+                        putExtra("value", it.year)
+                        putExtra("highlight_song_uri", it.uri.toString())
+                    }
+                    startActivity(intent)
+                } else {
+                    Log.w(TAG, "No year available for navigation")
                 }
             }
 
