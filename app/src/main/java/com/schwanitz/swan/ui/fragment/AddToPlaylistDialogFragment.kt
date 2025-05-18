@@ -31,7 +31,7 @@ class AddToPlaylistDialogFragment : DialogFragment() {
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val musicFile = arguments?.getParcelable<MusicFile>(ARG_MUSIC_FILE)
+        val musicFile = arguments?.getParcelable(ARG_MUSIC_FILE, MusicFile::class.java)
         val viewModel = ViewModelProvider(
             requireActivity(),
             MainViewModelFactory(requireContext(), MusicRepository(requireContext()))

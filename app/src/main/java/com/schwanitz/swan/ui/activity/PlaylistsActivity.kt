@@ -16,6 +16,8 @@ import androidx.appcompat.widget.SearchView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.schwanitz.swan.R
@@ -62,7 +64,11 @@ class PlaylistsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityPlaylistsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        Log.d(TAG, "Activity created, status bar flags: ${window.decorView.systemUiVisibility}")
+        Log.d(TAG, "Activity created")
+
+        // Optional: Überprüfe Statusleisten-Sichtbarkeit
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        Log.d(TAG, "Status bar visible: ${controller.isAppearanceLightStatusBars}")
 
         // Request permissions
         requestPermissions()
