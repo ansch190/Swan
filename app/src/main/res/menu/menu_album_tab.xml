@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/add_disc_to_playlist"
+        android:title="CD zu Playlist hinzufügen" />
+    <item
+        android:id="@+id/add_album_to_playlist"
+        android:title="Albums zu Playlist hinzufügen" />
+</menu>

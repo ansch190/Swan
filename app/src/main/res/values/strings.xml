@@ -98,4 +98,7 @@
     <string name="edit_playlist">Playlist bearbeiten</string>
     <string name="save_changes">Änderungen speichern</string>
     <string name="drag_handle_description">Element zum Neuanordnen ziehen</string>
+
+    <string name="add_disc_to_playlist">CD zu Playlist hinzufügen</string>
+    <string name="add_album_to_playlist">Albums zu Playlist hinzufügen</string>
 </resources>

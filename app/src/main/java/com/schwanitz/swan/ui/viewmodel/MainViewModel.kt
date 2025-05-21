@@ -221,6 +221,23 @@ class MainViewModel(
         }
     }
 
+    suspend fun addSongsToPlaylist(playlistId: String, songUris: List<String>) {
+        Log.d(TAG, "Adding ${songUris.size} songs to playlist $playlistId")
+        // Ermittle die aktuelle höchste Position
+        val currentSongs = db.playlistDao().getSongsForPlaylist(playlistId)
+        val nextPosition = currentSongs.maxOfOrNull { it.position }?.plus(1) ?: 0
+        val playlistSongs = songUris.mapIndexed { index, uri ->
+            PlaylistSongEntity(
+                id = UUID.randomUUID().toString(),
+                playlistId = playlistId,
+                songUri = uri,
+                position = nextPosition + index
+            )
+        }
+        db.playlistDao().insertPlaylistSongs(playlistSongs)
+        Log.d(TAG, "Added ${songUris.size} songs to playlist $playlistId starting at position $nextPosition")
+    }
+
     suspend fun deletePlaylist(playlistId: String) {
         Log.d(TAG, "Deleting playlist: $playlistId")
         db.playlistDao().deletePlaylist(playlistId)
@@ -253,5 +270,4 @@ class MainViewModel(
 
         Log.d(TAG, "Playlist song order updated for playlist $playlistId")
     }
-
 }
