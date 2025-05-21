@@ -1,5 +1,6 @@
 package com.schwanitz.swan.ui.fragment
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -434,6 +435,8 @@ class PlaylistsListFragment : Fragment() {
         val input = android.widget.EditText(requireContext())
         input.hint = getString(R.string.playlist_name_hint)
         input.setPadding(32, 16, 32, 16)
+        // Setze den Cursor ans Ende des Texts
+        input.setSelectAllOnFocus(true)
         builder.setView(input)
 
         builder.setPositiveButton(R.string.create_playlist) { _, _ ->
@@ -454,6 +457,14 @@ class PlaylistsListFragment : Fragment() {
             dialog.cancel()
         }
 
-        builder.show()
+        input.requestFocus()
+
+        // Dialog erstellen und die Tastatur anzeigen
+        val dialog = builder.create()
+
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+
+        dialog.show()
     }
+
 }
