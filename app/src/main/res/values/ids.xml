@@ -1,4 +1,5 @@
 <resources>
     <item name="context_menu_info" type="id" />
     <item name="delete_playlist" type="id" />
+    <item name="export_playlist" type="id" />
 </resources>
