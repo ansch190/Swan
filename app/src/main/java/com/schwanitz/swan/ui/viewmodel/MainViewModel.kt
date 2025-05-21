@@ -238,4 +238,20 @@ class MainViewModel(
             Log.w(TAG, "Playlist not found for ID: $playlistId")
         }
     }
+
+    suspend fun updatePlaylistSongOrder(playlistId: String, songs: List<PlaylistSongEntity>) {
+        Log.d(TAG, "Updating playlist song order for playlist $playlistId")
+
+        // Alte Songs löschen
+        val existingSongs = db.playlistDao().getSongsForPlaylist(playlistId)
+        existingSongs.forEach { song ->
+            db.playlistDao().deletePlaylistSong(song.id)
+        }
+
+        // Neue Songs einfügen
+        db.playlistDao().insertPlaylistSongs(songs)
+
+        Log.d(TAG, "Playlist song order updated for playlist $playlistId")
+    }
+
 }

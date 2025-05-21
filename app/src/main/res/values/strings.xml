@@ -94,4 +94,8 @@
     <string name="rename_playlist_title">Playlist umbenennen</string>
     <string name="rename_playlist_success">Playlist umbenannt</string>
     <string name="rename_playlist_error">Fehler beim Umbenennen der Playlist</string>
+
+    <string name="edit_playlist">Playlist bearbeiten</string>
+    <string name="save_changes">Änderungen speichern</string>
+    <string name="drag_handle_description">Element zum Neuanordnen ziehen</string>
 </resources>

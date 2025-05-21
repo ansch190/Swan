@@ -3,4 +3,5 @@
     <item name="rename_playlist" type="id" />
     <item name="export_playlist" type="id" />
     <item name="delete_playlist" type="id" />
+    <item name="item_touch_helper_previous_state" type="id" />
 </resources>
