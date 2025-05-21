@@ -62,9 +62,11 @@ class AddToPlaylistDialogFragment : DialogFragment() {
         // Synchrones Laden der Playlisten
         try {
             val playlists = runBlocking {
+                // Hier werden die Playlisten geladen und alphabetisch nach Namen sortiert
                 AppDatabase.getDatabase(requireContext()).playlistDao().getAllPlaylists().first()
+                    .sortedBy { it.name.lowercase() }
             }
-            Log.d(TAG, "Loaded ${playlists.size} playlists")
+            Log.d(TAG, "Loaded ${playlists.size} playlists, sorted alphabetically")
             val playlistNames = playlists.map { it.name }.toTypedArray()
 
             if (playlistNames.isNotEmpty()) {
