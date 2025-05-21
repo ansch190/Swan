@@ -9,6 +9,8 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
+import android.widget.EditText
 import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -160,12 +162,19 @@ class PlaylistsListFragment : Fragment() {
 
     private fun showPopupMenu(view: View, playlist: PlaylistEntity) {
         val popup = PopupMenu(requireContext(), view)
-        // Exportieren vor Löschen hinzufügen
-        popup.menu.add(0, R.id.export_playlist, 0, R.string.export_playlist)
-        popup.menu.add(0, R.id.delete_playlist, 1, R.string.delete_playlist)
+        // Umbenennen als ersten Eintrag hinzufügen
+        popup.menu.add(0, R.id.rename_playlist, 0, R.string.rename_playlist)
+        // Exportieren als zweiten Eintrag
+        popup.menu.add(0, R.id.export_playlist, 1, R.string.export_playlist)
+        // Löschen als dritten Eintrag
+        popup.menu.add(0, R.id.delete_playlist, 2, R.string.delete_playlist)
 
         popup.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
+                R.id.rename_playlist -> {
+                    showRenamePlaylistDialog(playlist)
+                    true
+                }
                 R.id.export_playlist -> {
                     currentExportPlaylist = playlist
                     showExportFormatDialog(playlist)
@@ -180,6 +189,51 @@ class PlaylistsListFragment : Fragment() {
         }
 
         popup.show()
+    }
+
+    private fun showRenamePlaylistDialog(playlist: PlaylistEntity) {
+        val builder = AlertDialog.Builder(requireContext())
+        builder.setTitle(R.string.rename_playlist_title)
+
+        val input = EditText(requireContext())
+        input.setText(playlist.name)
+        input.setPadding(32, 16, 32, 16)
+        input.setSelectAllOnFocus(true)
+        input.requestFocus()
+        builder.setView(input)
+
+        builder.setPositiveButton(android.R.string.ok) { _, _ ->
+            val newName = input.text.toString().trim()
+            if (newName.isNotEmpty()) {
+                renamePlaylist(playlist.id, newName)
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    R.string.create_playlist_error_empty,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+        builder.setNegativeButton(android.R.string.cancel, null)
+
+        val dialog = builder.create()
+
+        // Zeige die Tastatur automatisch
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+
+        dialog.show()
+    }
+
+    private fun renamePlaylist(playlistId: String, newName: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                viewModel.renamePlaylist(playlistId, newName)
+                Toast.makeText(requireContext(), R.string.rename_playlist_success, Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error renaming playlist: ${e.message}", e)
+                Toast.makeText(requireContext(), R.string.rename_playlist_error, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun showExportFormatDialog(playlist: PlaylistEntity) {

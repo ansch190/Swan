@@ -3,6 +3,7 @@ package com.schwanitz.swan.data.local.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.schwanitz.swan.data.local.entity.PlaylistEntity
 import com.schwanitz.swan.data.local.entity.PlaylistSongEntity
 import kotlinx.coroutines.flow.Flow
@@ -23,4 +24,10 @@ interface PlaylistDao {
 
     @Query("DELETE FROM playlists WHERE id = :playlistId")
     suspend fun deletePlaylist(playlistId: String)
+
+    @Query("SELECT * FROM playlists WHERE id = :playlistId")
+    suspend fun getPlaylistById(playlistId: String): PlaylistEntity?
+
+    @Update
+    suspend fun updatePlaylist(playlist: PlaylistEntity)
 }

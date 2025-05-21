@@ -82,4 +82,15 @@
     <string name="create_playlist_error_empty">Bitte einen Namen eingeben</string>
     <string name="add_to_playlist">Zur Playlist hinzufügen</string>
     <string name="no_playlist_selected">-keine Playlist ausgewählt</string>
+
+    <string name="export_playlist">Exportieren</string>
+    <string name="export_playlist_title">Playlist-Format wählen</string>
+    <string name="export_format_m3u">M3U-Format</string>
+    <string name="export_format_pls">PLS-Format</string>
+    <string name="export_success">Playlist erfolgreich exportiert</string>
+    <string name="export_error">Fehler beim Exportieren der Playlist</string>
+    <string name="rename_playlist">Umbenennen</string>
+    <string name="rename_playlist_title">Playlist umbenennen</string>
+    <string name="rename_playlist_success">Playlist umbenannt</string>
+    <string name="rename_playlist_error">Fehler beim Umbenennen der Playlist</string>
 </resources>

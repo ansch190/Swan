@@ -213,4 +213,17 @@ class MainViewModel(
         db.playlistDao().deletePlaylist(playlistId)
         // Songs werden durch ForeignKey CASCADE automatisch gelöscht
     }
+
+    // In der MainViewModel-Klasse diese Methode hinzufügen
+    suspend fun renamePlaylist(playlistId: String, newName: String) {
+        Log.d(TAG, "Renaming playlist $playlistId to $newName")
+        val playlist = db.playlistDao().getPlaylistById(playlistId)
+        if (playlist != null) {
+            val updatedPlaylist = playlist.copy(name = newName)
+            db.playlistDao().updatePlaylist(updatedPlaylist)
+            Log.d(TAG, "Playlist renamed: $playlistId -> $newName")
+        } else {
+            Log.w(TAG, "Playlist not found for ID: $playlistId")
+        }
+    }
 }
