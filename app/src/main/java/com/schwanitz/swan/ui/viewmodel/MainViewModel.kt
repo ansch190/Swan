@@ -208,13 +208,25 @@ class MainViewModel(
         Log.d(TAG, "Added song $songUri to playlist $playlistId at position $nextPosition")
     }
 
+    fun addSongToPlaylistWithResult(playlistId: String, songUri: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                addSongToPlaylist(playlistId, songUri)
+                Log.d(TAG, "Song $songUri added to playlist $playlistId")
+                onResult(true)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to add song to playlist: ${e.message}", e)
+                onResult(false)
+            }
+        }
+    }
+
     suspend fun deletePlaylist(playlistId: String) {
         Log.d(TAG, "Deleting playlist: $playlistId")
         db.playlistDao().deletePlaylist(playlistId)
         // Songs werden durch ForeignKey CASCADE automatisch gelöscht
     }
 
-    // In der MainViewModel-Klasse diese Methode hinzufügen
     suspend fun renamePlaylist(playlistId: String, newName: String) {
         Log.d(TAG, "Renaming playlist $playlistId to $newName")
         val playlist = db.playlistDao().getPlaylistById(playlistId)

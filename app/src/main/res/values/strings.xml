@@ -80,8 +80,9 @@
     <string name="create_playlist_dialog_title">Neue Playlist</string>
     <string name="create_playlist_dialog_message">Name der Playlist eingeben:</string>
     <string name="create_playlist_error_empty">Bitte einen Namen eingeben</string>
-    <string name="add_to_playlist">Zur Playlist hinzufügen</string>
+    <string name="add_to_playlist">Zu Playlist hinzufügen</string>
     <string name="no_playlist_selected">-keine Playlist ausgewählt</string>
+    <string name="add_to_playlist_success">\"%1$s\" erfolgreich zu \"%2$s\" hinzugefügt</string>
 
     <string name="export_playlist">Exportieren</string>
     <string name="export_playlist_title">Playlist-Format wählen</string>

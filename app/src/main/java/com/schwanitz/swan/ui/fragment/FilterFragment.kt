@@ -12,6 +12,7 @@ import android.view.MenuItem
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -176,19 +177,26 @@ class FilterFragment : Fragment() {
 
     override fun onContextItemSelected(item: MenuItem): Boolean {
         if (criterion != "title") return super.onContextItemSelected(item)
+        Log.d(TAG, "Context menu item selected: ${item.itemId}, title: ${item.title}")
         return when (item.itemId) {
             R.id.context_info -> {
                 val position = adapter.getSelectedPosition()
+                Log.d(TAG, "Processing context_info for position: $position")
                 if (position != RecyclerView.NO_POSITION) {
                     val selectedTitle = adapter.getItemAt(position)
                     if (selectedTitle != null) {
-                        Log.d(TAG, "Context menu: Showing metadata for title: $selectedTitle at position: $position")
+                        Log.d(TAG, "Showing metadata for title: $selectedTitle at position: $position")
                         viewModel.musicFiles.value?.filter { file ->
                             (file.title ?: file.name) == selectedTitle
                         }?.let { matchingFiles ->
                             if (matchingFiles.isNotEmpty()) {
-                                MetadataFragment.newInstance(matchingFiles, 0)
-                                    .show(parentFragmentManager, "MetadataFragment")
+                                try {
+                                    MetadataFragment.newInstance(matchingFiles, 0)
+                                        .show(parentFragmentManager, "MetadataFragment")
+                                    Log.d(TAG, "MetadataFragment shown successfully")
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Failed to show MetadataFragment: ${e.message}", e)
+                                }
                             } else {
                                 Log.w(TAG, "No files found for title: $selectedTitle")
                             }
@@ -203,7 +211,43 @@ class FilterFragment : Fragment() {
                     false
                 }
             }
-            else -> super.onContextItemSelected(item)
+            R.id.context_add_to_playlist -> {
+                val position = adapter.getSelectedPosition()
+                Log.d(TAG, "Processing context_add_to_playlist for position: $position")
+                if (position != RecyclerView.NO_POSITION) {
+                    val selectedTitle = adapter.getItemAt(position)
+                    if (selectedTitle != null) {
+                        val musicFile = viewModel.musicFiles.value?.find { file ->
+                            (file.title ?: file.name) == selectedTitle
+                        }
+                        if (musicFile != null) {
+                            Log.d(TAG, "Opening AddToPlaylistDialogFragment for: ${musicFile.name}")
+                            try {
+                                AddToPlaylistDialogFragment.newInstance(musicFile)
+                                    .show(parentFragmentManager, "AddToPlaylistDialog")
+                                Log.d(TAG, "AddToPlaylistDialogFragment shown successfully")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to show AddToPlaylistDialogFragment: ${e.message}", e)
+                                Toast.makeText(requireContext(), "Fehler beim Öffnen des Dialogs", Toast.LENGTH_SHORT).show()
+                            }
+                            true
+                        } else {
+                            Log.w(TAG, "No MusicFile found for title: $selectedTitle")
+                            false
+                        }
+                    } else {
+                        Log.w(TAG, "No item found at position: $position")
+                        false
+                    }
+                } else {
+                    Log.w(TAG, "Invalid position for context menu: $position")
+                    false
+                }
+            }
+            else -> {
+                Log.w(TAG, "Unknown menu item selected: ${item.itemId}")
+                super.onContextItemSelected(item)
+            }
         }
     }
 
