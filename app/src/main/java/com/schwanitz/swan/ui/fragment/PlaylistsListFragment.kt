@@ -5,11 +5,13 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupMenu
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.schwanitz.swan.R
 import com.schwanitz.swan.data.local.database.AppDatabase
 import com.schwanitz.swan.data.local.entity.PlaylistEntity
@@ -47,7 +49,14 @@ class PlaylistsListFragment : Fragment() {
             MainViewModelFactory(requireContext(), MusicRepository(requireContext()))
         ).get(MainViewModel::class.java)
 
-        adapter = PlaylistAdapter(playlists = emptyList())
+        adapter = PlaylistAdapter(
+            playlists = emptyList(),
+            onItemLongClick = { playlist, view ->
+                // Zeige ein PopupMenu an
+                showPopupMenu(view, playlist)
+            }
+        )
+
         binding.playlistsRecyclerView.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = this@PlaylistsListFragment.adapter
@@ -72,6 +81,11 @@ class PlaylistsListFragment : Fragment() {
         }
 
         // FAB-Logik
+        showFab()
+    }
+
+    // Methode zum Anzeigen des FAB
+    private fun showFab() {
         val fab = activity?.findViewById<View>(R.id.fab)
         fab?.visibility = View.VISIBLE
         fab?.setOnClickListener {
@@ -79,10 +93,51 @@ class PlaylistsListFragment : Fragment() {
         }
     }
 
+    private fun showPopupMenu(view: View, playlist: PlaylistEntity) {
+        val popup = PopupMenu(requireContext(), view)
+        popup.menu.add(0, R.id.delete_playlist, 0, R.string.delete_playlist)
+
+        popup.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.delete_playlist -> {
+                    showDeleteConfirmationDialog(playlist)
+                    true
+                }
+                else -> false
+            }
+        }
+
+        popup.show()
+    }
+
+    private fun showDeleteConfirmationDialog(playlist: PlaylistEntity) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.delete_playlist)
+            .setMessage("Möchten Sie die Playlist '${playlist.name}' wirklich löschen?")
+            .setPositiveButton(android.R.string.yes) { _, _ ->
+                deletePlaylist(playlist.id)
+            }
+            .setNegativeButton(android.R.string.no, null)
+            .show()
+    }
+
+    private fun deletePlaylist(playlistId: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.deletePlaylist(playlistId)
+            Log.d(TAG, "Playlist deleted: $playlistId")
+        }
+    }
+
     override fun onPause() {
         super.onPause()
         // Verstecke FAB, wenn Fragment nicht sichtbar
         activity?.findViewById<View>(R.id.fab)?.visibility = View.GONE
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Zeige FAB wieder an, wenn Fragment wieder sichtbar wird
+        showFab()
     }
 
     override fun onDestroyView() {

@@ -11,11 +11,17 @@ import com.schwanitz.swan.data.local.entity.PlaylistEntity
 import com.schwanitz.swan.ui.activity.PlaylistSongsActivity
 
 class PlaylistAdapter(
-    private var playlists: List<PlaylistEntity>
+    private var playlists: List<PlaylistEntity>,
+    private val onItemLongClick: (PlaylistEntity, View) -> Unit // View hinzugefügt
 ) : RecyclerView.Adapter<PlaylistAdapter.PlaylistViewHolder>() {
 
     var selectedPosition: Int = RecyclerView.NO_POSITION
         private set
+
+    fun setSelectedPosition(position: Int) {
+        selectedPosition = position
+        notifyDataSetChanged()
+    }
 
     inner class PlaylistViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val nameText: TextView = itemView.findViewById(R.id.playlistName)
@@ -23,6 +29,8 @@ class PlaylistAdapter(
         fun bind(playlist: PlaylistEntity, position: Int) {
             nameText.text = playlist.name
             itemView.isSelected = position == selectedPosition
+
+            // Klick-Listener
             itemView.setOnClickListener {
                 selectedPosition = position
                 notifyDataSetChanged()
@@ -33,6 +41,13 @@ class PlaylistAdapter(
                     putExtra(PlaylistSongsActivity.EXTRA_PLAYLIST_NAME, playlist.name)
                 }
                 context.startActivity(intent)
+            }
+
+            // Langer-Klick-Listener
+            itemView.setOnLongClickListener {
+                setSelectedPosition(position)
+                onItemLongClick(playlist, itemView) // Übergebe die PlaylistEntity und die View
+                true // Wir geben true zurück, um zu zeigen, dass der lange Klick behandelt wurde
             }
         }
     }
