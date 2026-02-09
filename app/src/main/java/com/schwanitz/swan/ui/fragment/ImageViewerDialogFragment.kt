@@ -14,9 +14,9 @@ class ImageViewerDialogFragment : DialogFragment() {
 
     private var _binding: FragmentImageViewerBinding? = null
     private val binding get() = _binding!!
-    private val TAG = "ImageViewerDialog"
 
     companion object {
+        private const val TAG = "ImageViewerDialog"
         private const val ARG_ARTWORKS = "artworks"
         private const val ARG_INITIAL_POSITION = "initial_position"
 

@@ -2,7 +2,9 @@ package com.schwanitz.swan.ui.viewmodel
 
 import android.content.Context
 import android.util.Log
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.OneTimeWorkRequestBuilder
@@ -12,6 +14,7 @@ import androidx.work.workDataOf
 import com.schwanitz.swan.R
 import com.schwanitz.swan.data.local.database.AppDatabase
 import com.schwanitz.swan.data.local.entity.FilterEntity
+import com.schwanitz.swan.data.local.entity.MusicFileEntity
 import com.schwanitz.swan.data.local.entity.PlaylistEntity
 import com.schwanitz.swan.data.local.entity.PlaylistSongEntity
 import com.schwanitz.swan.data.local.repository.MusicRepository
@@ -28,33 +31,18 @@ class MainViewModel(
     private val db: AppDatabase
 ) : ViewModel() {
 
+    companion object {
+        private const val TAG = "MainViewModel"
+    }
+
     val musicFiles = MutableLiveData<List<MusicFile>>()
     val scanProgress = MutableLiveData<MusicRepository.ScanProgress?>(null)
-    private val TAG = "MainViewModel"
 
     init {
         // Beobachte Datenbankänderungen für Musikdateien
         viewModelScope.launch {
             db.musicFileDao().getAllFiles().collectLatest { entities ->
-                val files = entities.map { entity ->
-                    MusicFile(
-                        uri = android.net.Uri.parse(entity.uri),
-                        name = entity.name,
-                        title = entity.title,
-                        artist = entity.artist,
-                        album = entity.album,
-                        albumArtist = entity.albumArtist,
-                        discNumber = entity.discNumber,
-                        trackNumber = entity.trackNumber,
-                        year = entity.year,
-                        genre = entity.genre,
-                        fileSize = entity.fileSize,
-                        audioCodec = entity.audioCodec,
-                        sampleRate = entity.sampleRate,
-                        bitrate = entity.bitrate,
-                        tagVersion = entity.tagVersion
-                    )
-                }
+                val files = entities.map { it.toDomainModel() }
                 Log.d(TAG, "Updated music files from database, total: ${files.size}")
                 musicFiles.value = files
             }
@@ -92,48 +80,35 @@ class MainViewModel(
         val workManager = WorkManager.getInstance(context)
         workManager.enqueue(workRequest)
 
-        // Beobachte Fortschritt
-        workManager.getWorkInfoByIdLiveData(workRequest.id).observeForever { workInfo ->
-            if (workInfo != null) {
-                val scannedFiles = workInfo.progress.getInt(MusicScanWorker.KEY_PROGRESS_SCANNED, 0)
-                val totalFiles = workInfo.progress.getInt(MusicScanWorker.KEY_PROGRESS_TOTAL, 0)
+        // Beobachte Fortschritt mit selbst-entfernendem Observer
+        val workInfoLiveData: LiveData<WorkInfo> = workManager.getWorkInfoByIdLiveData(workRequest.id)
+        val observer = object : Observer<WorkInfo> {
+            override fun onChanged(value: WorkInfo) {
+                val scannedFiles = value.progress.getInt(MusicScanWorker.KEY_PROGRESS_SCANNED, 0)
+                val totalFiles = value.progress.getInt(MusicScanWorker.KEY_PROGRESS_TOTAL, 0)
                 if (scannedFiles > 0 || totalFiles > 0) {
                     scanProgress.value = MusicRepository.ScanProgress(scannedFiles, totalFiles)
                 }
-                if (workInfo.state == WorkInfo.State.SUCCEEDED) {
-                    scanProgress.value = null // Fortschritt zurücksetzen
-                    Log.d(TAG, "Scan completed successfully for path: $uri")
-                    // Erzwinge UI-Aktualisierung
-                    viewModelScope.launch {
-                        val files = db.musicFileDao().getAllFiles().first()
-                        musicFiles.value = files.map { entity ->
-                            MusicFile(
-                                uri = android.net.Uri.parse(entity.uri),
-                                name = entity.name,
-                                title = entity.title,
-                                artist = entity.artist,
-                                album = entity.album,
-                                albumArtist = entity.albumArtist,
-                                discNumber = entity.discNumber,
-                                trackNumber = entity.trackNumber,
-                                year = entity.year,
-                                genre = entity.genre,
-                                fileSize = entity.fileSize,
-                                audioCodec = entity.audioCodec,
-                                sampleRate = entity.sampleRate,
-                                bitrate = entity.bitrate,
-                                tagVersion = entity.tagVersion
-                            )
+                if (value.state.isFinished) {
+                    scanProgress.value = null
+                    if (value.state == WorkInfo.State.SUCCEEDED) {
+                        Log.d(TAG, "Scan completed successfully for path: $uri")
+                        viewModelScope.launch {
+                            val files = db.musicFileDao().getAllFiles().first()
+                            musicFiles.value = files.map { it.toDomainModel() }
+                            Log.d(TAG, "Forced UI update after scan, files: ${musicFiles.value?.size}")
                         }
-                        Log.d(TAG, "Forced UI update after scan, files: ${musicFiles.value?.size}")
+                    } else {
+                        Log.d(TAG, "Scan failed or cancelled for path: $uri")
+                        cleanupCancelledScan(uri)
                     }
-                } else if (workInfo.state == WorkInfo.State.FAILED || workInfo.state == WorkInfo.State.CANCELLED) {
-                    scanProgress.value = null // Fortschritt zurücksetzen
-                    Log.d(TAG, "Scan failed or cancelled for path: $uri")
-                    cleanupCancelledScan(uri)
+                    // Observer entfernen, um Memory Leak zu vermeiden
+                    workInfoLiveData.removeObserver(this)
                 }
             }
         }
+        workInfoLiveData.observeForever(observer)
+
         return workRequest.id
     }
 
@@ -195,7 +170,6 @@ class MainViewModel(
 
     suspend fun addSongToPlaylist(playlistId: String, songUri: String) {
         Log.d(TAG, "Adding song $songUri to playlist $playlistId")
-        // Ermittle die aktuelle höchste Position
         val currentSongs = db.playlistDao().getSongsForPlaylist(playlistId)
         val nextPosition = currentSongs.maxOfOrNull { it.position }?.plus(1) ?: 0
         val playlistSong = PlaylistSongEntity(
@@ -223,7 +197,6 @@ class MainViewModel(
 
     suspend fun addSongsToPlaylist(playlistId: String, songUris: List<String>) {
         Log.d(TAG, "Adding ${songUris.size} songs to playlist $playlistId")
-        // Ermittle die aktuelle höchste Position
         val currentSongs = db.playlistDao().getSongsForPlaylist(playlistId)
         val nextPosition = currentSongs.maxOfOrNull { it.position }?.plus(1) ?: 0
         val playlistSongs = songUris.mapIndexed { index, uri ->
@@ -258,16 +231,28 @@ class MainViewModel(
 
     suspend fun updatePlaylistSongOrder(playlistId: String, songs: List<PlaylistSongEntity>) {
         Log.d(TAG, "Updating playlist song order for playlist $playlistId")
-
-        // Alte Songs löschen
-        val existingSongs = db.playlistDao().getSongsForPlaylist(playlistId)
-        existingSongs.forEach { song ->
-            db.playlistDao().deletePlaylistSong(song.id)
-        }
-
-        // Neue Songs einfügen
+        // Batch-Delete statt einzelner Lösch-Aufrufe
+        db.playlistDao().deleteAllSongsForPlaylist(playlistId)
         db.playlistDao().insertPlaylistSongs(songs)
-
         Log.d(TAG, "Playlist song order updated for playlist $playlistId")
     }
 }
+
+/** Extension-Funktion für Entity-zu-Domain-Mapping */
+fun MusicFileEntity.toDomainModel() = MusicFile(
+    uri = android.net.Uri.parse(uri),
+    name = name,
+    title = title,
+    artist = artist,
+    album = album,
+    albumArtist = albumArtist,
+    discNumber = discNumber,
+    trackNumber = trackNumber,
+    year = year,
+    genre = genre,
+    fileSize = fileSize,
+    audioCodec = audioCodec,
+    sampleRate = sampleRate,
+    bitrate = bitrate,
+    tagVersion = tagVersion
+)

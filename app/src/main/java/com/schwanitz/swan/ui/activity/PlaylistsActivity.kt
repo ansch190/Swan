@@ -35,10 +35,13 @@ import kotlinx.coroutines.launch
 
 class PlaylistsActivity : AppCompatActivity() {
 
+    companion object {
+        private const val TAG = "PlaylistsActivity"
+    }
+
     private lateinit var binding: ActivityPlaylistsBinding
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
-    private val TAG = "PlaylistsActivity"
     private val NOTIFICATION_PERMISSION_CODE = 100
     private val STORAGE_PERMISSION_CODE = 101
     private val _searchQuery = MutableStateFlow<String?>(null)
@@ -237,7 +240,7 @@ class PlaylistsActivity : AppCompatActivity() {
                 Log.d(TAG, "Required permissions granted")
             } else {
                 Log.w(TAG, "Required permissions denied")
-                android.widget.Toast.makeText(this, "Required permissions not granted, some features may not work", android.widget.Toast.LENGTH_LONG).show()
+                android.widget.Toast.makeText(this, R.string.permissions_not_granted, android.widget.Toast.LENGTH_LONG).show()
             }
         }
     }

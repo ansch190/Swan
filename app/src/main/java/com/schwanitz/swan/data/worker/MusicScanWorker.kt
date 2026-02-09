@@ -6,13 +6,14 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.schwanitz.swan.data.local.database.AppDatabase
+import android.util.Log
 import com.schwanitz.swan.data.local.entity.LibraryPathEntity
 import com.schwanitz.swan.data.local.repository.MusicRepository
-import kotlinx.coroutines.flow.collect
 
 class MusicScanWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
 
     companion object {
+        private const val TAG = "MusicScanWorker"
         const val KEY_URI = "uri"
         const val KEY_DISPLAY_NAME = "display_name"
         const val KEY_PROGRESS_SCANNED = "progress_scanned"
@@ -42,8 +43,8 @@ class MusicScanWorker(appContext: Context, params: WorkerParameters) : Coroutine
             }
             Result.success()
         } catch (e: Exception) {
-            // Bei einem Fehler wird die Transaktion rückgängig gemacht
-            Result.failure()
+            Log.e(TAG, "Scan failed for URI: $uri", e)
+            Result.failure(workDataOf("error" to (e.message ?: "Unknown error")))
         }
     }
 }

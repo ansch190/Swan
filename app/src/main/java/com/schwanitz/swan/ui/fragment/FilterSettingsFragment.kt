@@ -22,11 +22,14 @@ import kotlinx.coroutines.launch
 
 class FilterSettingsFragment : DialogFragment() {
 
+    companion object {
+        private const val TAG = "FilterSettingsFragment"
+    }
+
     private var _binding: FragmentFilterSettingsBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: MainViewModel
     private lateinit var filtersAdapter: FilterSettingsAdapter
-    private val TAG = "FilterSettingsFragment"
 
     override fun onCreateView(
         inflater: LayoutInflater,

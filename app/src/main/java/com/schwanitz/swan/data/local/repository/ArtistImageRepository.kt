@@ -13,7 +13,9 @@ import java.util.regex.Pattern
 
 class ArtistImageRepository(private val db: AppDatabase) {
 
-    private val TAG = "ArtistImageRepository"
+    companion object {
+        private const val TAG = "ArtistImageRepository"
+    }
 
     suspend fun getArtistImageUrl(artistName: String): String? {
         // Prüfe zunächst die lokale Datenbank

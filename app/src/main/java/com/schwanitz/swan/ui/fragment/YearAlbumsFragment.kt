@@ -25,9 +25,9 @@ class YearAlbumsFragment : Fragment() {
     private lateinit var viewModel: MainViewModel
     private lateinit var adapter: ArtistAlbumsAdapter
     private var year: String? = null
-    private val TAG = "YearAlbumsFragment"
 
     companion object {
+        private const val TAG = "YearAlbumsFragment"
         private const val ARG_YEAR = "year"
 
         fun newInstance(year: String): YearAlbumsFragment {

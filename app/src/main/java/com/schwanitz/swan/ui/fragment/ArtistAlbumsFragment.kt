@@ -25,9 +25,9 @@ class ArtistAlbumsFragment : Fragment() {
     private lateinit var viewModel: MainViewModel
     private lateinit var adapter: ArtistAlbumsAdapter
     private var artistName: String? = null
-    private val TAG = "ArtistAlbumsFragment" // Neu: TAG definiert
 
     companion object {
+        private const val TAG = "ArtistAlbumsFragment"
         private const val ARG_ARTIST_NAME = "artist_name"
 
         fun newInstance(artistName: String): ArtistAlbumsFragment {

@@ -33,6 +33,10 @@ import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
 
 class LibraryPathsFragment : DialogFragment() {
 
+    companion object {
+        private const val TAG = "LibraryPathsFragment"
+    }
+
     private var _binding: FragmentLibraryPathsBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: MainViewModel
@@ -40,7 +44,6 @@ class LibraryPathsFragment : DialogFragment() {
     private lateinit var pathsAdapter: LibraryPathsAdapter
     private var currentWorkId: UUID? = null
     private var currentLibraryPathUri: String? = null
-    private val TAG = "LibraryPathsFragment"
 
     private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { addPath(it) }
@@ -199,7 +202,7 @@ class LibraryPathsFragment : DialogFragment() {
                 }
             } ?: run {
                 Log.w(TAG, "No workId available for cancellation, uri: $uri")
-                Toast.makeText(requireContext(), "Keine laufende Scan-Aufgabe gefunden", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), getString(R.string.error_no_scan_task_found), Toast.LENGTH_SHORT).show()
                 // Entferne temporären Pfad, falls vorhanden
                 val index = libraryPaths.indexOfFirst { it.uri == uri }
                 if (index != -1) {

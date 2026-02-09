@@ -20,7 +20,9 @@ import java.util.ArrayDeque
 
 class MusicRepository(private val context: Context) {
 
-    private val TAG = "MusicRepository"
+    companion object {
+        private const val TAG = "MusicRepository"
+    }
 
     data class ScanProgress(val scannedFiles: Int, val totalFiles: Int)
 

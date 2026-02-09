@@ -17,8 +17,11 @@ import kotlinx.coroutines.runBlocking
 
 class FilterSelectionDialogFragment : DialogFragment() {
 
+    companion object {
+        private const val TAG = "FilterSelectionDialog"
+    }
+
     private lateinit var viewModel: MainViewModel
-    private val TAG = "FilterSelectionDialog"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

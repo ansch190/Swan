@@ -50,13 +50,16 @@ import kotlinx.coroutines.launch
 
 class LibraryActivity : AppCompatActivity() {
 
+    companion object {
+        private const val TAG = "LibraryActivity"
+        private const val NOTIFICATION_PERMISSION_CODE = 100
+        private const val STORAGE_PERMISSION_CODE = 101
+    }
+
     private lateinit var binding: ActivityLibraryBinding
     private lateinit var viewModel: MainViewModel
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
-    private val TAG = "LibraryActivity"
-    private val NOTIFICATION_PERMISSION_CODE = 100
-    private val STORAGE_PERMISSION_CODE = 101
     private var filters = listOf<FilterEntity>()
     private val _searchQuery = MutableStateFlow<String?>(null)
     val searchQuery = _searchQuery.asStateFlow()
@@ -284,11 +287,8 @@ class LibraryActivity : AppCompatActivity() {
             unbindService(connection)
             isBound = false
         }
-        // Stoppe den MusicPlaybackService
-        Intent(this, MusicPlaybackService::class.java).also { intent ->
-            stopService(intent)
-        }
-        Log.d(TAG, "Service stopped, activity destroyed")
+        // Service nicht stoppen bei Activity-Destroy, damit Musik im Hintergrund weiterläuft
+        Log.d(TAG, "Activity destroyed, service continues running")
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -298,7 +298,7 @@ class LibraryActivity : AppCompatActivity() {
                 Log.d(TAG, "Required permissions granted")
             } else {
                 Log.w(TAG, "Required permissions denied")
-                Toast.makeText(this, "Required permissions not granted, some features may not work", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, R.string.permissions_not_granted, Toast.LENGTH_LONG).show()
             }
         }
     }

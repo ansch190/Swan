@@ -14,7 +14,9 @@ import java.io.FileOutputStream
 
 class MetadataExtractor(private val context: Context) {
 
-    private val TAG = "MetadataExtractor"
+    companion object {
+        private const val TAG = "MetadataExtractor"
+    }
 
     // Vollständige ID3v1-Genre-Liste, einschließlich Winamp-Erweiterungen
     private val genreMap = mapOf(
@@ -215,8 +217,9 @@ class MetadataExtractor(private val context: Context) {
 
     fun extractMetadata(uri: Uri): Metadata {
         Log.d(TAG, "Extracting metadata for URI: $uri")
+        var tempFile: File? = null
         try {
-            val tempFile = createTempFileFromUri(uri, ".mp3")
+            tempFile = createTempFileFromUri(uri, ".mp3")
             Log.d(TAG, "Created temp file: ${tempFile.absolutePath}, size: ${tempFile.length()} bytes")
             val audioFile = AudioFileIO.read(tempFile)
             val tag = audioFile.tag
@@ -263,18 +266,20 @@ class MetadataExtractor(private val context: Context) {
                 tagVersion = ""
             )
         } finally {
-            val tempFile = File(context.cacheDir, "audio.mp3")
-            if (tempFile.exists()) {
-                tempFile.delete()
-                Log.d(TAG, "Deleted temp file: ${tempFile.absolutePath}")
+            tempFile?.let {
+                if (it.exists()) {
+                    it.delete()
+                    Log.d(TAG, "Deleted temp file: ${it.absolutePath}")
+                }
             }
         }
     }
 
     fun getArtworkBytes(uri: Uri, index: Int): ByteArray? {
         Log.d(TAG, "Extracting artwork at index $index for URI: $uri")
+        var tempFile: File? = null
         try {
-            val tempFile = createTempFileFromUri(uri, ".mp3")
+            tempFile = createTempFileFromUri(uri, ".mp3")
             Log.d(TAG, "Created temp file for artwork: ${tempFile.absolutePath}, size: ${tempFile.length()} bytes")
             val audioFile = AudioFileIO.read(tempFile)
             val tag = audioFile.tag
@@ -286,10 +291,11 @@ class MetadataExtractor(private val context: Context) {
             Log.e(TAG, "Failed to extract artwork at index $index for ${uri.path}: ${e.message}", e)
             return null
         } finally {
-            val tempFile = File(context.cacheDir, "audio.mp3")
-            if (tempFile.exists()) {
-                tempFile.delete()
-                Log.d(TAG, "Deleted temp file: ${tempFile.absolutePath}")
+            tempFile?.let {
+                if (it.exists()) {
+                    it.delete()
+                    Log.d(TAG, "Deleted temp file: ${it.absolutePath}")
+                }
             }
         }
     }

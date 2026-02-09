@@ -15,9 +15,12 @@ import com.schwanitz.swan.ui.fragment.ImageViewerDialogFragment
 
 class ArtworkAdapter(private val context: Context) : RecyclerView.Adapter<ArtworkAdapter.ArtworkViewHolder>() {
 
+    companion object {
+        private const val TAG = "ArtworkAdapter"
+    }
+
     private var displayedArtworks: List<ByteArray> = emptyList()
     private var allArtworks: List<ByteArray> = emptyList()
-    private val TAG = "ArtworkAdapter"
 
     class ArtworkViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val imageView: ImageView = itemView.findViewById(R.id.artwork_image)

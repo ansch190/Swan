@@ -1,11 +1,13 @@
 package com.schwanitz.swan.data.local.database
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import java.util.UUID
 import com.schwanitz.swan.data.local.dao.ArtistDao
 import com.schwanitz.swan.data.local.dao.FilterDao
 import com.schwanitz.swan.data.local.dao.LibraryPathDao
@@ -22,8 +24,8 @@ import com.schwanitz.swan.data.local.entity.*
         PlaylistEntity::class,
         PlaylistSongEntity::class
     ],
-    version = 6, // Erhöht von 5 auf 6
-    exportSchema = false
+    version = 6,
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun libraryPathDao(): LibraryPathDao
@@ -103,13 +105,19 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                     """
                 )
-                // Kopiere bestehende Daten und setze position basierend auf der Reihenfolge
-                db.execSQL(
-                    """
-                    INSERT INTO playlist_songs_temp (id, playlistId, songUri, position)
-                    SELECT uuid(), playlistId, songUri, rowid FROM playlist_songs
-                    """
-                )
+                // Kopiere bestehende Daten mit programmatisch generierten UUIDs
+                val cursor = db.query("SELECT playlistId, songUri, rowid FROM playlist_songs")
+                while (cursor.moveToNext()) {
+                    val id = UUID.randomUUID().toString()
+                    val playlistId = cursor.getString(0)
+                    val songUri = cursor.getString(1)
+                    val position = cursor.getLong(2)
+                    db.execSQL(
+                        "INSERT INTO playlist_songs_temp (id, playlistId, songUri, position) VALUES (?, ?, ?, ?)",
+                        arrayOf(id, playlistId, songUri, position)
+                    )
+                }
+                cursor.close()
                 // Lösche die alte Tabelle
                 db.execSQL("DROP TABLE playlist_songs")
                 // Benenne die temporäre Tabelle um
@@ -117,6 +125,7 @@ abstract class AppDatabase : RoomDatabase() {
                 // Erstelle Indizes
                 db.execSQL("CREATE INDEX index_playlist_songs_songUri ON playlist_songs(songUri)")
                 db.execSQL("CREATE INDEX index_playlist_songs_playlistId ON playlist_songs(playlistId)")
+                Log.d("AppDatabase", "Migration 5->6 completed successfully")
             }
         }
     }

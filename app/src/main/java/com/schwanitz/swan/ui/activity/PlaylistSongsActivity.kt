@@ -35,6 +35,7 @@ import java.util.Collections
 class PlaylistSongsActivity : AppCompatActivity() {
 
     companion object {
+        private const val TAG = "PlaylistSongsActivity"
         const val EXTRA_PLAYLIST_ID = "extra_playlist_id"
         const val EXTRA_PLAYLIST_NAME = "extra_playlist_name"
     }
@@ -43,7 +44,6 @@ class PlaylistSongsActivity : AppCompatActivity() {
     private lateinit var viewModel: MainViewModel
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
-    private val TAG = "PlaylistSongsActivity"
     private var currentPlaylistId: String? = null
     private var isEditMode = false
     private lateinit var adapter: PlaylistSongsAdapter

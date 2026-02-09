@@ -20,8 +20,11 @@ class LibraryPathsAdapter(
     private val context: Context
 ) : RecyclerView.Adapter<LibraryPathsAdapter.PathViewHolder>() {
 
+    companion object {
+        private const val TAG = "LibraryPathsAdapter"
+    }
+
     private var scanningPathUri: String? = null
-    private val TAG = "LibraryPathsAdapter"
 
     inner class PathViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val pathText: TextView = itemView.findViewById(R.id.pathText)

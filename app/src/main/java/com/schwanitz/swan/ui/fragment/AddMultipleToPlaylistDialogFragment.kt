@@ -40,7 +40,7 @@ class AddMultipleToPlaylistDialogFragment : DialogFragment() {
             Log.e(TAG, "No MusicFiles provided in arguments")
             dismiss()
             return AlertDialog.Builder(requireContext())
-                .setMessage("Fehler: Keine Lieder ausgewählt")
+                .setMessage(R.string.error_no_songs_selected)
                 .setPositiveButton(android.R.string.ok) { _, _ -> dismiss() }
                 .create()
         }
@@ -89,7 +89,7 @@ class AddMultipleToPlaylistDialogFragment : DialogFragment() {
                                 if (isAdded) {
                                     Toast.makeText(
                                         requireContext(),
-                                        "Fehler beim Hinzufügen zur Playlist",
+                                        getString(R.string.error_add_to_playlist),
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 } else {
@@ -107,7 +107,7 @@ class AddMultipleToPlaylistDialogFragment : DialogFragment() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load playlists: ${e.message}", e)
-                builder.setMessage("Fehler beim Laden der Playlisten")
+                builder.setMessage(R.string.error_loading_playlists)
             }
 
             // Dialog anzeigen

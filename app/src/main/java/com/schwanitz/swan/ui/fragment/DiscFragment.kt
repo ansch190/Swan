@@ -36,7 +36,6 @@ class DiscFragment : Fragment() {
     private var filterType: String? = null // "album", "artist", "genre" oder "year"
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
-    private val TAG = "DiscFragment"
     private var highlightSongUri: String? = null
 
     private val connection = object : ServiceConnection {
@@ -55,6 +54,7 @@ class DiscFragment : Fragment() {
     }
 
     companion object {
+        private const val TAG = "DiscFragment"
         private const val ARG_DISC_NUMBER = "disc_number"
         private const val ARG_FILTER_VALUE = "filter_value"
         private const val ARG_FILTER_TYPE = "filter_type"

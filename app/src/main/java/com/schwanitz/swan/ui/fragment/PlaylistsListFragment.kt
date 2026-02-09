@@ -43,12 +43,15 @@ import java.nio.charset.StandardCharsets
 
 class PlaylistsListFragment : Fragment() {
 
+    companion object {
+        private const val TAG = "PlaylistsListFragment"
+    }
+
     private var _binding: FragmentPlaylistsListBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: MainViewModel
     private lateinit var adapter: PlaylistAdapter
     private val searchQuery = MutableStateFlow<String?>(null)
-    private val TAG = "PlaylistsListFragment"
     private var allPlaylists: List<PlaylistEntity> = emptyList()
     private var currentExportPlaylist: PlaylistEntity? = null
     private var selectedExportFormat: String = "m3u" // Default-Format

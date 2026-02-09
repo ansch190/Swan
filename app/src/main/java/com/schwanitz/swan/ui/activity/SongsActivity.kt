@@ -54,8 +54,11 @@ class SongsActivity : AppCompatActivity() {
     private var adapter: MusicFileAdapter? = null
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
-    private val TAG = "SongsActivity"
     private var filteredFiles: List<MusicFile> = emptyList()
+
+    companion object {
+        private const val TAG = "SongsActivity"
+    }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
@@ -216,7 +219,7 @@ class SongsActivity : AppCompatActivity() {
                             Log.w(TAG, "No image bytes available for $value")
                             android.widget.Toast.makeText(
                                 this@SongsActivity,
-                                "Failed to load artist image for viewing",
+                                getString(R.string.error_loading_artist_image),
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -359,7 +362,7 @@ class SongsActivity : AppCompatActivity() {
                     } else {
                         android.widget.Toast.makeText(
                             this,
-                            "Keine Lieder für diese CD gefunden",
+                            getString(R.string.error_no_songs_for_disc),
                             android.widget.Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -374,7 +377,7 @@ class SongsActivity : AppCompatActivity() {
                     } else {
                         android.widget.Toast.makeText(
                             this,
-                            "Keine Lieder für dieses Album gefunden",
+                            getString(R.string.error_no_songs_for_album),
                             android.widget.Toast.LENGTH_SHORT
                         ).show()
                     }

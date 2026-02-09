@@ -17,6 +17,7 @@ import com.schwanitz.swan.domain.usecase.MetadataExtractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -31,8 +32,12 @@ class FilterItemAdapter(
     private val musicFiles: List<MusicFile>
 ) : RecyclerView.Adapter<FilterItemAdapter.ItemViewHolder>() {
 
+    companion object {
+        private const val TAG = "FilterItemAdapter"
+    }
+
     private var selectedPosition: Int = RecyclerView.NO_POSITION
-    private val TAG = "FilterItemAdapter"
+    private val adapterScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val imageLoadJobs = mutableMapOf<Int, Job>()
 
     class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -64,7 +69,7 @@ class FilterItemAdapter(
             when (criterion) {
                 "artist" -> {
                     artworkImage.visibility = View.VISIBLE
-                    val job = CoroutineScope(Dispatchers.Main).launch {
+                    val job = adapterScope.launch {
                         val imageUrl = withContext(Dispatchers.IO) {
                             try {
                                 artistImageRepository.getArtistImageUrl(item)
@@ -91,7 +96,7 @@ class FilterItemAdapter(
                 }
                 "album" -> {
                     artworkImage.visibility = View.VISIBLE
-                    val job = CoroutineScope(Dispatchers.Main).launch {
+                    val job = adapterScope.launch {
                         val artworkBytes = withContext(Dispatchers.IO) {
                             try {
                                 // Finde das erste Lied des Albums
@@ -140,6 +145,11 @@ class FilterItemAdapter(
     override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
         val item = items[position]
         holder.bind(item, position, criterion, artistImageRepository, metadataExtractor, musicFiles, onItemClick, onItemLongClick, imageLoadJobs, TAG)
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView)
+        adapterScope.cancel()
     }
 
     override fun onViewRecycled(holder: ItemViewHolder) {

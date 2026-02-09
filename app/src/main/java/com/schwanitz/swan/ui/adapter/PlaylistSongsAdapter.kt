@@ -25,11 +25,14 @@ class PlaylistSongsAdapter(
     private val onItemClick: (Uri) -> Unit
 ) : RecyclerView.Adapter<PlaylistSongsAdapter.SongViewHolder>() {
 
+    companion object {
+        private const val TAG = "PlaylistSongsAdapter"
+    }
+
     private var isEditMode = false
     private var originalSongEntities: List<PlaylistSongEntity> = emptyList()
     private var songEntities: MutableList<PlaylistSongEntity> = mutableListOf()
     private var hasModifications = false
-    private val TAG = "PlaylistSongsAdapter"
 
     inner class SongViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val title: TextView = itemView.findViewById(R.id.song_title)

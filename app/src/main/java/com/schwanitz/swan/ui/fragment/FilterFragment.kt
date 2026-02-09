@@ -41,7 +41,6 @@ class FilterFragment : Fragment() {
     private var criterion: String? = null
     private var musicService: MusicPlaybackService? = null
     private var isBound = false
-    private val TAG = "FilterFragment"
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
@@ -59,6 +58,7 @@ class FilterFragment : Fragment() {
     }
 
     companion object {
+        private const val TAG = "FilterFragment"
         private const val ARG_CRITERION = "criterion"
 
         fun newInstance(criterion: String): FilterFragment {
@@ -228,7 +228,7 @@ class FilterFragment : Fragment() {
                                 Log.d(TAG, "AddToPlaylistDialogFragment shown successfully")
                             } catch (e: Exception) {
                                 Log.e(TAG, "Failed to show AddToPlaylistDialogFragment: ${e.message}", e)
-                                Toast.makeText(requireContext(), "Fehler beim Öffnen des Dialogs", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(requireContext(), getString(R.string.error_opening_dialog), Toast.LENGTH_SHORT).show()
                             }
                             true
                         } else {

@@ -101,4 +101,15 @@
 
     <string name="add_disc_to_playlist">CD zu Playlist hinzufügen</string>
     <string name="add_album_to_playlist">Albums zu Playlist hinzufügen</string>
+
+    <string name="error_no_song_selected">Fehler: Kein Lied ausgewählt</string>
+    <string name="error_no_songs_selected">Fehler: Keine Lieder ausgewählt</string>
+    <string name="error_add_to_playlist">Fehler beim Hinzufügen zur Playlist</string>
+    <string name="error_loading_playlists">Fehler beim Laden der Playlisten</string>
+    <string name="error_opening_dialog">Fehler beim Öffnen des Dialogs</string>
+    <string name="error_no_songs_for_disc">Keine Lieder für diese CD gefunden</string>
+    <string name="error_no_songs_for_album">Keine Lieder für dieses Album gefunden</string>
+    <string name="error_loading_artist_image">Künstlerbild konnte nicht geladen werden</string>
+    <string name="permissions_not_granted">Benötigte Berechtigungen nicht erteilt. Einige Funktionen sind möglicherweise eingeschränkt.</string>
+    <string name="error_no_scan_task_found">Keine laufende Scan-Aufgabe gefunden</string>
 </resources>

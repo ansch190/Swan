@@ -27,9 +27,9 @@ class GenreArtistsFragment : Fragment() {
     private lateinit var viewModel: MainViewModel
     private lateinit var adapter: FilterItemAdapter
     private var genre: String? = null
-    private val TAG = "GenreArtistsFragment"
 
     companion object {
+        private const val TAG = "GenreArtistsFragment"
         private const val ARG_GENRE = "genre"
 
         fun newInstance(genre: String): GenreArtistsFragment {
