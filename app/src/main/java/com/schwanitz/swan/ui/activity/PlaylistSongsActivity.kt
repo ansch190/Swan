@@ -1,38 +1,31 @@
 package com.schwanitz.swan.ui.activity
 
-import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
 import android.net.Uri
 import android.os.Bundle
-import android.os.IBinder
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.addCallback
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
+import dagger.hilt.android.AndroidEntryPoint
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.schwanitz.swan.R
-import com.schwanitz.swan.data.local.database.AppDatabase
-import com.schwanitz.swan.data.local.entity.MusicFileEntity
-import com.schwanitz.swan.data.local.entity.PlaylistSongEntity
-import com.schwanitz.swan.data.local.repository.MusicRepository
 import com.schwanitz.swan.databinding.ActivityPlaylistSongsBinding
 import com.schwanitz.swan.domain.model.MusicFile
-import com.schwanitz.swan.service.MusicPlaybackService
+import com.schwanitz.swan.domain.repository.MusicRepository
 import com.schwanitz.swan.ui.adapter.PlaylistSongsAdapter
+import javax.inject.Inject
 import com.schwanitz.swan.ui.viewmodel.MainViewModel
-import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Collections
 
-class PlaylistSongsActivity : AppCompatActivity() {
+@AndroidEntryPoint
+class PlaylistSongsActivity : BaseMusicActivity() {
 
     companion object {
         const val EXTRA_PLAYLIST_ID = "extra_playlist_id"
@@ -41,27 +34,11 @@ class PlaylistSongsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPlaylistSongsBinding
     private lateinit var viewModel: MainViewModel
-    private var musicService: MusicPlaybackService? = null
-    private var isBound = false
+    @Inject lateinit var repository: MusicRepository
     private val TAG = "PlaylistSongsActivity"
     private var currentPlaylistId: String? = null
     private var isEditMode = false
     private lateinit var adapter: PlaylistSongsAdapter
-
-    private val connection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName, service: IBinder) {
-            val binder = service as MusicPlaybackService.MusicPlaybackBinder
-            musicService = binder.getService()
-            isBound = true
-            Log.d(TAG, "MusicPlaybackService bound")
-        }
-
-        override fun onServiceDisconnected(name: ComponentName) {
-            isBound = false
-            musicService = null
-            Log.d(TAG, "MusicPlaybackService unbound")
-        }
-    }
 
     // ItemTouchHelper für Drag & Drop
     private val itemTouchHelper by lazy {
@@ -100,10 +77,7 @@ class PlaylistSongsActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         // ViewModel initialisieren
-        viewModel = ViewModelProvider(
-            this,
-            MainViewModelFactory(this, MusicRepository(this))
-        ).get(MainViewModel::class.java)
+        viewModel = ViewModelProvider(this)[MainViewModel::class.java]
 
         // Toolbar einrichten
         setSupportActionBar(binding.toolbar)
@@ -111,15 +85,29 @@ class PlaylistSongsActivity : AppCompatActivity() {
         val playlistName = intent.getStringExtra(EXTRA_PLAYLIST_NAME) ?: "Playlist"
         supportActionBar?.title = playlistName
 
+        onBackPressedDispatcher.addCallback(this) {
+            if (isEditMode) {
+                saveChanges()
+                isEditMode = false
+                adapter.setEditMode(false)
+                supportActionBar?.title = playlistName
+            } else {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+            }
+        }
+
         // Playlist-ID aus Intent laden
         currentPlaylistId = intent.getStringExtra(EXTRA_PLAYLIST_ID)
 
         // Adapter initialisieren
-        adapter = PlaylistSongsAdapter(emptyList()) { uri ->
+        adapter = PlaylistSongsAdapter(emptyList(), onItemClick = { uri ->
             // Nur abspielen, wenn nicht im Bearbeitungsmodus
             if (!isEditMode) {
                 musicService?.play(uri)
             }
+        }) { viewHolder ->
+            itemTouchHelper.startDrag(viewHolder)
         }
 
         binding.songsRecyclerView.apply {
@@ -134,45 +122,18 @@ class PlaylistSongsActivity : AppCompatActivity() {
         loadPlaylistSongs()
 
         // ServiceConnection starten
-        Intent(this, MusicPlaybackService::class.java).also { intent ->
-            bindService(intent, connection, Context.BIND_AUTO_CREATE)
-        }
+        bindMusicService()
     }
 
     private fun loadPlaylistSongs() {
         val playlistId = currentPlaylistId ?: return
 
         lifecycleScope.launch {
-            val songs = AppDatabase.getDatabase(this@PlaylistSongsActivity)
-                .playlistDao()
-                .getSongsForPlaylist(playlistId)
+            val songs = repository.getSongsForPlaylist(playlistId)
                 .sortedBy { it.position }
 
-            val musicFiles: List<MusicFile> = songs.mapNotNull { song: PlaylistSongEntity ->
-                val musicFileEntity = AppDatabase.getDatabase(this@PlaylistSongsActivity)
-                    .musicFileDao()
-                    .getFileByUri(song.songUri)
-                    .first() // Konvertiere Flow zu einem einzelnen Wert
-
-                musicFileEntity?.let { entity: MusicFileEntity ->
-                    MusicFile(
-                        uri = Uri.parse(entity.uri),
-                        name = entity.name,
-                        title = entity.title,
-                        artist = entity.artist,
-                        album = entity.album,
-                        albumArtist = entity.albumArtist,
-                        discNumber = entity.discNumber,
-                        trackNumber = entity.trackNumber,
-                        year = entity.year,
-                        genre = entity.genre,
-                        fileSize = entity.fileSize,
-                        audioCodec = entity.audioCodec,
-                        sampleRate = entity.sampleRate,
-                        bitrate = entity.bitrate,
-                        tagVersion = entity.tagVersion
-                    )
-                }
+            val musicFiles: List<MusicFile> = songs.mapNotNull { song ->
+                repository.getFileByUri(song.songUri)
             }
 
             adapter.setSongs(musicFiles, songs)
@@ -226,26 +187,5 @@ class PlaylistSongsActivity : AppCompatActivity() {
                 viewModel.updatePlaylistSongOrder(playlistId, updatedSongs)
             }
         }
-    }
-
-    override fun onBackPressed() {
-        // Speichere Änderungen beim Zurück-Drücken
-        if (isEditMode) {
-            saveChanges()
-            isEditMode = false
-            adapter.setEditMode(false)
-            supportActionBar?.title = intent.getStringExtra(EXTRA_PLAYLIST_NAME) ?: "Playlist"
-        } else {
-            super.onBackPressed()
-        }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        if (isBound) {
-            unbindService(connection)
-            isBound = false
-        }
-        Log.d(TAG, "Activity destroyed")
     }
 }

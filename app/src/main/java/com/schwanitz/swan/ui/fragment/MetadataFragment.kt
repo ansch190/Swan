@@ -2,7 +2,7 @@ package com.schwanitz.swan.ui.fragment
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,7 +19,9 @@ import com.schwanitz.swan.ui.adapter.ArtworkAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MetadataFragment : DialogFragment() {
 
     private var _binding: FragmentMetadataTabBinding? = null
@@ -64,7 +66,7 @@ class MetadataFragment : DialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         if (musicFiles.isEmpty() || currentPosition !in musicFiles.indices) {
-            Log.w(TAG, "No valid music files or position provided, dismissing fragment")
+            Logger.w(TAG, "No valid music files or position provided, dismissing fragment")
             dismiss()
             return
         }
@@ -73,10 +75,10 @@ class MetadataFragment : DialogFragment() {
         // Prüfe asynchron, ob Tags vorhanden sind
         viewLifecycleOwner.lifecycleScope.launch {
             val metadata = withContext(Dispatchers.IO) {
-                MetadataExtractor(requireContext()).extractMetadata(musicFile.uri)
+                MetadataExtractor.getInstance(requireContext()).extractMetadata(musicFile.uri)
             }
             hasTags = hasTags(metadata)
-            Log.d(TAG, "File: ${musicFile.name}, hasTags: $hasTags")
+            Logger.d(TAG, "File: ${musicFile.name}, hasTags: $hasTags")
 
             // Initialisiere Tabs basierend auf Tag-Verfügbarkeit
             val adapter = MetadataPagerAdapter(this@MetadataFragment, musicFile, hasTags)
@@ -99,7 +101,7 @@ class MetadataFragment : DialogFragment() {
                 metadata.albumArtist.isNotEmpty() ||
                 metadata.discNumber.isNotEmpty() ||
                 metadata.trackNumber.isNotEmpty() ||
-                metadata.year.isNotEmpty() ||
+                metadata.year != 0 ||
                 metadata.genre.isNotEmpty() ||
                 metadata.artworkCount > 0
     }
@@ -132,6 +134,7 @@ class MetadataPagerAdapter(
     }
 }
 
+@AndroidEntryPoint
 class MetadataTagsFragment : androidx.fragment.app.Fragment() {
     companion object {
         private const val ARG_MUSIC_FILE = "music_file"
@@ -160,13 +163,13 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
             binding.albumArtistValue.text = it.albumArtist ?: "Unbekannt"
             binding.discNumberValue.text = it.discNumber ?: "Unbekannt"
             binding.trackNumberValue.text = it.trackNumber ?: "Unbekannt"
-            binding.yearValue.text = it.year ?: "Unbekannt"
+            binding.yearValue.text = it.year?.toString() ?: "Unbekannt"
             binding.genreValue.text = it.genre ?: "Unbekannt"
 
             // Klick-Listener für den Album-TextView
             binding.albumValue.setOnClickListener { _ ->
                 if (!it.album.isNullOrBlank() && it.album != "Unbekannt") {
-                    Log.d(TAG, "Navigating to album: ${it.album} with song URI: ${it.uri}")
+                    Logger.d(TAG, "Navigating to album: ${it.album} with song URI: ${it.uri}")
                     val intent = Intent(context, SongsActivity::class.java).apply {
                         putExtra("criterion", "album")
                         putExtra("value", it.album)
@@ -174,14 +177,14 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
                     }
                     startActivity(intent)
                 } else {
-                    Log.w(TAG, "No album name available for navigation")
+                    Logger.w(TAG, "No album name available for navigation")
                 }
             }
 
             // Klick-Listener für den Künstler-TextView
             binding.artistValue.setOnClickListener { _ ->
                 if (!it.artist.isNullOrBlank() && it.artist != "Unbekannt") {
-                    Log.d(TAG, "Navigating to artist: ${it.artist} with song URI: ${it.uri}")
+                    Logger.d(TAG, "Navigating to artist: ${it.artist} with song URI: ${it.uri}")
                     val intent = Intent(context, SongsActivity::class.java).apply {
                         putExtra("criterion", "artist")
                         putExtra("value", it.artist)
@@ -189,29 +192,30 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
                     }
                     startActivity(intent)
                 } else {
-                    Log.w(TAG, "No artist name available for navigation")
+                    Logger.w(TAG, "No artist name available for navigation")
                 }
             }
 
             // Klick-Listener für den Jahr-TextView
             binding.yearValue.setOnClickListener { _ ->
-                if (!it.year.isNullOrBlank() && it.year != "Unbekannt") {
-                    Log.d(TAG, "Navigating to year: ${it.year} with song URI: ${it.uri}")
+                if (it.year != null) {
+                    val yearStr = it.year.toString()
+                    Logger.d(TAG, "Navigating to year: $yearStr with song URI: ${it.uri}")
                     val intent = Intent(context, SongsActivity::class.java).apply {
                         putExtra("criterion", "year")
-                        putExtra("value", it.year)
+                        putExtra("value", yearStr)
                         putExtra("highlight_song_uri", it.uri.toString())
                     }
                     startActivity(intent)
                 } else {
-                    Log.w(TAG, "No year available for navigation")
+                    Logger.w(TAG, "No year available for navigation")
                 }
             }
 
             // Klick-Listener für den Genre-TextView
             binding.genreValue.setOnClickListener { _ ->
                 if (!it.genre.isNullOrBlank() && it.genre != "Unbekannt") {
-                    Log.d(TAG, "Navigating to genre: ${it.genre} with song URI: ${it.uri}")
+                    Logger.d(TAG, "Navigating to genre: ${it.genre} with song URI: ${it.uri}")
                     val intent = Intent(context, SongsActivity::class.java).apply {
                         putExtra("criterion", "genre")
                         putExtra("value", it.genre)
@@ -219,15 +223,15 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
                     }
                     startActivity(intent)
                 } else {
-                    Log.w(TAG, "No genre available for navigation")
+                    Logger.w(TAG, "No genre available for navigation")
                 }
             }
 
             // Asynchrones Laden der Bilder aus ID3v2.4-Tags
-            val metadataExtractor = MetadataExtractor(requireContext())
+            val metadataExtractor = MetadataExtractor.getInstance(requireContext())
             try {
                 val metadata = metadataExtractor.extractMetadata(it.uri)
-                Log.d(TAG, "Artwork count: ${metadata.artworkCount} for file: ${it.name}, URI: ${it.uri}")
+                Logger.d(TAG, "Artwork count: ${metadata.artworkCount} for file: ${it.name}, URI: ${it.uri}")
                 val artworkAdapter = ArtworkAdapter(requireContext())
                 binding.artworkRecyclerView.apply {
                     layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
@@ -241,14 +245,14 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
                         for (index in 0 until minOf(metadata.artworkCount, 2)) {
                             val artwork = metadataExtractor.getArtworkBytes(it.uri, index)
                             if (artwork != null && artwork.isNotEmpty()) {
-                                Log.d(TAG, "Loaded artwork at index $index, size: ${artwork.size} bytes for file: ${it.name}")
+                                Logger.d(TAG, "Loaded artwork at index $index, size: ${artwork.size} bytes for file: ${it.name}")
                                 artworks.add(artwork)
                             } else {
-                                Log.d(TAG, "No artwork at index $index for file: ${it.name}")
+                                Logger.d(TAG, "No artwork at index $index for file: ${it.name}")
                             }
                         }
                     }
-                    Log.d(TAG, "Total artworks loaded: ${artworks.size} for file: ${it.name}")
+                    Logger.d(TAG, "Total artworks loaded: ${artworks.size} for file: ${it.name}")
                     if (artworks.isEmpty()) {
                         binding.artworkRecyclerView.visibility = View.GONE
                     } else {
@@ -267,7 +271,7 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error extracting metadata for ${it.name}: ${e.message}", e)
+                Logger.e(TAG, "Error extracting metadata for ${it.name}: ${e.message}", e)
                 binding.artworkRecyclerView.visibility = View.GONE
             }
         }
@@ -275,6 +279,7 @@ class MetadataTagsFragment : androidx.fragment.app.Fragment() {
     }
 }
 
+@AndroidEntryPoint
 class MetadataTechnicalFragment : androidx.fragment.app.Fragment() {
     companion object {
         private const val ARG_MUSIC_FILE = "music_file"
@@ -311,11 +316,11 @@ class MetadataTechnicalFragment : androidx.fragment.app.Fragment() {
         return binding.root
     }
 
-    private fun formatFileSize(size: Int): String {
+    private fun formatFileSize(size: Long): String {
         return when {
-            size < 1024 -> String.format("%.1f B", size.toDouble())
-            size < 1024 * 1024 -> String.format("%.1f KB", size.toDouble() / 1024)
-            size < 1024 * 1024 * 1024 -> String.format("%.1f MB", size.toDouble() / (1024 * 1024))
+            size < 1024L -> String.format("%.1f B", size.toDouble())
+            size < 1024L * 1024L -> String.format("%.1f KB", size.toDouble() / 1024)
+            size < 1024L * 1024L * 1024L -> String.format("%.1f MB", size.toDouble() / (1024 * 1024))
             else -> String.format("%.1f GB", size.toDouble() / (1024 * 1024 * 1024))
         }
     }

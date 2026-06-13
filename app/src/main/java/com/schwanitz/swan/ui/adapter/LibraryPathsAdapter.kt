@@ -2,7 +2,7 @@ package com.schwanitz.swan.ui.adapter
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -46,7 +46,7 @@ class LibraryPathsAdapter(
         )
         holder.removeButton.isEnabled = true // Sicherstellen, dass der Button aktiviert ist
         holder.removeButton.setOnClickListener {
-            Log.d(TAG, "Button clicked for uri: ${path.uri}, isCancel: $isScanning")
+            Logger.d(TAG, "Button clicked for uri: ${path.uri}, isCancel: $isScanning")
             onActionClick(path.uri, isScanning)
         }
     }
@@ -54,7 +54,7 @@ class LibraryPathsAdapter(
     override fun getItemCount(): Int = paths.size
 
     fun setScanningPath(uri: String?) {
-        Log.d(TAG, "Setting scanning path: $uri")
+        Logger.d(TAG, "Setting scanning path: $uri")
         scanningPathUri = uri
         notifyDataSetChanged()
     }

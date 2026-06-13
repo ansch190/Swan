@@ -1,7 +1,7 @@
 package com.schwanitz.swan.ui.fragment
 
 import android.os.Bundle
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,7 +9,9 @@ import androidx.fragment.app.DialogFragment
 import androidx.viewpager2.widget.ViewPager2
 import com.schwanitz.swan.databinding.FragmentImageViewerBinding
 import com.schwanitz.swan.ui.adapter.ImageViewerAdapter
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class ImageViewerDialogFragment : DialogFragment() {
 
     private var _binding: FragmentImageViewerBinding? = null
@@ -55,7 +57,7 @@ class ImageViewerDialogFragment : DialogFragment() {
         // Registriere OnPageChangeCallback für Wischereignisse
         binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
-                Log.d(TAG, "Page selected: $position")
+                Logger.d(TAG, "Page selected: $position")
             }
         })
     }

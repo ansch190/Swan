@@ -101,4 +101,6 @@
 
     <string name="add_disc_to_playlist">CD zu Playlist hinzufügen</string>
     <string name="add_album_to_playlist">Albums zu Playlist hinzufügen</string>
+    <string name="loading_playlists">Lade Playlisten...</string>
+    <string name="loading">Lade...</string>
 </resources>

@@ -10,7 +10,7 @@ import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.media.app.NotificationCompat.MediaStyle
@@ -25,7 +25,7 @@ class MusicPlaybackService : Service() {
     private val binder = MusicPlaybackBinder()
     private var currentUri: Uri? = null
     private var isPlaying: Boolean = false
-    private val metadataExtractor by lazy { MetadataExtractor(this) }
+    private val metadataExtractor by lazy { MetadataExtractor.getInstance(this) }
     private var playbackQueue: List<Uri> = emptyList() // Neu
     private var currentTrackIndex: Int = -1 // Neu
 
@@ -40,20 +40,20 @@ class MusicPlaybackService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder {
-        Log.d("MusicPlaybackService", "Service bound")
+        Logger.d("MusicPlaybackService", "Service bound")
         return binder
     }
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        Log.d("MusicPlaybackService", "Service created, notification channel initialized")
+        Logger.d("MusicPlaybackService", "Service created, notification channel initialized")
     }
 
     fun setQueue(uris: List<Uri>, startIndex: Int = 0) {
         playbackQueue = uris
         currentTrackIndex = if (startIndex in uris.indices) startIndex else 0
-        Log.d("MusicPlaybackService", "Set queue with ${uris.size} tracks, starting at index $currentTrackIndex")
+        Logger.d("MusicPlaybackService", "Set queue with ${uris.size} tracks, starting at index $currentTrackIndex")
         if (uris.isNotEmpty() && currentTrackIndex in uris.indices) {
             play(uris[currentTrackIndex])
         }
@@ -66,7 +66,7 @@ class MusicPlaybackService : Service() {
                 mediaPlayer?.release()
                 mediaPlayer = MediaPlayer.create(this, uri)
                 if (mediaPlayer == null) {
-                    Log.e("MusicPlaybackService", "Failed to create MediaPlayer for uri: $uri")
+                    Logger.e("MusicPlaybackService", "Failed to create MediaPlayer for uri: $uri")
                     return
                 }
                 currentUri = uri
@@ -77,11 +77,11 @@ class MusicPlaybackService : Service() {
             }
             mediaPlayer?.start()
             isPlaying = true
-            Log.d("MusicPlaybackService", "Playing: $uri")
+            Logger.d("MusicPlaybackService", "Playing: $uri")
             startForeground(NOTIFICATION_ID, buildNotification(uri, isPlaying = true).build())
-            Log.d("MusicPlaybackService", "Foreground notification started for uri: $uri")
+            Logger.d("MusicPlaybackService", "Foreground notification started for uri: $uri")
         } catch (e: Exception) {
-            Log.e("MusicPlaybackService", "Error playing: $uri", e)
+            Logger.e("MusicPlaybackService", "Error playing: $uri", e)
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         }
     }
@@ -90,10 +90,10 @@ class MusicPlaybackService : Service() {
         if (currentTrackIndex < playbackQueue.size - 1) {
             currentTrackIndex++
             play(playbackQueue[currentTrackIndex])
-            Log.d("MusicPlaybackService", "Playing next track at index $currentTrackIndex")
+            Logger.d("MusicPlaybackService", "Playing next track at index $currentTrackIndex")
         } else {
             stop()
-            Log.d("MusicPlaybackService", "Reached end of queue, stopping")
+            Logger.d("MusicPlaybackService", "Reached end of queue, stopping")
         }
     }
 
@@ -101,14 +101,14 @@ class MusicPlaybackService : Service() {
         if (currentTrackIndex > 0) {
             currentTrackIndex--
             play(playbackQueue[currentTrackIndex])
-            Log.d("MusicPlaybackService", "Playing previous track at index $currentTrackIndex")
+            Logger.d("MusicPlaybackService", "Playing previous track at index $currentTrackIndex")
         }
     }
 
     fun pause() {
         mediaPlayer?.pause()
         isPlaying = false
-        Log.d("MusicPlaybackService", "Paused")
+        Logger.d("MusicPlaybackService", "Paused")
         currentUri?.let { updateNotification(isPlaying = false) }
     }
 
@@ -116,7 +116,7 @@ class MusicPlaybackService : Service() {
         if (mediaPlayer != null && !isPlaying) {
             mediaPlayer?.start()
             isPlaying = true
-            Log.d("MusicPlaybackService", "Resumed")
+            Logger.d("MusicPlaybackService", "Resumed")
             currentUri?.let { updateNotification(isPlaying = true) }
         }
     }
@@ -129,7 +129,7 @@ class MusicPlaybackService : Service() {
         isPlaying = false
         playbackQueue = emptyList() // Zurücksetzen der Warteschlange
         currentTrackIndex = -1
-        Log.d("MusicPlaybackService", "Stopped")
+        Logger.d("MusicPlaybackService", "Stopped")
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -142,7 +142,7 @@ class MusicPlaybackService : Service() {
         playbackQueue = emptyList()
         currentTrackIndex = -1
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-        Log.d("MusicPlaybackService", "Service destroyed")
+        Logger.d("MusicPlaybackService", "Service destroyed")
         super.onDestroy()
     }
 
@@ -157,7 +157,7 @@ class MusicPlaybackService : Service() {
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
-            Log.d("MusicPlaybackService", "Notification channel created: $CHANNEL_ID")
+            Logger.d("MusicPlaybackService", "Notification channel created: $CHANNEL_ID")
         }
     }
 
@@ -185,8 +185,8 @@ class MusicPlaybackService : Service() {
         val metadata = try {
             metadataExtractor.extractMetadata(uri)
         } catch (e: Exception) {
-            Log.e("MusicPlaybackService", "Failed to extract metadata for $uri", e)
-            Metadata("", "", "", "", "", "", "", "", 0, 0, "", 0, 0L, "")
+            Logger.e("MusicPlaybackService", "Failed to extract metadata for $uri", e)
+            Metadata("", "", "", "", "", "", 0, "", 0, 0, "", 0, 0L, "")
         }
         val title = metadata.title.takeIf { it.isNotEmpty() } ?: uri.lastPathSegment ?: "Unknown Track"
         val artist = metadata.artist.takeIf { it.isNotEmpty() } ?: "Unknown Artist"
@@ -219,12 +219,12 @@ class MusicPlaybackService : Service() {
             val notification = buildNotification(uri, isPlaying).build()
             val manager = getSystemService(NotificationManager::class.java)
             manager.notify(NOTIFICATION_ID, notification)
-            Log.d("MusicPlaybackService", "Notification updated, isPlaying: $isPlaying")
-        } ?: Log.w("MusicPlaybackService", "No currentUri, cannot update notification")
+            Logger.d("MusicPlaybackService", "Notification updated, isPlaying: $isPlaying")
+        } ?: Logger.w("MusicPlaybackService", "No currentUri, cannot update notification")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d("MusicPlaybackService", "onStartCommand, action: ${intent?.action}")
+        Logger.d("MusicPlaybackService", "onStartCommand, action: ${intent?.action}")
         when (intent?.action) {
             "ACTION_PAUSE" -> pause()
             "ACTION_PLAY" -> resume()

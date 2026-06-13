@@ -1,4 +1,4 @@
-package com.schwanitz.swan
+package com.schwanitz.swan.util
 
 import android.content.Context
 import android.net.Uri

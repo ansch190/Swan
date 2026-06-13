@@ -3,7 +3,7 @@ package com.schwanitz.swan.ui.adapter
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import com.schwanitz.swan.ui.fragment.DiscFragment
 import com.schwanitz.swan.ui.fragment.GenreArtistsFragment
 
@@ -16,7 +16,7 @@ class GenrePagerAdapter(
     override fun getItemCount(): Int = 2
 
     override fun createFragment(position: Int): Fragment {
-        Log.d("GenrePagerAdapter", "Creating fragment for position: $position, genre: $genre, highlightSongUri: $highlightSongUri")
+        Logger.d("GenrePagerAdapter", "Creating fragment for position: $position, genre: $genre, highlightSongUri: $highlightSongUri")
         return when (position) {
             0 -> DiscFragment.newInstance("1", genre, highlightSongUri, filterType = "genre")
             1 -> GenreArtistsFragment.newInstance(genre)

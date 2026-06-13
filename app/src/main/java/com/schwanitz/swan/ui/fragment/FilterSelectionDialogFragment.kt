@@ -4,29 +4,56 @@ import android.app.AlertDialog
 import android.app.Dialog
 import android.os.Bundle
 import androidx.fragment.app.DialogFragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.schwanitz.swan.R
-import com.schwanitz.swan.data.local.database.AppDatabase
-import com.schwanitz.swan.data.local.repository.MusicRepository
+import com.schwanitz.swan.domain.repository.MusicRepository
 import com.schwanitz.swan.ui.viewmodel.MainViewModel
-import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
-import kotlinx.coroutines.flow.first
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class FilterSelectionDialogFragment : DialogFragment() {
 
-    private lateinit var viewModel: MainViewModel
+    private val viewModel: MainViewModel by viewModels(ownerProducer = { requireActivity() })
+    @Inject lateinit var repository: MusicRepository
     private val TAG = "FilterSelectionDialog"
+    private var existingCriteria: Set<String>? = null
+    private var isLoading = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel = ViewModelProvider(requireActivity(), MainViewModelFactory(requireContext(), MusicRepository(requireContext()))).get(MainViewModel::class.java)
+
+        lifecycleScope.launch {
+            existingCriteria = repository.getFiltersOnce().map { it.criterion }.toSet()
+            isLoading = false
+            if (dialog != null) {
+                rebuildDialog()
+            }
+        }
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        // Alle möglichen Filteroptionen
+        return if (isLoading) {
+            AlertDialog.Builder(requireContext())
+                .setTitle(R.string.select_filters)
+                .setMessage(R.string.loading)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create()
+        } else {
+            buildSelectionDialog()
+        }
+    }
+
+    private fun rebuildDialog() {
+        if (!isAdded) return
+        val newDialog = buildSelectionDialog()
+        newDialog.show()
+        dialog?.dismiss()
+    }
+
+    private fun buildSelectionDialog(): AlertDialog {
         val allFilterOptions = arrayOf(
             getString(R.string.filter_by_title),
             getString(R.string.filter_by_artist),
@@ -44,23 +71,17 @@ class FilterSelectionDialogFragment : DialogFragment() {
             "genre"
         )
 
-        // Lade vorhandene Filter synchron
-        val existingFilters = runBlocking {
-            AppDatabase.getDatabase(requireContext()).filterDao().getAllFilters().first()
-        }
-        val existingCriteria = existingFilters.map { it.criterion }.toSet()
+        val criteria = existingCriteria ?: emptySet()
 
-        // Filtere die Auswahloptionen
         val filterOptions = mutableListOf<String>()
         val filterCriteria = mutableListOf<String>()
         allFilterCriteria.forEachIndexed { index, criterion ->
-            if (criterion !in existingCriteria) {
+            if (criterion !in criteria) {
                 filterOptions.add(allFilterOptions[index])
                 filterCriteria.add(criterion)
             }
         }
 
-        // Wenn keine Filter verfügbar sind, zeige eine Nachricht
         if (filterOptions.isEmpty()) {
             return AlertDialog.Builder(requireContext())
                 .setTitle(R.string.select_filters)
@@ -69,7 +90,6 @@ class FilterSelectionDialogFragment : DialogFragment() {
                 .create()
         }
 
-        // Erstelle den Dialog mit den verfügbaren Filtern
         val selectedFilters = BooleanArray(filterOptions.size) { false }
         return AlertDialog.Builder(requireContext())
             .setTitle(R.string.select_filters)

@@ -1,7 +1,7 @@
 package com.schwanitz.swan.ui.adapter
 
 import android.content.Context
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -32,7 +32,7 @@ class ArtworkAdapter(private val context: Context) : RecyclerView.Adapter<Artwor
     override fun onBindViewHolder(holder: ArtworkViewHolder, position: Int) {
         val artworkBytes = displayedArtworks[position]
         if (artworkBytes.isNotEmpty()) {
-            Log.d(TAG, "Loading artwork at position $position, size: ${artworkBytes.size} bytes")
+            Logger.d(TAG, "Loading artwork at position $position, size: ${artworkBytes.size} bytes")
             Glide.with(context)
                 .load(artworkBytes)
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
@@ -49,7 +49,7 @@ class ArtworkAdapter(private val context: Context) : RecyclerView.Adapter<Artwor
                 }
             }
         } else {
-            Log.d(TAG, "Empty artwork at position $position")
+            Logger.d(TAG, "Empty artwork at position $position")
             holder.imageView.visibility = View.GONE
         }
     }
@@ -59,7 +59,7 @@ class ArtworkAdapter(private val context: Context) : RecyclerView.Adapter<Artwor
     fun setData(displayedArtworks: List<ByteArray>, allArtworks: List<ByteArray>) {
         this.displayedArtworks = displayedArtworks
         this.allArtworks = allArtworks
-        Log.d(TAG, "Set data with ${displayedArtworks.size} displayed artworks, ${allArtworks.size} total artworks")
+        Logger.d(TAG, "Set data with ${displayedArtworks.size} displayed artworks, ${allArtworks.size} total artworks")
         notifyDataSetChanged()
     }
 }

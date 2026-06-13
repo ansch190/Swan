@@ -1,20 +1,15 @@
 package com.schwanitz.swan.ui.activity
 
-import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.os.IBinder
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import android.view.ContextMenu
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -23,15 +18,16 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import javax.inject.Inject
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
+import dagger.hilt.android.AndroidEntryPoint
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import com.schwanitz.swan.R
-import com.schwanitz.swan.data.local.database.AppDatabase
 import com.schwanitz.swan.data.local.entity.FilterEntity
-import com.schwanitz.swan.data.local.repository.MusicRepository
+import com.schwanitz.swan.domain.repository.MusicRepository
 import com.schwanitz.swan.databinding.ActivityLibraryBinding
 import com.schwanitz.swan.service.MusicPlaybackService
 import com.schwanitz.swan.ui.fragment.FilterFragment
@@ -39,21 +35,19 @@ import com.schwanitz.swan.ui.fragment.FilterSettingsFragment
 import com.schwanitz.swan.ui.fragment.LibraryPathsFragment
 import com.schwanitz.swan.ui.fragment.SettingsFragment
 import com.schwanitz.swan.ui.viewmodel.MainViewModel
-import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-class LibraryActivity : AppCompatActivity() {
+@AndroidEntryPoint
+class LibraryActivity : BaseMusicActivity() {
 
     private lateinit var binding: ActivityLibraryBinding
     private lateinit var viewModel: MainViewModel
-    private var musicService: MusicPlaybackService? = null
-    private var isBound = false
+    @Inject lateinit var repository: MusicRepository
     private val TAG = "LibraryActivity"
     private val NOTIFICATION_PERMISSION_CODE = 100
     private val STORAGE_PERMISSION_CODE = 101
@@ -62,30 +56,18 @@ class LibraryActivity : AppCompatActivity() {
     val searchQuery = _searchQuery.asStateFlow()
     private var searchJob: Job? = null
 
-    private val connection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName, service: IBinder) {
-            val binder = service as MusicPlaybackService.MusicPlaybackBinder
-            musicService = binder.getService()
-            isBound = true
-            Log.d(TAG, "MusicPlaybackService bound")
-        }
-
-        override fun onServiceDisconnected(name: ComponentName) {
-            isBound = false
-            musicService = null
-            Log.d(TAG, "MusicPlaybackService unbound")
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState != null) {
+            _searchQuery.value = savedInstanceState.getString("search_query")
+        }
         binding = ActivityLibraryBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        Log.d(TAG, "Activity created")
+        Logger.d(TAG, "Activity created")
 
         // Optional: Überprüfe Statusleisten-Sichtbarkeit
         val controller = WindowCompat.getInsetsController(window, window.decorView)
-        Log.d(TAG, "Status bar visible: ${controller.isAppearanceLightStatusBars}")
+        Logger.d(TAG, "Status bar visible: ${controller.isAppearanceLightStatusBars}")
 
         // Request permissions
         requestPermissions()
@@ -101,18 +83,18 @@ class LibraryActivity : AppCompatActivity() {
         binding.navView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.nav_library -> {
-                    Log.d(TAG, "Already in library, closing drawer")
+                    Logger.d(TAG, "Already in library, closing drawer")
                     binding.drawerLayout.closeDrawer(GravityCompat.START)
                     true
                 }
                 R.id.nav_playlists -> {
-                    Log.d(TAG, "Navigating to playlists")
+                    Logger.d(TAG, "Navigating to playlists")
                     startActivity(Intent(this, PlaylistsActivity::class.java))
                     binding.drawerLayout.closeDrawer(GravityCompat.START)
                     true
                 }
                 R.id.nav_settings -> {
-                    Log.d(TAG, "Opening settings")
+                    Logger.d(TAG, "Opening settings")
                     SettingsFragment().show(supportFragmentManager, "SettingsFragment")
                     binding.drawerLayout.closeDrawer(GravityCompat.START)
                     true
@@ -121,13 +103,13 @@ class LibraryActivity : AppCompatActivity() {
             }
         }
 
-        viewModel = ViewModelProvider(this, MainViewModelFactory(this, MusicRepository(this))).get(MainViewModel::class.java)
+        viewModel = ViewModelProvider(this)[MainViewModel::class.java]
 
         // Prüfe, ob Bibliothekspfade vorhanden sind
         lifecycleScope.launch {
-            val libraryPaths = AppDatabase.getDatabase(this@LibraryActivity).libraryPathDao().getAllPaths().first()
+            val libraryPaths = repository.getLibraryPathsOnce()
             if (libraryPaths.isEmpty()) {
-                Log.d(TAG, "No library paths defined, showing message and navigating to LibraryPathsFragment")
+                Logger.d(TAG, "No library paths defined, showing message and navigating to LibraryPathsFragment")
                 Toast.makeText(
                     this@LibraryActivity,
                     R.string.no_library_paths_message,
@@ -136,22 +118,23 @@ class LibraryActivity : AppCompatActivity() {
                 LibraryPathsFragment().show(supportFragmentManager, "LibraryPathsFragment")
             } else {
                 // Stelle sicher, dass mindestens ein Filter vorhanden ist
-                val filtersFromDb = AppDatabase.getDatabase(this@LibraryActivity).filterDao().getAllFilters().first()
+                val filtersFromDb = repository.getFiltersOnce()
                 if (filtersFromDb.isEmpty()) {
-                    Log.d(TAG, "No filters found, adding default filters")
+                    Logger.d(TAG, "No filters found, adding default filters")
                     viewModel.addFilter("title", getString(R.string.filter_by_title))
                     viewModel.addFilter("artist", getString(R.string.filter_by_artist))
                     viewModel.addFilter("album", getString(R.string.filter_by_album))
                 }
                 // Beobachte Filter aus der Datenbank
-                AppDatabase.getDatabase(this@LibraryActivity).filterDao().getAllFilters().collectLatest { filterList ->
-                    Log.d(TAG, "Loaded filters: ${filterList.map { it.displayName }}")
+                repository.getAllFilters().collectLatest { filterList ->
+                    Logger.d(TAG, "Loaded filters: ${filterList.map { it.displayName }}")
                     filters = filterList
                     setupTabs()
                 }
                 // Beobachte Musikdateien, um Tabs nach Scan zu aktualisieren
-                viewModel.musicFiles.observe(this@LibraryActivity) { files ->
-                    Log.d(TAG, "Music files updated: ${files.size} files")
+                lifecycleScope.launch {
+                    viewModel.musicFiles.collectLatest { files ->
+                    Logger.d(TAG, "Music files updated: ${files.size} files")
                     setupTabs() // Initialisiert die Tabs mit den Filtern
                     // Explizit FilterFragmente aktualisieren
                     (binding.viewPager.adapter as? FilterPagerAdapter)?.let { adapter ->
@@ -159,18 +142,19 @@ class LibraryActivity : AppCompatActivity() {
                             val fragment = supportFragmentManager.findFragmentByTag("f$i") as? FilterFragment
                             fragment?.filter(searchQuery.value) // Aktualisiert jedes Fragment mit den neuen Daten
                             if (fragment == null) {
-                                Log.w(TAG, "Fragment not found for tab $i during music files update")
+                                Logger.w(TAG, "Fragment not found for tab $i during music files update")
                             }
                         }
                     }
                 }
             }
         }
+    }
 
         // Initialisiere SearchView
         binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
-                Log.d(TAG, "Search query submitted: $query")
+                Logger.d(TAG, "Search query submitted: $query")
                 _searchQuery.value = query
                 searchJob?.cancel()
                 applyFilter(query)
@@ -178,7 +162,7 @@ class LibraryActivity : AppCompatActivity() {
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                Log.d(TAG, "Search query changed: $newText")
+                Logger.d(TAG, "Search query changed: $newText")
                 _searchQuery.value = newText
                 searchJob?.cancel()
                 searchJob = lifecycleScope.launch {
@@ -199,18 +183,24 @@ class LibraryActivity : AppCompatActivity() {
             musicService?.stop()
         }
 
-        Intent(this, MusicPlaybackService::class.java).also { intent ->
-            bindService(intent, connection, Context.BIND_AUTO_CREATE)
-        }
+        bindMusicService()
+    }
+
+    override fun onMusicServiceConnected() {
+        viewModel.musicService = musicService
+    }
+
+    override fun onMusicServiceDisconnected() {
+        viewModel.musicService = null
     }
 
     private fun applyFilter(query: String?) {
         val currentFragment = supportFragmentManager.findFragmentByTag("f${binding.viewPager.currentItem}") as? FilterFragment
         if (currentFragment != null) {
-            Log.d(TAG, "Applying filter to fragment: $query")
+            Logger.d(TAG, "Applying filter to fragment: $query")
             currentFragment.filter(query)
         } else {
-            Log.w(TAG, "No fragment found for current tab: ${binding.viewPager.currentItem}")
+            Logger.w(TAG, "No fragment found for current tab: ${binding.viewPager.currentItem}")
         }
     }
 
@@ -238,7 +228,7 @@ class LibraryActivity : AppCompatActivity() {
         if (permissionsToRequest.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissionsToRequest.toTypedArray(), STORAGE_PERMISSION_CODE)
         } else {
-            Log.d(TAG, "All required permissions already granted")
+            Logger.d(TAG, "All required permissions already granted")
         }
     }
 
@@ -250,7 +240,7 @@ class LibraryActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         // Setze den aktuellen Suchbegriff im SearchView
         searchQuery.value?.let { query ->
-            Log.d(TAG, "Restoring search query in SearchView: $query")
+            Logger.d(TAG, "Restoring search query in SearchView: $query")
             binding.searchView.setQuery(query, false)
             binding.searchView.isIconified = false
         }
@@ -270,7 +260,7 @@ class LibraryActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             android.R.id.home -> {
-                Log.d(TAG, "Opening drawer, current state: ${if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) "open" else "closed"}")
+                Logger.d(TAG, "Opening drawer, current state: ${if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) "open" else "closed"}")
                 binding.drawerLayout.openDrawer(GravityCompat.START)
                 true
             }
@@ -278,26 +268,27 @@ class LibraryActivity : AppCompatActivity() {
         }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("search_query", _searchQuery.value)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        if (isBound) {
-            unbindService(connection)
-            isBound = false
-        }
         // Stoppe den MusicPlaybackService
         Intent(this, MusicPlaybackService::class.java).also { intent ->
             stopService(intent)
         }
-        Log.d(TAG, "Service stopped, activity destroyed")
+        Logger.d(TAG, "Service stopped, activity destroyed")
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == NOTIFICATION_PERMISSION_CODE || requestCode == STORAGE_PERMISSION_CODE) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                Log.d(TAG, "Required permissions granted")
+                Logger.d(TAG, "Required permissions granted")
             } else {
-                Log.w(TAG, "Required permissions denied")
+                Logger.w(TAG, "Required permissions denied")
                 Toast.makeText(this, "Required permissions not granted, some features may not work", Toast.LENGTH_LONG).show()
             }
         }
@@ -306,7 +297,7 @@ class LibraryActivity : AppCompatActivity() {
     private fun setupTabs() {
         // ViewPager und Adapter einrichten
         binding.viewPager.adapter = FilterPagerAdapter(this, filters)
-        Log.d(TAG, "ViewPager adapter set with ${filters.size} filters")
+        Logger.d(TAG, "ViewPager adapter set with ${filters.size} filters")
 
         // TabLayout mit ViewPager verbinden
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
@@ -317,7 +308,7 @@ class LibraryActivity : AppCompatActivity() {
         for (i in 0 until binding.tabLayout.tabCount) {
             val tab = binding.tabLayout.getTabAt(i)
             tab?.view?.setOnLongClickListener {
-                Log.d(TAG, "Long click on tab $i, opening FilterSettingsFragment")
+                Logger.d(TAG, "Long click on tab $i, opening FilterSettingsFragment")
                 FilterSettingsFragment().show(supportFragmentManager, "FilterSettingsFragment")
                 true // Ereignis als behandelt markieren
             }
@@ -327,11 +318,11 @@ class LibraryActivity : AppCompatActivity() {
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 tab?.position?.let { position ->
-                    Log.d(TAG, "Tab selected: $position, applying search query: ${searchQuery.value}")
+                    Logger.d(TAG, "Tab selected: $position, applying search query: ${searchQuery.value}")
                     val currentFragment = supportFragmentManager.findFragmentByTag("f$position") as? FilterFragment
                     currentFragment?.filter(searchQuery.value)
                     if (currentFragment == null) {
-                        Log.w(TAG, "Fragment not found for tab $position on selection")
+                        Logger.w(TAG, "Fragment not found for tab $position on selection")
                     }
                 }
             }
@@ -346,10 +337,10 @@ class LibraryActivity : AppCompatActivity() {
             delay(100)
             val initialFragment = supportFragmentManager.findFragmentByTag("f${binding.viewPager.currentItem}") as? FilterFragment
             if (initialFragment != null) {
-                Log.d(TAG, "Applying initial search query to tab ${binding.viewPager.currentItem}: ${searchQuery.value}")
+                Logger.d(TAG, "Applying initial search query to tab ${binding.viewPager.currentItem}: ${searchQuery.value}")
                 initialFragment.filter(searchQuery.value)
             } else {
-                Log.w(TAG, "Initial fragment not found for tab ${binding.viewPager.currentItem} after delay")
+                Logger.w(TAG, "Initial fragment not found for tab ${binding.viewPager.currentItem} after delay")
             }
         }
     }

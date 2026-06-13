@@ -4,28 +4,36 @@ import android.app.AlertDialog
 import android.app.Dialog
 import android.os.Bundle
 import androidx.fragment.app.DialogFragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.schwanitz.swan.R
-import com.schwanitz.swan.data.local.database.AppDatabase
-import com.schwanitz.swan.data.local.repository.MusicRepository
+import com.schwanitz.swan.data.local.entity.PlaylistEntity
 import com.schwanitz.swan.domain.model.MusicFile
+import com.schwanitz.swan.domain.repository.MusicRepository
 import com.schwanitz.swan.ui.viewmodel.MainViewModel
-import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
-import kotlinx.coroutines.flow.first
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import android.util.Log
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import com.schwanitz.swan.util.Logger
 import android.widget.Toast
 
+@AndroidEntryPoint
 class AddToPlaylistDialogFragment : DialogFragment() {
+
+    @Inject lateinit var repository: MusicRepository
+    private var playlists: List<PlaylistEntity> = emptyList()
+    private var isLoading = true
+    private var loadError: String? = null
+    private val viewModel: MainViewModel by viewModels(ownerProducer = { requireActivity() })
 
     companion object {
         private const val ARG_MUSIC_FILE = "music_file"
         private const val TAG = "AddToPlaylistDialog"
 
         fun newInstance(musicFile: MusicFile): AddToPlaylistDialogFragment {
-            Log.d(TAG, "Creating AddToPlaylistDialogFragment for music file: ${musicFile.name}")
+            Logger.d(TAG, "Creating AddToPlaylistDialogFragment for music file: ${musicFile.name}")
             return AddToPlaylistDialogFragment().apply {
                 arguments = Bundle().apply {
                     putParcelable(ARG_MUSIC_FILE, musicFile)
@@ -34,11 +42,33 @@ class AddToPlaylistDialogFragment : DialogFragment() {
         }
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        lifecycleScope.launch {
+            try {
+                playlists = repository.getAllPlaylists().sortedBy { it.name.lowercase() }
+                isLoading = false
+                Logger.d(TAG, "Loaded ${playlists.size} playlists, sorted alphabetically")
+            } catch (e: Exception) {
+                Logger.e(TAG, "Failed to load playlists: ${e.message}", e)
+                loadError = e.message
+                isLoading = false
+            }
+            if (dialog != null) {
+                rebuildDialog(musicFile)
+            }
+        }
+    }
+
+    private val musicFile: MusicFile?
+        get() = arguments?.getParcelable(ARG_MUSIC_FILE, MusicFile::class.java)
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        Log.d(TAG, "onCreateDialog called")
-        val musicFile = arguments?.getParcelable(ARG_MUSIC_FILE, MusicFile::class.java)
-        if (musicFile == null) {
-            Log.e(TAG, "No MusicFile provided in arguments")
+        Logger.d(TAG, "onCreateDialog called")
+        val file = musicFile
+        if (file == null) {
+            Logger.e(TAG, "No MusicFile provided in arguments")
             dismiss()
             return AlertDialog.Builder(requireContext())
                 .setMessage("Fehler: Kein Lied ausgewählt")
@@ -46,92 +76,58 @@ class AddToPlaylistDialogFragment : DialogFragment() {
                 .create()
         }
 
-        Log.d(TAG, "MusicFile retrieved: ${musicFile.name}")
-        val viewModel = ViewModelProvider(
-            requireActivity(),
-            MainViewModelFactory(requireContext(), MusicRepository(requireContext()))
-        ).get(MainViewModel::class.java)
+        Logger.d(TAG, "MusicFile retrieved: ${file.name}")
 
+        return if (isLoading) {
+            AlertDialog.Builder(requireContext())
+                .setTitle(R.string.add_to_playlist)
+                .setMessage(R.string.loading_playlists)
+                .setNegativeButton(android.R.string.cancel) { d, _ -> d.dismiss() }
+                .create()
+        } else {
+            buildSelectionDialog(file)
+        }
+    }
+
+    private fun rebuildDialog(musicFile: MusicFile?) {
+        val file = musicFile ?: return
+        if (!isAdded) return
+        val newDialog = buildSelectionDialog(file)
+        newDialog.show()
+        // Dismiss the old loading dialog
+        dialog?.dismiss()
+    }
+
+    private fun buildSelectionDialog(musicFile: MusicFile): AlertDialog {
         val builder = AlertDialog.Builder(requireContext())
             .setTitle(R.string.add_to_playlist)
-            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
-                Log.d(TAG, "Dialog cancelled")
-                dialog.dismiss()
-            }
+            .setNegativeButton(android.R.string.cancel) { d, _ -> d.dismiss() }
 
-        // Synchrones Laden der Playlisten
-        try {
-            val playlists = runBlocking {
-                // Hier werden die Playlisten geladen und alphabetisch nach Namen sortiert
-                AppDatabase.getDatabase(requireContext()).playlistDao().getAllPlaylists().first()
-                    .sortedBy { it.name.lowercase() }
-            }
-            Log.d(TAG, "Loaded ${playlists.size} playlists, sorted alphabetically")
+        if (loadError != null) {
+            builder.setMessage("Fehler beim Laden der Playlisten: $loadError")
+        } else if (playlists.isEmpty()) {
+            builder.setMessage(R.string.no_playlists_available)
+        } else {
             val playlistNames = playlists.map { it.name }.toTypedArray()
-
-            if (playlistNames.isNotEmpty()) {
-                builder.setItems(playlistNames) { _, which ->
-                    val selectedPlaylist = playlists[which]
-                    Log.d(TAG, "Playlist selected: ${selectedPlaylist.name} (ID: ${selectedPlaylist.id})")
-                    lifecycleScope.launch {
-                        musicFile.uri.toString().let { songUri ->
-                            try {
-                                viewModel.addSongToPlaylist(selectedPlaylist.id, songUri)
-                                // Nur Toast anzeigen, wenn Fragment noch attached ist
-                                if (isAdded) {
-                                    Toast.makeText(
-                                        requireContext(),
-                                        getString(R.string.add_to_playlist_success, musicFile.title ?: musicFile.name, selectedPlaylist.name),
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    Log.d(TAG, "Song ${musicFile.name} added to playlist ${selectedPlaylist.name}")
-                                } else {
-                                    Log.w(TAG, "Fragment not attached, skipping Toast")
-                                }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Failed to add song to playlist: ${e.message}", e)
-                                if (isAdded) {
-                                    Toast.makeText(
-                                        requireContext(),
-                                        "Fehler beim Hinzufügen zur Playlist",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                } else {
-                                    Log.w(TAG, "Fragment not attached, skipping error Toast")
-                                }
-                            } finally {
-                                // Dialog erst nach Abschluss der Operation schließen
-                                dismiss()
-                                Log.d(TAG, "Dialog dismissed after operation")
-                            }
-                        }
+            builder.setItems(playlistNames) { _, which ->
+                val selectedPlaylist = playlists[which]
+                Logger.d(TAG, "Playlist selected: ${selectedPlaylist.name} (ID: ${selectedPlaylist.id})")
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        viewModel.addSongToPlaylist(selectedPlaylist.id, musicFile.uri.toString())
                     }
+                    if (isAdded) {
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.add_to_playlist_success, musicFile.title ?: musicFile.name, selectedPlaylist.name),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    dismiss()
                 }
-            } else {
-                Log.d(TAG, "No playlists available")
-                builder.setMessage(R.string.no_playlists_available)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to load playlists: ${e.message}", e)
-            builder.setMessage("Fehler beim Laden der Playlisten")
         }
 
-        val dialog = builder.create()
-        dialog.window?.setLayout(
-            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        Log.d(TAG, "Dialog created successfully")
-        return dialog
-    }
-
-    override fun onStart() {
-        super.onStart()
-        Log.d(TAG, "Dialog started")
-    }
-
-    override fun onDismiss(dialog: android.content.DialogInterface) {
-        super.onDismiss(dialog)
-        Log.d(TAG, "Dialog dismissed")
+        return builder.create()
     }
 }

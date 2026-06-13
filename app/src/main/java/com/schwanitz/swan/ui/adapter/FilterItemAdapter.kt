@@ -1,6 +1,6 @@
 package com.schwanitz.swan.ui.adapter
 
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,7 +11,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestOptions
 import com.schwanitz.swan.R
-import com.schwanitz.swan.data.local.repository.ArtistImageRepository
+import com.schwanitz.swan.domain.repository.ArtistImageRepository
 import com.schwanitz.swan.domain.model.MusicFile
 import com.schwanitz.swan.domain.usecase.MetadataExtractor
 import kotlinx.coroutines.CoroutineScope
@@ -69,7 +69,7 @@ class FilterItemAdapter(
                             try {
                                 artistImageRepository.getArtistImageUrl(item)
                             } catch (e: Exception) {
-                                Log.e(tag, "Error loading image for artist $item: ${e.message}")
+                                Logger.e(tag, "Error loading image for artist $item: ${e.message}")
                                 null
                             }
                         }
@@ -77,14 +77,14 @@ class FilterItemAdapter(
                             Glide.with(itemView.context)
                                 .load(imageUrl)
                                 .apply(RequestOptions()
-                                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                    .diskCacheStrategy(DiskCacheStrategy.DATA)
                                     .placeholder(android.R.drawable.ic_menu_gallery)
                                     .error(android.R.drawable.ic_menu_close_clear_cancel))
                                 .into(artworkImage)
-                            Log.d(tag, "Loaded image for artist: $item, URL: $imageUrl")
+                            Logger.d(tag, "Loaded image for artist: $item, URL: $imageUrl")
                         } else {
                             artworkImage.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-                            Log.d(tag, "No image available for artist: $item")
+                            Logger.d(tag, "No image available for artist: $item")
                         }
                     }
                     imageLoadJobs[position] = job
@@ -100,7 +100,7 @@ class FilterItemAdapter(
                                 }
                                 firstFile?.let { metadataExtractor.getArtworkBytes(it.uri, 0) }
                             } catch (e: Exception) {
-                                Log.e(tag, "Error loading artwork for album $item: ${e.message}")
+                                Logger.e(tag, "Error loading artwork for album $item: ${e.message}")
                                 null
                             }
                         }
@@ -108,14 +108,14 @@ class FilterItemAdapter(
                             Glide.with(itemView.context)
                                 .load(artworkBytes)
                                 .apply(RequestOptions()
-                                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                    .diskCacheStrategy(DiskCacheStrategy.NONE)
                                     .placeholder(android.R.drawable.ic_menu_gallery)
                                     .error(android.R.drawable.ic_menu_close_clear_cancel))
                                 .into(artworkImage)
-                            Log.d(tag, "Loaded artwork for album: $item, size: ${artworkBytes.size} bytes")
+                            Logger.d(tag, "Loaded artwork for album: $item, size: ${artworkBytes.size} bytes")
                         } else {
                             artworkImage.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-                            Log.d(tag, "No artwork available for album: $item")
+                            Logger.d(tag, "No artwork available for album: $item")
                         }
                     }
                     imageLoadJobs[position] = job

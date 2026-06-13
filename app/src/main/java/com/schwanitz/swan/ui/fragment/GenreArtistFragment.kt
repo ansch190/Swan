@@ -2,29 +2,33 @@ package com.schwanitz.swan.ui.fragment
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.schwanitz.swan.R
-import com.schwanitz.swan.data.local.database.AppDatabase
-import com.schwanitz.swan.data.local.repository.ArtistImageRepository
-import com.schwanitz.swan.data.local.repository.MusicRepository
 import com.schwanitz.swan.databinding.FragmentFilterBinding
+import com.schwanitz.swan.domain.repository.ArtistImageRepository
+import javax.inject.Inject
 import com.schwanitz.swan.domain.usecase.MetadataExtractor
 import com.schwanitz.swan.ui.activity.SongsActivity
 import com.schwanitz.swan.ui.adapter.FilterItemAdapter
 import com.schwanitz.swan.ui.viewmodel.MainViewModel
-import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class GenreArtistsFragment : Fragment() {
 
     private var _binding: FragmentFilterBinding? = null
     private val binding get() = _binding!!
-    private lateinit var viewModel: MainViewModel
+    private val viewModel: MainViewModel by viewModels(ownerProducer = { requireActivity() })
+    @Inject lateinit var artistImageRepository: ArtistImageRepository
     private lateinit var adapter: FilterItemAdapter
     private var genre: String? = null
     private val TAG = "GenreArtistsFragment"
@@ -44,7 +48,7 @@ class GenreArtistsFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         genre = arguments?.getString(ARG_GENRE)
-        Log.d(TAG, "Fragment created for genre: $genre")
+        Logger.d(TAG, "Fragment created for genre: $genre")
     }
 
     override fun onCreateView(
@@ -57,17 +61,15 @@ class GenreArtistsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel = ViewModelProvider(requireActivity(), MainViewModelFactory(requireContext(), MusicRepository(requireContext()))).get(MainViewModel::class.java)
 
         // Setze die Fehlermeldung für eine leere Liste
         binding.emptyText.text = getString(R.string.no_artists_available)
 
-        val artistImageRepository = ArtistImageRepository(AppDatabase.getDatabase(requireContext()))
-        val metadataExtractor = MetadataExtractor(requireContext())
+        val metadataExtractor = MetadataExtractor.getInstance(requireContext())
         adapter = FilterItemAdapter(
             items = emptyList(),
             onItemClick = { artist ->
-                Log.d(TAG, "Artist clicked: $artist")
+                Logger.d(TAG, "Artist clicked: $artist")
                 val intent = Intent(context, SongsActivity::class.java).apply {
                     putExtra("criterion", "artist")
                     putExtra("value", artist)
@@ -85,17 +87,19 @@ class GenreArtistsFragment : Fragment() {
             adapter = this@GenreArtistsFragment.adapter
         }
 
-        viewModel.musicFiles.observe(viewLifecycleOwner) { files ->
-            genre?.let { selectedGenre ->
-                val artists = files
-                    .filter { it.genre?.equals(selectedGenre, ignoreCase = true) == true }
-                    .mapNotNull { it.artist }
-                    .distinct()
-                    .sorted()
-                Log.d(TAG, "Loaded artists for genre $selectedGenre: ${artists.size}, artists: $artists")
-                adapter.updateItems(artists)
-                binding.recyclerView.visibility = if (artists.isEmpty()) View.GONE else View.VISIBLE
-                binding.emptyText.visibility = if (artists.isEmpty()) View.VISIBLE else View.GONE
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.musicFiles.collectLatest { files ->
+                genre?.let { selectedGenre ->
+                    val artists = files
+                        .filter { it.genre?.equals(selectedGenre, ignoreCase = true) == true }
+                        .mapNotNull { it.artist }
+                        .distinct()
+                        .sorted()
+                    Logger.d(TAG, "Loaded artists for genre $selectedGenre: ${artists.size}, artists: $artists")
+                    adapter.updateItems(artists)
+                    binding.recyclerView.visibility = if (artists.isEmpty()) View.GONE else View.VISIBLE
+                    binding.emptyText.visibility = if (artists.isEmpty()) View.VISIBLE else View.GONE
+                }
             }
         }
     }

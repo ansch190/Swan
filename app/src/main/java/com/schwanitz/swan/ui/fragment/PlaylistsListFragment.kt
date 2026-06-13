@@ -6,7 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,23 +17,21 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.schwanitz.swan.R
-import com.schwanitz.swan.data.local.database.AppDatabase
 import com.schwanitz.swan.data.local.entity.PlaylistEntity
-import com.schwanitz.swan.data.local.entity.PlaylistSongEntity
-import com.schwanitz.swan.data.local.repository.MusicRepository
 import com.schwanitz.swan.databinding.FragmentPlaylistsListBinding
+import com.schwanitz.swan.domain.repository.MusicRepository
+import javax.inject.Inject
 import com.schwanitz.swan.domain.model.MusicFile
 import com.schwanitz.swan.ui.adapter.PlaylistAdapter
 import com.schwanitz.swan.ui.viewmodel.MainViewModel
-import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -41,11 +39,13 @@ import java.io.IOException
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets
 
+@AndroidEntryPoint
 class PlaylistsListFragment : Fragment() {
 
     private var _binding: FragmentPlaylistsListBinding? = null
     private val binding get() = _binding!!
-    private lateinit var viewModel: MainViewModel
+    private val viewModel: MainViewModel by viewModels(ownerProducer = { requireActivity() })
+    @Inject lateinit var repository: MusicRepository
     private lateinit var adapter: PlaylistAdapter
     private val searchQuery = MutableStateFlow<String?>(null)
     private val TAG = "PlaylistsListFragment"
@@ -77,10 +77,6 @@ class PlaylistsListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel = ViewModelProvider(
-            requireActivity(),
-            MainViewModelFactory(requireContext(), MusicRepository(requireContext()))
-        ).get(MainViewModel::class.java)
 
         adapter = PlaylistAdapter(
             playlists = emptyList(),
@@ -97,9 +93,9 @@ class PlaylistsListFragment : Fragment() {
 
         // Beobachte Playlists aus der Datenbank
         viewLifecycleOwner.lifecycleScope.launch {
-            AppDatabase.getDatabase(requireContext()).playlistDao().getAllPlaylists()
+            repository.getPlaylistsFlow()
                 .collectLatest { playlists ->
-                    Log.d(TAG, "Received ${playlists.size} playlists from database")
+                    Logger.d(TAG, "Received ${playlists.size} playlists from database")
                     allPlaylists = playlists.sortedBy { it.name.lowercase() }
                     applyFilter(searchQuery.value)
                 }
@@ -108,7 +104,7 @@ class PlaylistsListFragment : Fragment() {
         // Beobachte Suchbegriff-Änderungen
         viewLifecycleOwner.lifecycleScope.launch {
             searchQuery.collectLatest { query ->
-                Log.d(TAG, "Search query changed: $query")
+                Logger.d(TAG, "Search query changed: $query")
                 applyFilter(query)
             }
         }
@@ -147,7 +143,7 @@ class PlaylistsListFragment : Fragment() {
             // Wenn alles fehlschlägt, null zurückgeben und das System entscheiden lassen
             null
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting home directory URI: ${e.message}", e)
+            Logger.e(TAG, "Error getting home directory URI: ${e.message}", e)
             null
         }
     }
@@ -231,7 +227,7 @@ class PlaylistsListFragment : Fragment() {
                 viewModel.renamePlaylist(playlistId, newName)
                 Toast.makeText(requireContext(), R.string.rename_playlist_success, Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Log.e(TAG, "Error renaming playlist: ${e.message}", e)
+                Logger.e(TAG, "Error renaming playlist: ${e.message}", e)
                 Toast.makeText(requireContext(), R.string.rename_playlist_error, Toast.LENGTH_SHORT).show()
             }
         }
@@ -267,38 +263,13 @@ class PlaylistsListFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 // Lade alle Songs der Playlist
-                val playlistSongs = AppDatabase.getDatabase(requireContext())
-                    .playlistDao()
-                    .getSongsForPlaylist(playlist.id)
+                val playlistSongs = repository.getSongsForPlaylist(playlist.id)
                     .sortedBy { it.position }
 
                 // Konvertiere zu MusicFile-Objekten
                 val musicFiles = withContext(Dispatchers.IO) {
-                    playlistSongs.mapNotNull { song: PlaylistSongEntity ->
-                        val musicFileEntity = AppDatabase.getDatabase(requireContext())
-                            .musicFileDao()
-                            .getFileByUri(song.songUri)
-                            .first() // Konvertiere Flow zu einem einzelnen Wert
-
-                        musicFileEntity?.let { entity ->
-                            MusicFile(
-                                uri = Uri.parse(entity.uri),
-                                name = entity.name,
-                                title = entity.title,
-                                artist = entity.artist,
-                                album = entity.album,
-                                albumArtist = entity.albumArtist,
-                                discNumber = entity.discNumber,
-                                trackNumber = entity.trackNumber,
-                                year = entity.year,
-                                genre = entity.genre,
-                                fileSize = entity.fileSize,
-                                audioCodec = entity.audioCodec,
-                                sampleRate = entity.sampleRate,
-                                bitrate = entity.bitrate,
-                                tagVersion = entity.tagVersion
-                            )
-                        }
+                    playlistSongs.mapNotNull { song ->
+                        repository.getFileByUri(song.songUri)
                     }
                 }
 
@@ -318,7 +289,7 @@ class PlaylistsListFragment : Fragment() {
                 Toast.makeText(requireContext(), R.string.export_success, Toast.LENGTH_SHORT).show()
 
             } catch (e: Exception) {
-                Log.e(TAG, "Error exporting playlist: ${e.message}", e)
+                Logger.e(TAG, "Error exporting playlist: ${e.message}", e)
                 Toast.makeText(requireContext(), R.string.export_error, Toast.LENGTH_SHORT).show()
             }
         }
@@ -375,17 +346,17 @@ class PlaylistsListFragment : Fragment() {
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.delete_playlist)
             .setMessage("Möchten Sie die Playlist '${playlist.name}' wirklich löschen?")
-            .setPositiveButton(android.R.string.yes) { _, _ ->
+            .setPositiveButton(android.R.string.ok) { _, _ ->
                 deletePlaylist(playlist.id)
             }
-            .setNegativeButton(android.R.string.no, null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
     private fun deletePlaylist(playlistId: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.deletePlaylist(playlistId)
-            Log.d(TAG, "Playlist deleted: $playlistId")
+            Logger.d(TAG, "Playlist deleted: $playlistId")
         }
     }
 
@@ -407,7 +378,7 @@ class PlaylistsListFragment : Fragment() {
     }
 
     fun updateSearchQuery(query: String?) {
-        Log.d(TAG, "Updating search query: $query")
+        Logger.d(TAG, "Updating search query: $query")
         searchQuery.value = query
     }
 
@@ -421,7 +392,7 @@ class PlaylistsListFragment : Fragment() {
         } else {
             allPlaylists.filter { it.name.contains(query, ignoreCase = true) }
         }
-        Log.d(TAG, "Applying filter with query '$query': ${filteredPlaylists.size} playlists")
+        Logger.d(TAG, "Applying filter with query '$query': ${filteredPlaylists.size} playlists")
         adapter.updatePlaylists(filteredPlaylists)
         binding.playlistsRecyclerView.visibility = if (filteredPlaylists.isEmpty()) View.GONE else View.VISIBLE
         binding.emptyText.visibility = if (filteredPlaylists.isEmpty()) View.VISIBLE else View.GONE

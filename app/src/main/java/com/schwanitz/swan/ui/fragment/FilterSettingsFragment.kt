@@ -1,30 +1,32 @@
 package com.schwanitz.swan.ui.fragment
 
 import android.os.Bundle
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.DialogFragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.schwanitz.swan.R
-import com.schwanitz.swan.data.local.database.AppDatabase
-import com.schwanitz.swan.data.local.repository.MusicRepository
 import com.schwanitz.swan.databinding.FragmentFilterSettingsBinding
+import com.schwanitz.swan.domain.repository.MusicRepository
+import javax.inject.Inject
 import com.schwanitz.swan.ui.adapter.FilterSettingsAdapter
 import com.schwanitz.swan.ui.viewmodel.MainViewModel
-import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class FilterSettingsFragment : DialogFragment() {
 
     private var _binding: FragmentFilterSettingsBinding? = null
     private val binding get() = _binding!!
-    private lateinit var viewModel: MainViewModel
+    private val viewModel: MainViewModel by viewModels(ownerProducer = { requireActivity() })
+    @Inject lateinit var repository: MusicRepository
     private lateinit var filtersAdapter: FilterSettingsAdapter
     private val TAG = "FilterSettingsFragment"
 
@@ -39,7 +41,6 @@ class FilterSettingsFragment : DialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel = ViewModelProvider(requireActivity(), MainViewModelFactory(requireContext(), MusicRepository(requireContext()))).get(MainViewModel::class.java)
         filtersAdapter = FilterSettingsAdapter(requireContext(), ::removeFilter)
         binding.filtersRecyclerView.apply {
             layoutManager = LinearLayoutManager(context)
@@ -52,8 +53,8 @@ class FilterSettingsFragment : DialogFragment() {
 
         // Beobachte Datenbankänderungen
         viewLifecycleOwner.lifecycleScope.launch {
-            AppDatabase.getDatabase(requireContext()).filterDao().getAllFilters().collectLatest { filterList ->
-                Log.d(TAG, "Loaded filters from database: ${filterList.size}")
+            repository.getAllFilters().collectLatest { filterList ->
+                Logger.d(TAG, "Loaded filters from database: ${filterList.size}")
                 filtersAdapter.setData(filterList)
             }
         }
@@ -61,7 +62,7 @@ class FilterSettingsFragment : DialogFragment() {
 
     private fun removeFilter(criterion: String) {
         viewLifecycleOwner.lifecycleScope.launch {
-            Log.d(TAG, "Attempting to remove filter: $criterion")
+            Logger.d(TAG, "Attempting to remove filter: $criterion")
             val removed = viewModel.removeFilter(criterion)
             if (!removed) {
                 Toast.makeText(requireContext(), R.string.cannot_remove_last_filter, Toast.LENGTH_SHORT).show()

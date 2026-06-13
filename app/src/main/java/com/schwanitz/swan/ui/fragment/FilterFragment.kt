@@ -1,12 +1,8 @@
 package com.schwanitz.swan.ui.fragment
 
-import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
 import android.os.Bundle
-import android.os.IBinder
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import android.view.ContextMenu
 import android.view.MenuItem
 import android.view.LayoutInflater
@@ -14,49 +10,33 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.schwanitz.swan.R
-import com.schwanitz.swan.data.local.database.AppDatabase
-import com.schwanitz.swan.data.local.repository.ArtistImageRepository
-import com.schwanitz.swan.data.local.repository.MusicRepository
 import com.schwanitz.swan.databinding.FragmentFilterBinding
+import com.schwanitz.swan.domain.repository.ArtistImageRepository
+import javax.inject.Inject
 import com.schwanitz.swan.domain.usecase.MetadataExtractor
-import com.schwanitz.swan.service.MusicPlaybackService
 import com.schwanitz.swan.ui.activity.LibraryActivity
 import com.schwanitz.swan.ui.activity.SongsActivity
 import com.schwanitz.swan.ui.adapter.FilterItemAdapter
 import com.schwanitz.swan.ui.viewmodel.MainViewModel
-import com.schwanitz.swan.ui.viewmodel.MainViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class FilterFragment : Fragment() {
 
     private var _binding: FragmentFilterBinding? = null
     private val binding get() = _binding!!
-    private lateinit var viewModel: MainViewModel
+    private val viewModel: MainViewModel by viewModels(ownerProducer = { requireActivity() })
     private lateinit var adapter: FilterItemAdapter
+    @Inject lateinit var artistImageRepository: ArtistImageRepository
     private var criterion: String? = null
-    private var musicService: MusicPlaybackService? = null
-    private var isBound = false
     private val TAG = "FilterFragment"
-
-    private val connection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName, service: IBinder) {
-            val binder = service as MusicPlaybackService.MusicPlaybackBinder
-            musicService = binder.getService()
-            isBound = true
-            Log.d(TAG, "MusicPlaybackService bound")
-        }
-
-        override fun onServiceDisconnected(name: ComponentName) {
-            isBound = false
-            musicService = null
-            Log.d(TAG, "MusicPlaybackService unbound")
-        }
-    }
 
     companion object {
         private const val ARG_CRITERION = "criterion"
@@ -73,7 +53,7 @@ class FilterFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         criterion = arguments?.getString(ARG_CRITERION)
-        Log.d(TAG, "Fragment created for criterion: $criterion")
+        Logger.d(TAG, "Fragment created for criterion: $criterion")
     }
 
     override fun onCreateView(
@@ -86,23 +66,21 @@ class FilterFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel = ViewModelProvider(requireActivity(), MainViewModelFactory(requireContext(), MusicRepository(requireContext()))).get(MainViewModel::class.java)
 
-        val artistImageRepository = ArtistImageRepository(AppDatabase.getDatabase(requireContext()))
-        val metadataExtractor = MetadataExtractor(requireContext())
+        val metadataExtractor = MetadataExtractor.getInstance(requireContext())
         adapter = FilterItemAdapter(
             items = emptyList(),
             onItemClick = { item ->
-                Log.d(TAG, "Item clicked: $item for criterion: $criterion")
+                Logger.d(TAG, "Item clicked: $item for criterion: $criterion")
                 if (criterion == "title") {
                     viewModel.musicFiles.value?.find { file ->
                         (file.title ?: file.name) == item
                     }?.let { musicFile ->
-                        Log.d(TAG, "Playing file: ${musicFile.uri}")
-                        musicService?.play(musicFile.uri)
-                    } ?: Log.w(TAG, "No file found for title: $item")
+                        Logger.d(TAG, "Playing file: ${musicFile.uri}")
+                        viewModel.musicService?.play(musicFile.uri)
+                    } ?: Logger.w(TAG, "No file found for title: $item")
                 } else {
-                    Log.d(TAG, "Starting SongsActivity for criterion: $criterion, value: $item")
+                    Logger.d(TAG, "Starting SongsActivity for criterion: $criterion, value: $item")
                     val intent = Intent(context, SongsActivity::class.java).apply {
                         putExtra("criterion", criterion)
                         putExtra("value", item)
@@ -112,7 +90,7 @@ class FilterFragment : Fragment() {
             },
             onItemLongClick = { item, position ->
                 if (criterion == "title") {
-                    Log.d(TAG, "Long click on item: $item at position: $position")
+                    Logger.d(TAG, "Long click on item: $item at position: $position")
                     adapter.setSelectedPosition(position)
                     binding.recyclerView.showContextMenu()
                 }
@@ -130,46 +108,31 @@ class FilterFragment : Fragment() {
 
         // Beobachte Musikdateien für Filterkriterien
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.musicFiles.observe(viewLifecycleOwner) { files ->
+            viewModel.musicFiles.collectLatest { files ->
                 val items = when (criterion) {
                     "title" -> files.mapNotNull { it.title ?: it.name }.distinct().sorted()
                     "artist" -> files.mapNotNull { it.artist }.distinct().sorted()
                     "album" -> files.mapNotNull { it.album }.distinct().sorted()
                     "albumArtist" -> files.mapNotNull { it.albumArtist }.distinct().sorted()
-                    "year" -> files.mapNotNull { it.year?.toString() }.distinct().sorted()
+                    "year" -> files.mapNotNull { it.year }.distinct().sorted().map { it.toString() }
                     "genre" -> files.mapNotNull { it.genre }.distinct().sorted()
                     else -> emptyList()
                 }
-                Log.d(TAG, "Loaded items for $criterion: ${items.size}")
+                Logger.d(TAG, "Loaded items for $criterion: ${items.size}")
                 adapter.updateItems(items)
-                adapter = FilterItemAdapter(
-                    items = items,
-                    onItemClick = adapter.onItemClick,
-                    onItemLongClick = adapter.onItemLongClick,
-                    criterion = criterion,
-                    artistImageRepository = artistImageRepository,
-                    metadataExtractor = metadataExtractor,
-                    musicFiles = files
-                )
-                binding.recyclerView.adapter = adapter
                 updateEmptyState(items)
                 // Wende den aktuellen Suchbegriff an, falls vorhanden
                 val query = (activity as? LibraryActivity)?.searchQuery?.value
-                Log.d(TAG, "Applying initial filter for $criterion: $query")
+                Logger.d(TAG, "Applying initial filter for $criterion: $query")
                 filter(query)
             }
-        }
-
-        // Binde den MusicPlaybackService
-        Intent(requireContext(), MusicPlaybackService::class.java).also { intent ->
-            requireContext().bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
     }
 
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
         super.onCreateContextMenu(menu, v, menuInfo)
         if (criterion == "title") {
-            Log.d(TAG, "Creating context menu for view: $v")
+            Logger.d(TAG, "Creating context menu for view: $v")
             menu.clear() // Entferne vorhandene Einträge, um Duplikate zu vermeiden
             requireActivity().menuInflater.inflate(R.menu.context_menu, menu)
         }
@@ -177,15 +140,15 @@ class FilterFragment : Fragment() {
 
     override fun onContextItemSelected(item: MenuItem): Boolean {
         if (criterion != "title") return super.onContextItemSelected(item)
-        Log.d(TAG, "Context menu item selected: ${item.itemId}, title: ${item.title}")
+        Logger.d(TAG, "Context menu item selected: ${item.itemId}, title: ${item.title}")
         return when (item.itemId) {
             R.id.context_info -> {
                 val position = adapter.getSelectedPosition()
-                Log.d(TAG, "Processing context_info for position: $position")
+                Logger.d(TAG, "Processing context_info for position: $position")
                 if (position != RecyclerView.NO_POSITION) {
                     val selectedTitle = adapter.getItemAt(position)
                     if (selectedTitle != null) {
-                        Log.d(TAG, "Showing metadata for title: $selectedTitle at position: $position")
+                        Logger.d(TAG, "Showing metadata for title: $selectedTitle at position: $position")
                         viewModel.musicFiles.value?.filter { file ->
                             (file.title ?: file.name) == selectedTitle
                         }?.let { matchingFiles ->
@@ -193,27 +156,27 @@ class FilterFragment : Fragment() {
                                 try {
                                     MetadataFragment.newInstance(matchingFiles, 0)
                                         .show(parentFragmentManager, "MetadataFragment")
-                                    Log.d(TAG, "MetadataFragment shown successfully")
+                                    Logger.d(TAG, "MetadataFragment shown successfully")
                                 } catch (e: Exception) {
-                                    Log.e(TAG, "Failed to show MetadataFragment: ${e.message}", e)
+                                    Logger.e(TAG, "Failed to show MetadataFragment: ${e.message}", e)
                                 }
                             } else {
-                                Log.w(TAG, "No files found for title: $selectedTitle")
+                                Logger.w(TAG, "No files found for title: $selectedTitle")
                             }
                         }
                         true
                     } else {
-                        Log.w(TAG, "No item found at position: $position")
+                        Logger.w(TAG, "No item found at position: $position")
                         false
                     }
                 } else {
-                    Log.w(TAG, "Invalid position for context menu: $position")
+                    Logger.w(TAG, "Invalid position for context menu: $position")
                     false
                 }
             }
             R.id.context_add_to_playlist -> {
                 val position = adapter.getSelectedPosition()
-                Log.d(TAG, "Processing context_add_to_playlist for position: $position")
+                Logger.d(TAG, "Processing context_add_to_playlist for position: $position")
                 if (position != RecyclerView.NO_POSITION) {
                     val selectedTitle = adapter.getItemAt(position)
                     if (selectedTitle != null) {
@@ -221,31 +184,31 @@ class FilterFragment : Fragment() {
                             (file.title ?: file.name) == selectedTitle
                         }
                         if (musicFile != null) {
-                            Log.d(TAG, "Opening AddToPlaylistDialogFragment for: ${musicFile.name}")
+                            Logger.d(TAG, "Opening AddToPlaylistDialogFragment for: ${musicFile.name}")
                             try {
                                 AddToPlaylistDialogFragment.newInstance(musicFile)
                                     .show(parentFragmentManager, "AddToPlaylistDialog")
-                                Log.d(TAG, "AddToPlaylistDialogFragment shown successfully")
+                                Logger.d(TAG, "AddToPlaylistDialogFragment shown successfully")
                             } catch (e: Exception) {
-                                Log.e(TAG, "Failed to show AddToPlaylistDialogFragment: ${e.message}", e)
+                                Logger.e(TAG, "Failed to show AddToPlaylistDialogFragment: ${e.message}", e)
                                 Toast.makeText(requireContext(), "Fehler beim Öffnen des Dialogs", Toast.LENGTH_SHORT).show()
                             }
                             true
                         } else {
-                            Log.w(TAG, "No MusicFile found for title: $selectedTitle")
+                            Logger.w(TAG, "No MusicFile found for title: $selectedTitle")
                             false
                         }
                     } else {
-                        Log.w(TAG, "No item found at position: $position")
+                        Logger.w(TAG, "No item found at position: $position")
                         false
                     }
                 } else {
-                    Log.w(TAG, "Invalid position for context menu: $position")
+                    Logger.w(TAG, "Invalid position for context menu: $position")
                     false
                 }
             }
             else -> {
-                Log.w(TAG, "Unknown menu item selected: ${item.itemId}")
+                Logger.w(TAG, "Unknown menu item selected: ${item.itemId}")
                 super.onContextItemSelected(item)
             }
         }
@@ -258,7 +221,7 @@ class FilterFragment : Fragment() {
             "artist" -> files.mapNotNull { it.artist }.distinct().sorted()
             "album" -> files.mapNotNull { it.album }.distinct().sorted()
             "albumArtist" -> files.mapNotNull { it.albumArtist }.distinct().sorted()
-            "year" -> files.mapNotNull { it.year?.toString() }.distinct().sorted()
+            "year" -> files.mapNotNull { it.year }.distinct().sorted().map { it.toString() }
             "genre" -> files.mapNotNull { it.genre }.distinct().sorted()
             else -> emptyList()
         }
@@ -267,7 +230,7 @@ class FilterFragment : Fragment() {
         } else {
             items.filter { it.contains(query, ignoreCase = true) }
         }
-        Log.d(TAG, "Filtered items for $criterion: ${filteredItems.size} for query: $query")
+        Logger.d(TAG, "Filtered items for $criterion: ${filteredItems.size} for query: $query")
         adapter.updateItems(filteredItems)
         updateEmptyState(filteredItems)
     }
@@ -284,10 +247,6 @@ class FilterFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        if (isBound) {
-            requireContext().unbindService(connection)
-            isBound = false
-        }
         requireActivity().unregisterForContextMenu(binding.recyclerView)
         _binding = null
     }

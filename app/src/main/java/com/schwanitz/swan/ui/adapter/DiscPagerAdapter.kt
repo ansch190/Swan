@@ -3,7 +3,7 @@ package com.schwanitz.swan.ui.adapter
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import com.schwanitz.swan.ui.fragment.DiscFragment
 
 class DiscPagerAdapter(
@@ -17,7 +17,7 @@ class DiscPagerAdapter(
 
     override fun createFragment(position: Int): Fragment {
         val discNumber = discNumbers.getOrNull(position) ?: throw IllegalStateException("Invalid disc number at position $position")
-        Log.d("DiscPagerAdapter", "Creating fragment for disc: $discNumber, position: $position, album: $albumName, highlightSongUri: $highlightSongUri")
+        Logger.d("DiscPagerAdapter", "Creating fragment for disc: $discNumber, position: $position, album: $albumName, highlightSongUri: $highlightSongUri")
         return DiscFragment.newInstance(discNumber, albumName, highlightSongUri)
     }
 }

@@ -1,8 +1,6 @@
 package com.schwanitz.swan.ui.adapter
 
-import android.content.ContentValues.TAG
-import android.net.Uri
-import android.util.Log
+import com.schwanitz.swan.util.Logger
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -22,6 +20,9 @@ class ArtistAlbumsAdapter(
     private val year: String? = null
 ) : RecyclerView.Adapter<ArtistAlbumsAdapter.AlbumViewHolder>() {
 
+    companion object {
+        private const val TAG = "ArtistAlbumsAdapter"
+    }
     private var files: List<MusicFile> = emptyList()
 
     class AlbumViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -41,10 +42,10 @@ class ArtistAlbumsAdapter(
             val firstFile = files.firstOrNull {
                 it.album?.equals(album, ignoreCase = true) == true &&
                         (artistName.isEmpty() || it.albumArtist?.equals(artistName, ignoreCase = true) == true) &&
-                        (year == null || it.year?.equals(year, ignoreCase = true) == true)
+                        (year == null || it.year?.toString() == year)
             }
             if (firstFile != null) {
-                Log.d(TAG, "Loading artwork for album: $album, file: ${firstFile.uri}") // Zeile ~47
+                Logger.d(TAG, "Loading artwork for album: $album, file: ${firstFile.uri}") // Zeile ~47
                 val artworkBytes = metadataExtractor.getArtworkBytes(firstFile.uri, 0)
                 if (artworkBytes != null && artworkBytes.isNotEmpty()) {
                     Glide.with(itemView.context)
@@ -52,16 +53,16 @@ class ArtistAlbumsAdapter(
                         .error(android.R.drawable.ic_menu_close_clear_cancel)
                         .into(albumArtwork)
                     albumArtwork.visibility = View.VISIBLE
-                    Log.d(TAG, "Artwork loaded for album: $album, size: ${artworkBytes.size} bytes") // Zeile ~55
+                    Logger.d(TAG, "Artwork loaded for album: $album, size: ${artworkBytes.size} bytes") // Zeile ~55
                 } else {
                     albumArtwork.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
                     albumArtwork.visibility = View.VISIBLE
-                    Log.d(TAG, "No artwork found for album: $album") // Zeile ~59
+                    Logger.d(TAG, "No artwork found for album: $album") // Zeile ~59
                 }
             } else {
                 albumArtwork.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
                 albumArtwork.visibility = View.VISIBLE
-                Log.w(TAG, "No matching file found for album: $album, artist: $artistName, year: $year") // Zeile ~64
+                Logger.w(TAG, "No matching file found for album: $album, artist: $artistName, year: $year") // Zeile ~64
             }
             itemView.setOnClickListener { onItemClick(album) }
         }
@@ -83,7 +84,7 @@ class ArtistAlbumsAdapter(
     fun updateAlbums(newAlbums: List<String>, newFiles: List<MusicFile>) {
         albums = newAlbums
         files = newFiles
-        Log.d(TAG, "Updated albums: ${albums.size}, files: ${files.size}")
+        Logger.d(TAG, "Updated albums: ${albums.size}, files: ${files.size}")
         notifyDataSetChanged()
     }
 }

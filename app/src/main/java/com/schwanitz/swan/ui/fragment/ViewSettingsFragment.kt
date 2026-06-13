@@ -7,7 +7,9 @@ import android.view.ViewGroup
 import androidx.fragment.app.DialogFragment
 import com.schwanitz.swan.R
 import com.schwanitz.swan.databinding.FragmentViewSettingsBinding
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class ViewSettingsFragment : DialogFragment() {
 
     private var _binding: FragmentViewSettingsBinding? = null
