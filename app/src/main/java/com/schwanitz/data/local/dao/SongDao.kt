@@ -1,0 +1,35 @@
+﻿package com.schwanitz.data.local.dao
+
+import androidx.room.*
+import com.schwanitz.data.local.entity.SongEntity
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface SongDao {
+    @Query("SELECT * FROM songs WHERE isActive = 1 ORDER BY title ASC")
+    fun getAllSongs(): Flow<List<SongEntity>>
+
+    @Query("SELECT * FROM songs WHERE isActive = 1 AND isFavorite = 1 ORDER BY title ASC")
+    fun getFavoriteSongs(): Flow<List<SongEntity>>
+
+    @Query("SELECT * FROM songs WHERE isActive = 1 AND (title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%')")
+    fun searchSongs(query: String): Flow<List<SongEntity>>
+
+    @Query("SELECT * FROM songs WHERE id = :id")
+    suspend fun getSongById(id: String): SongEntity?
+
+    @Upsert
+    suspend fun upsertAll(songs: List<SongEntity>)
+
+    @Query("UPDATE songs SET isFavorite = NOT isFavorite WHERE id = :songId")
+    suspend fun toggleFavorite(songId: String)
+
+    @Query("DELETE FROM songs WHERE sourceId = :sourceId")
+    suspend fun deleteBySource(sourceId: String)
+
+    @Query("SELECT albumArtUri FROM songs WHERE albumArtUri IS NOT NULL")
+    suspend fun getAllAlbumArtUris(): List<String>
+
+    @Query("UPDATE songs SET isActive = :active WHERE sourceId = :sourceId")
+    suspend fun setActiveBySource(sourceId: String, active: Boolean)
+}

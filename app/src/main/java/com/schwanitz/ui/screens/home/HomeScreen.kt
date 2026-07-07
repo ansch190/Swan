@@ -1,0 +1,117 @@
+﻿package com.schwanitz.ui.screens.home
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.schwanitz.domain.model.Song
+import com.schwanitz.ui.components.SongListItem
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreen(
+    onSettingsClick: () -> Unit = {},
+    onSongInfoClick: (String) -> Unit = {},
+    viewModel: HomeViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    var contextMenuSong by remember { mutableStateOf<Song?>(null) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text("Songs") },
+            actions = {
+                IconButton(onClick = { viewModel.toggleFavoritesFilter() }) {
+                    Icon(
+                        imageVector = if (uiState.showFavoritesOnly) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = "Favorites",
+                        tint = if (uiState.showFavoritesOnly) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onSettingsClick) {
+                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                }
+            }
+        )
+
+        OutlinedTextField(
+            value = uiState.searchQuery,
+            onValueChange = { viewModel.onSearchQueryChange(it) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            placeholder = { Text("Search songs...") },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            trailingIcon = {
+                if (uiState.searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                        Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                    }
+                }
+            },
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+            uiState.songs.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (uiState.searchQuery.isNotBlank()) "No songs found"
+                        else "No music found.\nAdd a source in Settings.",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(uiState.songs, key = { it.id }) { song ->
+                        Box {
+                            SongListItem(
+                                song = song,
+                                onClick = { viewModel.playSong(song) },
+                                onFavoriteClick = { viewModel.toggleFavorite(song) },
+                                onLongClick = { contextMenuSong = song }
+                            )
+                            DropdownMenu(
+                                expanded = contextMenuSong?.id == song.id,
+                                onDismissRequest = { contextMenuSong = null }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Info") },
+                                    onClick = {
+                                        contextMenuSong = null
+                                        onSongInfoClick(song.id)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
