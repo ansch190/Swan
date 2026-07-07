@@ -42,7 +42,7 @@ fun PlayerControlBar(
                 Text(
                     text = formatTime(playerState.currentPosition),
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.width(40.dp)
+                    modifier = Modifier.padding(end = 8.dp)
                 )
                 Slider(
                     value = if (playerState.duration > 0)
@@ -56,7 +56,7 @@ fun PlayerControlBar(
                 Text(
                     text = formatTime(playerState.duration),
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.width(40.dp)
+                    modifier = Modifier.padding(start = 8.dp)
                 )
             }
         }
