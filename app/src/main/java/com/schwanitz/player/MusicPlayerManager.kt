@@ -1,5 +1,8 @@
 ﻿package com.schwanitz.player
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -7,6 +10,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.schwanitz.data.source.AuthHttpDataSourceFactory
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.SourceManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,6 +40,7 @@ data class PlayerState(
 
 @Singleton
 class MusicPlayerManager @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val player: ExoPlayer,
     private val authHttpDataSourceFactory: AuthHttpDataSourceFactory,
     private val sourceManager: SourceManager
@@ -86,6 +91,11 @@ class MusicPlayerManager @Inject constructor(
     }
 
     fun play(song: Song, queue: List<Song> = listOf(song)) {
+        appContext.startService(
+            Intent(appContext, MusicPlayerService::class.java).apply {
+                action = MusicPlayerService.ACTION_PLAY
+            }
+        )
         songQueue = queue
         player.stop()
         player.clearMediaItems()
@@ -99,6 +109,7 @@ class MusicPlayerManager @Inject constructor(
                         .setTitle(s.title)
                         .setArtist(s.artist)
                         .setAlbumTitle(s.album)
+                        .setArtworkUri(s.albumArtUri?.let { Uri.parse(it) })
                         .build()
                 )
             player.addMediaItem(builder.build())
