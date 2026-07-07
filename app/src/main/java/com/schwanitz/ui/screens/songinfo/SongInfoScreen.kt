@@ -99,18 +99,26 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
     ) {
         if (artworks.isNotEmpty()) {
             val artPagerState = rememberPagerState(pageCount = { artworks.size })
+            LaunchedEffect(song.id) {
+                artPagerState.scrollToPage(0)
+            }
             HorizontalPager(
                 state = artPagerState,
                 modifier = Modifier.size(200.dp)
             ) { page ->
-                AsyncImage(
-                    model = artworks[page].uri,
-                    contentDescription = "Album Art",
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(16.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    AsyncImage(
+                        model = artworks[page].uri,
+                        contentDescription = "Album Art",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                }
             }
             if (artworks.size > 1) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -140,8 +148,9 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
                 contentDescription = "Album Art",
                 modifier = Modifier
                     .size(200.dp)
-                    .clip(RoundedCornerShape(16.dp)),
-                contentScale = ContentScale.Crop
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                contentScale = ContentScale.Fit
             )
         } else {
             Surface(
