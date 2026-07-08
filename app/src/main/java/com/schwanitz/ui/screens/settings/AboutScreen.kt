@@ -26,6 +26,7 @@ fun AboutScreen(
     onNavigateBack: () -> Unit
 ) {
     var showLicenseDialog by remember { mutableStateOf(false) }
+    var showOssDialog by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -121,6 +122,15 @@ fun AboutScreen(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { uriHandler.openUri("https://last.fm") }
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = stringResource(R.string.about_oss_licenses),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { showOssDialog = true }
+                )
             }
         }
     }
@@ -159,6 +169,51 @@ fun AboutScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showLicenseDialog = false }) {
+                    Text(stringResource(R.string.about_close))
+                }
+            }
+        )
+    }
+
+    if (showOssDialog) {
+        val context = LocalContext.current
+        val ossScrollState = rememberScrollState()
+        val ossText = remember {
+            context.resources.openRawResource(R.raw.oss_licenses)
+                .bufferedReader()
+                .use { it.readText() }
+        }
+        AlertDialog(
+            onDismissRequest = { showOssDialog = false },
+            title = { Text(stringResource(R.string.about_oss_licenses)) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(ossScrollState)
+                ) {
+                    Text(
+                        text = ossText,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Apache License 2.0",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { uriHandler.openUri("https://apache.org/licenses/LICENSE-2.0") }
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "MIT License",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { uriHandler.openUri("https://opensource.org/licenses/MIT") }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showOssDialog = false }) {
                     Text(stringResource(R.string.about_close))
                 }
             }

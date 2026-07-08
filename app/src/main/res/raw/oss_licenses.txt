@@ -1,0 +1,46 @@
+This application uses open source libraries:
+
+AndroidX (Apache 2.0)
+https://developer.android.com/jetpack
+
+Compose Material3 (Apache 2.0)
+https://developer.android.com/jetpack/compose
+
+Hilt (Apache 2.0)
+https://dagger.dev/hilt/
+
+Room (Apache 2.0)
+https://developer.android.com/training/data-storage/room
+
+Media3 ExoPlayer (Apache 2.0)
+https://developer.android.com/media/media3
+
+Coil (Apache 2.0)
+https://coil-kt.github.io/coil/
+
+OkHttp (Apache 2.0)
+https://square.github.io/okhttp/
+
+kotlinx-serialization (Apache 2.0)
+https://github.com/Kotlin/kotlinx.serialization
+
+DataStore Preferences (Apache 2.0)
+https://developer.android.com/topic/libraries/architecture/datastore
+
+JSoup (MIT)
+https://jsoup.org/
+
+reorderable (Apache 2.0)
+https://github.com/Calvin-LL/Reorderable
+
+Tagix (Apache 2.0)
+https://github.com/ansch190/Tagix
+
+SLF4J (MIT)
+http://www.slf4j.org/
+
+Apache License 2.0
+https://apache.org/licenses/LICENSE-2.0
+
+MIT License
+https://opensource.org/licenses/MIT

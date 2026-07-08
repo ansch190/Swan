@@ -208,6 +208,7 @@
     <string name="about_attribution_header">Daten von Drittanbietern</string>
     <string name="about_discogs_attribution">Künstlerbilder: Discogs®</string>
     <string name="about_lastfm_attribution">Künstlerbiografien: Last.fm</string>
+    <string name="about_oss_licenses">Open-Source-Lizenzen</string>
 
     <!-- Common section labels -->
     <string name="section_songs">Lieder</string>
