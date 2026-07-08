@@ -30,6 +30,8 @@ android {
         val discogsSecret = localProps.getProperty("discogsSecret") ?: ""
         buildConfigField("String", "DISCOGS_CONSUMER_KEY", "\"$discogsKey\"")
         buildConfigField("String", "DISCOGS_CONSUMER_SECRET", "\"$discogsSecret\"")
+        val lastfmKey = localProps.getProperty("lastfmKey") ?: ""
+        buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmKey\"")
     }
 
     buildTypes {

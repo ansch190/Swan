@@ -3,8 +3,10 @@ package com.schwanitz.ui.screens.artistdetail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.Album
+import com.schwanitz.domain.model.ArtistProfile
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.ArtistImageRepository
+import com.schwanitz.domain.repository.ArtistProfileRepository
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.player.MusicPlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,7 +19,8 @@ import javax.inject.Inject
 class ArtistDetailViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
     private val playerManager: MusicPlayerManager,
-    private val artistImageRepository: ArtistImageRepository
+    private val artistImageRepository: ArtistImageRepository,
+    private val artistProfileRepository: ArtistProfileRepository
 ) : ViewModel() {
 
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
@@ -29,8 +32,8 @@ class ArtistDetailViewModel @Inject constructor(
     private val _artistImageUri = MutableStateFlow<String?>(null)
     val artistImageUri: StateFlow<String?> = _artistImageUri
 
-    private val _artistProfile = MutableStateFlow<String?>(null)
-    val artistProfile: StateFlow<String?> = _artistProfile
+    private val _artistProfile = MutableStateFlow<ArtistProfile?>(null)
+    val artistProfile: StateFlow<ArtistProfile?> = _artistProfile
 
     fun loadArtist(artistName: String) {
         viewModelScope.launch {
@@ -47,7 +50,7 @@ class ArtistDetailViewModel @Inject constructor(
             _artistImageUri.value = artistImageRepository.getArtistImage(artistName)
         }
         viewModelScope.launch {
-            _artistProfile.value = artistImageRepository.getArtistProfile(artistName)
+            _artistProfile.value = artistProfileRepository.getArtistProfile(artistName)
         }
     }
 

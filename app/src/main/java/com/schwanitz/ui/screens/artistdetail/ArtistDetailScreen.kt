@@ -120,7 +120,7 @@ fun ArtistDetailScreen(
                         .heightIn(max = 400.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    Text(text = artistProfile!!)
+                    Text(text = artistProfile!!.content)
                 }
             },
             confirmButton = {

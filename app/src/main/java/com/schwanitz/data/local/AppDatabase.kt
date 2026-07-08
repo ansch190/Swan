@@ -18,7 +18,7 @@ import com.schwanitz.data.local.entity.SourceConfigEntity
 
 @Database(
     entities = [SongEntity::class, PlaylistEntity::class, PlaylistSongCrossRef::class, SourceConfigEntity::class, SongArtworkEntity::class, ArtistImageEntity::class, ArtistProfileEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

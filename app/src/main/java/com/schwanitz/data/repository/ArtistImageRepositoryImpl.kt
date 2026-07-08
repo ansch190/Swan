@@ -6,9 +6,7 @@ import android.util.Log
 import com.schwanitz.BuildConfig
 import com.schwanitz.data.discogs.DiscogsApiService
 import com.schwanitz.data.local.dao.ArtistImageDao
-import com.schwanitz.data.local.dao.ArtistProfileDao
 import com.schwanitz.data.local.entity.ArtistImageEntity
-import com.schwanitz.data.local.entity.ArtistProfileEntity
 import com.schwanitz.data.source.ArtistImageCache
 import com.schwanitz.domain.repository.ArtistImageRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -20,7 +18,6 @@ import javax.inject.Singleton
 class ArtistImageRepositoryImpl @Inject constructor(
     private val apiService: DiscogsApiService,
     private val artistImageDao: ArtistImageDao,
-    private val artistProfileDao: ArtistProfileDao,
     @ApplicationContext private val context: Context
 ) : ArtistImageRepository {
 
@@ -65,17 +62,6 @@ class ArtistImageRepositoryImpl @Inject constructor(
         }
         Log.e("ArtistImage", "Artist detail: name=${detail.name}, images=${detail.images.size}")
 
-        if (detail.profile.isNotBlank()) {
-            artistProfileDao.upsert(
-                ArtistProfileEntity(
-                    artistName = artistName,
-                    profile = detail.profile,
-                    lastUpdated = System.currentTimeMillis()
-                )
-            )
-            Log.e("ArtistImage", "Saved profile for '$artistName': ${detail.profile.take(100)}")
-        }
-
         val imageUrl = detail.images.firstOrNull { it.type == "primary" }?.uri
             ?: detail.images.firstOrNull()?.uri
         if (imageUrl == null) {
@@ -105,17 +91,5 @@ class ArtistImageRepositoryImpl @Inject constructor(
         )
 
         return localUri
-    }
-
-    override suspend fun getArtistProfile(artistName: String): String? {
-        Log.e("ArtistImage", "getArtistProfile: start for '$artistName'")
-        val cached = artistProfileDao.get(artistName)
-        if (cached != null) {
-            Log.e("ArtistImage", "Profile cache hit for '$artistName': ${cached.profile.take(100)}")
-            return cached.profile
-        }
-        Log.e("ArtistImage", "No cached profile for '$artistName', fetching artist image first...")
-        getArtistImage(artistName)
-        return artistProfileDao.get(artistName)?.profile
     }
 }

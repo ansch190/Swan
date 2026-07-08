@@ -2,6 +2,7 @@
 
 import com.schwanitz.data.local.entity.*
 import com.schwanitz.domain.model.ArtistImage
+import com.schwanitz.domain.model.ArtistProfile
 import com.schwanitz.domain.model.Playlist
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.model.SongArtwork
@@ -96,5 +97,21 @@ fun ArtistImageEntity.toDomain(): ArtistImage = ArtistImage(
     discogsArtistId = discogsArtistId,
     imageUrl = imageUrl,
     localUri = localUri,
+    lastUpdated = lastUpdated
+)
+
+fun ArtistProfileEntity.toDomain(): ArtistProfile = ArtistProfile(
+    artistName = artistName,
+    summary = summary,
+    content = profile,
+    source = source,
+    lastUpdated = lastUpdated
+)
+
+fun ArtistProfile.toEntity(): ArtistProfileEntity = ArtistProfileEntity(
+    artistName = artistName,
+    profile = content,
+    summary = summary,
+    source = source,
     lastUpdated = lastUpdated
 )

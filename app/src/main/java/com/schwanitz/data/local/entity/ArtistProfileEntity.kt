@@ -7,5 +7,7 @@ import androidx.room.PrimaryKey
 data class ArtistProfileEntity(
     @PrimaryKey val artistName: String,
     val profile: String,
+    val summary: String? = null,
+    val source: String = "lastfm",
     val lastUpdated: Long
 )
