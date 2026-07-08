@@ -32,6 +32,8 @@ android {
         buildConfigField("String", "DISCOGS_CONSUMER_SECRET", "\"$discogsSecret\"")
         val lastfmKey = localProps.getProperty("lastfmKey") ?: ""
         buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmKey\"")
+        val geniusAccessToken = localProps.getProperty("geniusAccessToken") ?: ""
+        buildConfigField("String", "GENIUS_ACCESS_TOKEN", "\"$geniusAccessToken\"")
     }
 
     buildTypes {
@@ -96,6 +98,7 @@ dependencies {
     implementation(libs.reorderable)
     implementation("com.github.ansch190:Tagix:android-SNAPSHOT")
     implementation("org.slf4j:slf4j-android:1.7.36")
+    implementation(libs.jsoup)
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation(libs.androidx.datastore.preferences)
 

@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -49,6 +50,8 @@ fun SongInfoScreen(
     val song by viewModel.song.collectAsState()
     val sourceName by viewModel.sourceName.collectAsState()
     val artworks by viewModel.artworks.collectAsState()
+    val lyrics by viewModel.lyrics.collectAsState()
+    var showLyricsDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
 
@@ -58,6 +61,16 @@ fun SongInfoScreen(
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                }
+            },
+            actions = {
+                if (lyrics != null) {
+                    IconButton(onClick = { showLyricsDialog = true }) {
+                        Icon(
+                            Icons.Filled.Article,
+                            contentDescription = stringResource(R.string.cd_lyrics)
+                        )
+                    }
                 }
             }
         )
@@ -101,6 +114,27 @@ fun SongInfoScreen(
                 }
             }
         }
+    }
+
+    if (showLyricsDialog && lyrics != null) {
+        AlertDialog(
+            onDismissRequest = { showLyricsDialog = false },
+            title = { Text(stringResource(R.string.songinfo_lyrics_title)) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(text = lyrics!!)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLyricsDialog = false }) {
+                    Text(stringResource(R.string.songinfo_lyrics_dismiss))
+                }
+            }
+        )
     }
 }
 

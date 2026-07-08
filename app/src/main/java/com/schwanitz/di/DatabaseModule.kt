@@ -8,6 +8,7 @@ import com.schwanitz.data.local.dao.ArtistProfileDao
 import com.schwanitz.data.local.dao.PlaylistDao
 import com.schwanitz.data.local.dao.SongArtworkDao
 import com.schwanitz.data.local.dao.SongDao
+import com.schwanitz.data.local.dao.SongLyricsDao
 import com.schwanitz.data.local.dao.SourceConfigDao
 import dagger.Module
 import dagger.Provides
@@ -47,4 +48,7 @@ object DatabaseModule {
 
     @Provides
     fun provideArtistProfileDao(db: AppDatabase): ArtistProfileDao = db.artistProfileDao()
+
+    @Provides
+    fun provideSongLyricsDao(db: AppDatabase): SongLyricsDao = db.songLyricsDao()
 }

@@ -6,6 +6,7 @@ import com.schwanitz.data.local.dao.ArtistImageDao
 import com.schwanitz.data.local.dao.ArtistProfileDao
 import com.schwanitz.data.local.dao.SongArtworkDao
 import com.schwanitz.data.local.dao.SongDao
+import com.schwanitz.data.local.dao.SongLyricsDao
 import com.schwanitz.data.local.converter.toDomain
 import com.schwanitz.data.local.converter.toEntity
 import com.schwanitz.data.source.ArtistImageCache
@@ -25,6 +26,7 @@ import javax.inject.Singleton
 class MusicRepositoryImpl @Inject constructor(
     private val songDao: SongDao,
     private val songArtworkDao: SongArtworkDao,
+    private val songLyricsDao: SongLyricsDao,
     private val artistImageDao: ArtistImageDao,
     private val artistProfileDao: ArtistProfileDao,
     private val sourceManager: SourceManager,
@@ -109,8 +111,9 @@ class MusicRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteBySource(sourceId: String) {
-        songDao.deleteBySource(sourceId)
+        songLyricsDao.deleteBySource(sourceId)
         songArtworkDao.deleteBySource(sourceId)
+        songDao.deleteBySource(sourceId)
         cleanupOrphanedArtworkFiles()
         cleanupOrphanedArtistImages()
     }
@@ -126,8 +129,9 @@ class MusicRepositoryImpl @Inject constructor(
             return
         }
         android.util.Log.d("MusicRepository", "Deleting old data for $sourceId")
-        songDao.deleteBySource(sourceId)
+        songLyricsDao.deleteBySource(sourceId)
         songArtworkDao.deleteBySource(sourceId)
+        songDao.deleteBySource(sourceId)
         android.util.Log.d("MusicRepository", "Loading songs from source...")
         try {
             val result = source.loadSongs(config, onProgress)
@@ -150,8 +154,9 @@ class MusicRepositoryImpl @Inject constructor(
         val enabledSources = sourceManager.getEnabledSources()
         for (config in enabledSources) {
             val source = sourceRegistry.get(config.type) ?: continue
-            songDao.deleteBySource(config.id)
+            songLyricsDao.deleteBySource(config.id)
             songArtworkDao.deleteBySource(config.id)
+            songDao.deleteBySource(config.id)
             val result = source.loadSongs(config) { scanned, total ->
                 onProgress(config.name, scanned, total)
             }

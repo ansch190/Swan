@@ -200,6 +200,10 @@
     <string name="language_german">Deutsch</string>
     <string name="language_english">English</string>
 
+    <string name="cd_lyrics">Show lyrics</string>
+    <string name="songinfo_lyrics_title">Lyrics</string>
+    <string name="songinfo_lyrics_dismiss">CLOSE</string>
+
     <!-- Common section labels -->
     <string name="section_songs">Songs</string>
     <string name="section_albums">Albums</string>
