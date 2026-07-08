@@ -3,6 +3,7 @@
 import android.content.Context
 import android.net.Uri
 import com.schwanitz.data.local.dao.ArtistImageDao
+import com.schwanitz.data.local.dao.ArtistProfileDao
 import com.schwanitz.data.local.dao.SongArtworkDao
 import com.schwanitz.data.local.dao.SongDao
 import com.schwanitz.data.local.converter.toDomain
@@ -25,6 +26,7 @@ class MusicRepositoryImpl @Inject constructor(
     private val songDao: SongDao,
     private val songArtworkDao: SongArtworkDao,
     private val artistImageDao: ArtistImageDao,
+    private val artistProfileDao: ArtistProfileDao,
     private val sourceManager: SourceManager,
     private val sourceRegistry: MusicSourceRegistry,
     @ApplicationContext private val context: Context
@@ -167,6 +169,7 @@ class MusicRepositoryImpl @Inject constructor(
         for (entry in allEntries) {
             if (entry.artistName !in activeArtists) {
                 artistImageDao.delete(entry.artistName)
+                artistProfileDao.delete(entry.artistName)
             }
         }
         val remainingUris = artistImageDao.getAll().mapNotNull { it.localUri }.toSet()

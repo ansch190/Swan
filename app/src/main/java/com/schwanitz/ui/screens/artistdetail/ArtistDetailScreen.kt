@@ -7,10 +7,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,6 +43,8 @@ fun ArtistDetailScreen(
     val songs by viewModel.songs.collectAsState()
     val albums by viewModel.albums.collectAsState()
     val artistImageUri by viewModel.artistImageUri.collectAsState()
+    val artistProfile by viewModel.artistProfile.collectAsState()
+    var showBioDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
 
@@ -49,6 +54,13 @@ fun ArtistDetailScreen(
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                }
+            },
+            actions = {
+                if (artistProfile != null) {
+                    IconButton(onClick = { showBioDialog = true }) {
+                        Icon(Icons.Filled.Info, contentDescription = "Biography")
+                    }
                 }
             }
         )
@@ -96,6 +108,27 @@ fun ArtistDetailScreen(
                 }
             }
         }
+    }
+
+    if (showBioDialog && artistProfile != null) {
+        AlertDialog(
+            onDismissRequest = { showBioDialog = false },
+            title = { Text("Biography") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(text = artistProfile!!)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBioDialog = false }) {
+                    Text("DISMISS")
+                }
+            }
+        )
     }
 }
 

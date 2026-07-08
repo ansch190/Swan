@@ -18,6 +18,7 @@ data class DiscogsSearchResult(
 data class DiscogsArtistResponse(
     val id: Long,
     val name: String,
+    val profile: String = "",
     val images: List<DiscogsImage> = emptyList()
 )
 

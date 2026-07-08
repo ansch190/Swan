@@ -29,6 +29,9 @@ class ArtistDetailViewModel @Inject constructor(
     private val _artistImageUri = MutableStateFlow<String?>(null)
     val artistImageUri: StateFlow<String?> = _artistImageUri
 
+    private val _artistProfile = MutableStateFlow<String?>(null)
+    val artistProfile: StateFlow<String?> = _artistProfile
+
     fun loadArtist(artistName: String) {
         viewModelScope.launch {
             musicRepository.getSongsByArtist(artistName).collect {
@@ -42,6 +45,9 @@ class ArtistDetailViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _artistImageUri.value = artistImageRepository.getArtistImage(artistName)
+        }
+        viewModelScope.launch {
+            _artistProfile.value = artistImageRepository.getArtistProfile(artistName)
         }
     }
 
