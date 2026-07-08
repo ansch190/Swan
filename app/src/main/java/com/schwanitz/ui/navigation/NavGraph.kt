@@ -18,6 +18,7 @@ import com.schwanitz.ui.screens.settings.SettingsDashboardScreen
 import com.schwanitz.ui.screens.settings.SettingsScreen
 import com.schwanitz.ui.screens.songinfo.SongInfoScreen
 import com.schwanitz.ui.screens.albumdetail.AlbumDetailScreen
+import com.schwanitz.ui.screens.artistdetail.ArtistDetailScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -39,6 +40,26 @@ fun NavGraph(navController: NavHostController) {
             val songId = backStackEntry.arguments?.getString("songId") ?: return@composable
             SongInfoScreen(
                 songId = songId,
+                onNavigateBack = { navController.popBackStack() },
+                onAlbumClick = { album, artist ->
+                    val encodedAlbum = Uri.encode(album)
+                    val encodedArtist = Uri.encode(artist)
+                    navController.navigate("album_detail/$encodedAlbum/$encodedArtist")
+                },
+                onArtistClick = { artist ->
+                    val encodedArtist = Uri.encode(artist)
+                    navController.navigate("artist_detail/$encodedArtist")
+                }
+            )
+        }
+
+        composable(
+            route = "artist_detail/{artistName}",
+            arguments = listOf(navArgument("artistName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val artistName = backStackEntry.arguments?.getString("artistName") ?: ""
+            ArtistDetailScreen(
+                artistName = artistName,
                 onNavigateBack = { navController.popBackStack() },
                 onAlbumClick = { album, artist ->
                     val encodedAlbum = Uri.encode(album)

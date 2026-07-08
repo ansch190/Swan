@@ -35,6 +35,7 @@ fun SongInfoScreen(
     songId: String,
     onNavigateBack: () -> Unit,
     onAlbumClick: (String, String) -> Unit,
+    onArtistClick: (String) -> Unit,
     viewModel: SongInfoViewModel = hiltViewModel()
 ) {
     LaunchedEffect(songId) {
@@ -65,7 +66,7 @@ fun SongInfoScreen(
                 CircularProgressIndicator()
             }
         } else {
-            SongHeader(song = song!!, artworks = artworks, onAlbumClick = onAlbumClick)
+            SongHeader(song = song!!, artworks = artworks)
 
             TabRow(selectedTabIndex = pagerState.currentPage) {
                 Tab(selected = pagerState.currentPage == 0, onClick = {
@@ -80,21 +81,21 @@ fun SongInfoScreen(
                 }
             }
 
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.weight(1f)
-        ) { page ->
-            when (page) {
-                0 -> MetadataTab(song = song!!, onAlbumClick = onAlbumClick)
-                1 -> TechnicalTab(song = song!!, sourceName = sourceName)
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f)
+            ) { page ->
+                when (page) {
+                    0 -> MetadataTab(song = song!!, onAlbumClick = onAlbumClick, onArtistClick = onArtistClick)
+                    1 -> TechnicalTab(song = song!!, sourceName = sourceName)
+                }
             }
-        }
         }
     }
 }
 
 @Composable
-private fun SongHeader(song: Song, artworks: List<SongArtwork>, onAlbumClick: (String, String) -> Unit) {
+private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
     Column(
         modifier = Modifier.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -204,7 +205,7 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>, onAlbumClick: (S
 }
 
 @Composable
-private fun MetadataTab(song: Song, onAlbumClick: (String, String) -> Unit) {
+private fun MetadataTab(song: Song, onAlbumClick: (String, String) -> Unit, onArtistClick: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -214,7 +215,11 @@ private fun MetadataTab(song: Song, onAlbumClick: (String, String) -> Unit) {
         Spacer(modifier = Modifier.height(8.dp))
 
         InfoRow("Title", song.title.ifBlank { "-" })
-        InfoRow("Artist", song.artist.ifBlank { "-" })
+        InfoRow(
+            label = "Artist",
+            value = song.artist.ifBlank { "-" },
+            onClick = { onArtistClick(song.artist) }
+        )
         InfoRow(
             label = "Album",
             value = song.album.ifBlank { "-" },
