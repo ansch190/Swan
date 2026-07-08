@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import com.schwanitz.BuildConfig
 import com.schwanitz.R
 
@@ -29,10 +30,10 @@ fun AboutScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("About") },
+            title = { Text(stringResource(R.string.about_title)) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             }
         )
@@ -49,19 +50,19 @@ fun AboutScreen(
             ) {
                 Image(
                     painter = painterResource(R.drawable.ic_launcher_logo),
-                    contentDescription = "App Icon",
+                    contentDescription = stringResource(R.string.cd_app_icon),
                     modifier = Modifier.size(96.dp)
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Swan",
+                    text = stringResource(R.string.about_app_name),
                     style = MaterialTheme.typography.headlineLarge
                 )
 
                 Text(
-                    text = "Version ${BuildConfig.VERSION_NAME}",
+                    text = stringResource(R.string.about_version, BuildConfig.VERSION_NAME),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -69,7 +70,7 @@ fun AboutScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "A modern music player for Android",
+                    text = stringResource(R.string.about_description),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -78,7 +79,7 @@ fun AboutScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "Developer: Andreas Schwanitz",
+                    text = stringResource(R.string.about_developer),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -86,12 +87,12 @@ fun AboutScreen(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Text(
-                    text = "Licensed under",
+                    text = stringResource(R.string.about_licensed_under),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "PolyForm Noncommercial License 1.0.0",
+                    text = stringResource(R.string.about_license_name),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { showLicenseDialog = true }
@@ -110,7 +111,7 @@ fun AboutScreen(
         }
         AlertDialog(
             onDismissRequest = { showLicenseDialog = false },
-            title = { Text("License Information") },
+            title = { Text(stringResource(R.string.about_license_dialog_title)) },
             text = {
                 Column(
                     modifier = Modifier
@@ -129,12 +130,12 @@ fun AboutScreen(
                         uriHandler.openUri("https://polyformproject.org/licenses/noncommercial/1.0.0")
                     }
                 ) {
-                    Text("View Online")
+                    Text(stringResource(R.string.about_view_online))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLicenseDialog = false }) {
-                    Text("Close")
+                    Text(stringResource(R.string.about_close))
                 }
             }
         )

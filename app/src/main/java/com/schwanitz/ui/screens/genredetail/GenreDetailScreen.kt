@@ -22,6 +22,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import androidx.compose.ui.res.stringResource
+import com.schwanitz.R
 import com.schwanitz.ui.components.MarqueeText
 import com.schwanitz.ui.components.SongListItem
 import kotlinx.coroutines.launch
@@ -48,10 +50,10 @@ fun GenreDetailScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Genre Detail") },
+            title = { Text(stringResource(R.string.genre_title)) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             }
         )
@@ -62,17 +64,17 @@ fun GenreDetailScreen(
             Tab(selected = pagerState.currentPage == 0, onClick = {
                 coroutineScope.launch { pagerState.animateScrollToPage(0) }
             }) {
-                Text("Songs", modifier = Modifier.padding(12.dp))
+                Text(stringResource(R.string.section_songs), modifier = Modifier.padding(12.dp))
             }
             Tab(selected = pagerState.currentPage == 1, onClick = {
                 coroutineScope.launch { pagerState.animateScrollToPage(1) }
             }) {
-                Text("Artists", modifier = Modifier.padding(12.dp))
+                Text(stringResource(R.string.section_artists), modifier = Modifier.padding(12.dp))
             }
             Tab(selected = pagerState.currentPage == 2, onClick = {
                 coroutineScope.launch { pagerState.animateScrollToPage(2) }
             }) {
-                Text("Albums", modifier = Modifier.padding(12.dp))
+                Text(stringResource(R.string.section_albums), modifier = Modifier.padding(12.dp))
             }
         }
 
@@ -132,7 +134,7 @@ private fun GenreHeader(genre: String) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Filled.MusicNote,
-                    contentDescription = "Genre Icon",
+                    contentDescription = stringResource(R.string.cd_genre_icon),
                     modifier = Modifier.size(100.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -163,7 +165,7 @@ private fun ArtistListItem(artistName: String, imageUri: String?, onClick: () ->
             if (imageUri != null) {
                 AsyncImage(
                     model = imageUri,
-                    contentDescription = "Artist Photo",
+                    contentDescription = stringResource(R.string.cd_artist_photo),
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(20.dp)),
@@ -198,7 +200,7 @@ private fun AlbumListItem(albumName: String, albumArtUri: String?, onClick: () -
             if (albumArtUri != null) {
                 AsyncImage(
                     model = albumArtUri,
-                    contentDescription = "Album Art",
+                    contentDescription = stringResource(R.string.cd_album_art),
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(8.dp)),

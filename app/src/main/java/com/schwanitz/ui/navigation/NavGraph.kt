@@ -14,6 +14,7 @@ import com.schwanitz.ui.screens.playlist.PlaylistListScreen
 import com.schwanitz.ui.screens.playlist.SelectSongsScreen
 import com.schwanitz.ui.screens.settings.AboutScreen
 import com.schwanitz.ui.screens.settings.AddSourceScreen
+import com.schwanitz.ui.screens.settings.GeneralSettingsScreen
 import com.schwanitz.ui.screens.settings.SettingsDashboardScreen
 import com.schwanitz.ui.screens.settings.SettingsScreen
 import com.schwanitz.ui.screens.songinfo.SongInfoScreen
@@ -159,7 +160,14 @@ fun NavGraph(navController: NavHostController) {
             SettingsDashboardScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateSources = { navController.navigate("source_settings") },
-                onNavigateAbout = { navController.navigate("about") }
+                onNavigateAbout = { navController.navigate("about") },
+                onNavigateGeneral = { navController.navigate("general_settings") }
+            )
+        }
+
+        composable("general_settings") {
+            GeneralSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

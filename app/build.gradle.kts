@@ -63,6 +63,7 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
     implementation(libs.material)
 
     implementation(platform(libs.compose.bom))
@@ -96,6 +97,7 @@ dependencies {
     implementation("com.github.ansch190:Tagix:android-SNAPSHOT")
     implementation("org.slf4j:slf4j-android:1.7.36")
     implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation(libs.androidx.datastore.preferences)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)

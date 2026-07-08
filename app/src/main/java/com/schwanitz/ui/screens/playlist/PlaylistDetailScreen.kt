@@ -18,7 +18,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.schwanitz.R
 import androidx.hilt.navigation.compose.hiltViewModel
 
 import com.schwanitz.domain.model.Song
@@ -57,8 +59,8 @@ fun PlaylistDetailScreen(
     songToRemove?.let { song ->
         AlertDialog(
             onDismissRequest = { songToRemove = null },
-            title = { Text("Song entfernen") },
-            text = { Text("Â»${song.title}Â« aus Playlist entfernen?") },
+            title = { Text(stringResource(R.string.playlist_remove_song_title)) },
+            text = { Text(stringResource(R.string.playlist_remove_song_message, song.title)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -67,12 +69,12 @@ fun PlaylistDetailScreen(
                         songToRemove = null
                     }
                 ) {
-                    Text("Entfernen", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.playlist_remove_confirm), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { songToRemove = null }) {
-                    Text("Abbrechen")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -100,7 +102,7 @@ fun PlaylistDetailScreen(
             },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             },
             actions = {
@@ -113,14 +115,14 @@ fun PlaylistDetailScreen(
                         pendingDeletions = emptySet()
                         isEditing = false
                     }) {
-                        Icon(Icons.Filled.Check, contentDescription = "Fertig")
+                        Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.cd_edit_done))
                     }
                     IconButton(onClick = onAddSongsClick) {
-                        Icon(Icons.Filled.PlaylistAdd, contentDescription = "Songs hinzufÃ¼gen")
+                        Icon(Icons.Filled.PlaylistAdd, contentDescription = stringResource(R.string.cd_add_songs))
                     }
                 } else {
                     IconButton(onClick = { isEditing = true }) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Bearbeiten")
+                        Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.edit))
                     }
                 }
             }
@@ -132,7 +134,7 @@ fun PlaylistDetailScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Playlist is empty",
+                    text = stringResource(R.string.playlist_empty),
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
@@ -172,12 +174,12 @@ fun PlaylistDetailScreen(
     if (showRenameDialog) {
         AlertDialog(
             onDismissRequest = { showRenameDialog = false },
-            title = { Text("Playlist umbenennen") },
+            title = { Text(stringResource(R.string.playlist_rename_title)) },
             text = {
                 OutlinedTextField(
                     value = renameText,
                     onValueChange = { renameText = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.name_label)) },
                     singleLine = true,
                     modifier = Modifier.focusRequester(focusRequester)
                 )
@@ -191,12 +193,12 @@ fun PlaylistDetailScreen(
                         }
                     }
                 ) {
-                    Text("Speichern")
+                    Text(stringResource(R.string.save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRenameDialog = false }) {
-                    Text("Abbrechen")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )

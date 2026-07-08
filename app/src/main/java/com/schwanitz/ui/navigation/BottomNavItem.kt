@@ -5,27 +5,28 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.PlayCircleFilled
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.schwanitz.R
 
 sealed class BottomNavItem(
     val route: String,
-    val title: String,
+    val titleRes: Int,
     val icon: ImageVector
 ) {
     data object Songs : BottomNavItem(
         route = "home",
-        title = "Songs",
+        titleRes = R.string.bottom_songs,
         icon = Icons.Filled.LibraryMusic
     )
 
     data object Playlists : BottomNavItem(
         route = "playlists",
-        title = "Playlists",
+        titleRes = R.string.bottom_playlists,
         icon = Icons.Filled.QueueMusic
     )
 
     data object NowPlaying : BottomNavItem(
         route = "nowplaying",
-        title = "Now Playing",
+        titleRes = R.string.bottom_now_playing,
         icon = Icons.Filled.PlayCircleFilled
     )
 

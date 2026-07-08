@@ -1,14 +1,17 @@
 ﻿package com.schwanitz.ui.screens.settings
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.schwanitz.R
 import com.schwanitz.data.source.WebDavMusicSource
 import com.schwanitz.domain.repository.SourceManager
 import com.schwanitz.domain.source.SourceConfig
 import com.schwanitz.domain.source.SourceType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,6 +51,7 @@ sealed class ConnectionTestState {
 class AddSourceViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val webDavMusicSource: WebDavMusicSource,
+    @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -146,7 +150,7 @@ class AddSourceViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 connectionTestState = result.fold(
                     onSuccess = { ConnectionTestState.Success(it) },
-                    onFailure = { ConnectionTestState.Failure(it.message ?: "Unknown error") }
+                    onFailure = { ConnectionTestState.Failure(it.message ?: context.getString(R.string.add_source_unknown_error)) }
                 )
             )
         }
@@ -157,13 +161,13 @@ class AddSourceViewModel @Inject constructor(
         val decoded = Uri.decode(path)
         val afterColon = decoded.substringAfterLast(':')
         val lastSegment = afterColon.substringAfterLast('/')
-        return lastSegment.ifBlank { "Untitled" }
+        return lastSegment.ifBlank { context.getString(R.string.add_source_untitled) }
     }
 
     fun save() {
         val state = _uiState.value
         val type = state.selectedType ?: return
-        val name = state.sourceName.ifBlank { "Untitled" }
+        val name = state.sourceName.ifBlank { context.getString(R.string.add_source_untitled) }
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSaving = true)
@@ -172,18 +176,18 @@ class AddSourceViewModel @Inject constructor(
             when (type) {
                 SourceType.LOCAL -> {
                     if (state.folderUri != null && existing.any { it.id != editSourceId && it.folderUri == state.folderUri.toString() }) {
-                        _uiState.value = _uiState.value.copy(isSaving = false, error = "This source already exists")
+                        _uiState.value = _uiState.value.copy(isSaving = false, error = context.getString(R.string.add_source_duplicate_local))
                         return@launch
                     }
                 }
                 SourceType.WEBDAV -> {
                     val cleanUrl = state.url.trimEnd('/')
                     if (cleanUrl.isBlank()) {
-                        _uiState.value = _uiState.value.copy(isSaving = false, error = "URL required")
+                        _uiState.value = _uiState.value.copy(isSaving = false, error = context.getString(R.string.add_source_url_required))
                         return@launch
                     }
                     if (existing.any { it.id != editSourceId && it.url?.trimEnd('/') == cleanUrl }) {
-                        _uiState.value = _uiState.value.copy(isSaving = false, error = "This URL already exists")
+                        _uiState.value = _uiState.value.copy(isSaving = false, error = context.getString(R.string.add_source_duplicate_url))
                         return@launch
                     }
                 }

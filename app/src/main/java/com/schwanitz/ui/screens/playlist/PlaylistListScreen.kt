@@ -12,7 +12,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.schwanitz.R
 import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,10 +37,10 @@ fun PlaylistListScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Playlists") },
+            title = { Text(stringResource(R.string.playlist_list_title)) },
             actions = {
                 IconButton(onClick = { showDialog = true }) {
-                    Icon(Icons.Filled.Add, contentDescription = "Create playlist")
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.cd_create_playlist))
                 }
             }
         )
@@ -49,7 +51,7 @@ fun PlaylistListScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No playlists yet.\nTap + to create one.",
+                    text = stringResource(R.string.playlist_list_empty),
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
@@ -72,8 +74,8 @@ fun PlaylistListScreen(
     playlistToDelete?.let { playlist ->
         AlertDialog(
             onDismissRequest = { playlistToDelete = null },
-            title = { Text("Playlist lÃ¶schen") },
-            text = { Text("Playlist Â»${playlist.name}Â« lÃ¶schen?") },
+            title = { Text(stringResource(R.string.playlist_detail_delete_title)) },
+            text = { Text(stringResource(R.string.playlist_detail_delete_message, playlist.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -81,12 +83,12 @@ fun PlaylistListScreen(
                         playlistToDelete = null
                     }
                 ) {
-                    Text("LÃ¶schen", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { playlistToDelete = null }) {
-                    Text("Abbrechen")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -95,12 +97,12 @@ fun PlaylistListScreen(
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false; newPlaylistName = "" },
-            title = { Text("New Playlist") },
+            title = { Text(stringResource(R.string.playlist_create_title)) },
             text = {
                 OutlinedTextField(
                     value = newPlaylistName,
                     onValueChange = { newPlaylistName = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.name_label)) },
                     singleLine = true,
                     modifier = Modifier.focusRequester(focusRequester)
                 )
@@ -115,12 +117,12 @@ fun PlaylistListScreen(
                         }
                     }
                 ) {
-                    Text("Create")
+                    Text(stringResource(R.string.create))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDialog = false; newPlaylistName = "" }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -145,13 +147,13 @@ private fun PlaylistListItem(
         },
         headlineContent = { Text(playlist.name) },
         supportingContent = {
-            Text("${playlist.songCount} songs")
+            Text(stringResource(R.string.playlist_song_count, playlist.songCount))
         },
         trailingContent = {
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Filled.Delete,
-                    contentDescription = "Delete playlist",
+                    contentDescription = stringResource(R.string.cd_delete_playlist),
                     tint = MaterialTheme.colorScheme.error
                 )
             }

@@ -9,8 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.schwanitz.R
 import com.schwanitz.domain.model.Song
 import com.schwanitz.ui.components.SongListItem
 
@@ -26,18 +28,18 @@ fun HomeScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Songs") },
+            title = { Text(stringResource(R.string.home_title)) },
             actions = {
                 IconButton(onClick = { viewModel.toggleFavoritesFilter() }) {
                     Icon(
                         imageVector = if (uiState.showFavoritesOnly) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = "Favorites",
+                        contentDescription = stringResource(R.string.cd_favorites_filter),
                         tint = if (uiState.showFavoritesOnly) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 IconButton(onClick = onSettingsClick) {
-                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                    Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.cd_settings_icon))
                 }
             }
         )
@@ -48,12 +50,12 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            placeholder = { Text("Search songs...") },
+            placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
                 if (uiState.searchQuery.isNotEmpty()) {
                     IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                        Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                        Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.cd_clear_search))
                     }
                 }
             },
@@ -77,8 +79,8 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (uiState.searchQuery.isNotBlank()) "No songs found"
-                        else "No music found.\nAdd a source in Settings.",
+                        text = if (uiState.searchQuery.isNotBlank()) stringResource(R.string.home_empty_search)
+                        else stringResource(R.string.home_empty_no_source),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -101,7 +103,7 @@ fun HomeScreen(
                                 onDismissRequest = { contextMenuSong = null }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Info") },
+                                    text = { Text(stringResource(R.string.home_song_info)) },
                                     onClick = {
                                         contextMenuSong = null
                                         onSongInfoClick(song.id)

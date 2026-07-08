@@ -26,6 +26,8 @@ import android.net.Uri
 import coil.compose.AsyncImage
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.model.SongArtwork
+import androidx.compose.ui.res.stringResource
+import com.schwanitz.R
 import com.schwanitz.ui.components.MarqueeText
 import kotlinx.coroutines.launch
 
@@ -52,10 +54,10 @@ fun SongInfoScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Info") },
+            title = { Text(stringResource(R.string.songinfo_title)) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             }
         )
@@ -74,12 +76,12 @@ fun SongInfoScreen(
                 Tab(selected = pagerState.currentPage == 0, onClick = {
                     coroutineScope.launch { pagerState.animateScrollToPage(0) }
                 }) {
-                    Text("Metadata", modifier = Modifier.padding(12.dp))
+                    Text(stringResource(R.string.songinfo_metadata_tab), modifier = Modifier.padding(12.dp))
                 }
                 Tab(selected = pagerState.currentPage == 1, onClick = {
                     coroutineScope.launch { pagerState.animateScrollToPage(1) }
                 }) {
-                    Text("Technical", modifier = Modifier.padding(12.dp))
+                    Text(stringResource(R.string.songinfo_technical_tab), modifier = Modifier.padding(12.dp))
                 }
             }
 
@@ -125,7 +127,7 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
                 ) {
                     AsyncImage(
                         model = artworks[page].uri,
-                        contentDescription = "Album Art",
+                        contentDescription = stringResource(R.string.cd_album_art),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit
                     )
@@ -156,7 +158,7 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
         } else if (song.albumArtUri != null) {
             AsyncImage(
                 model = song.albumArtUri,
-                contentDescription = "Album Art",
+                contentDescription = stringResource(R.string.cd_album_art),
                 modifier = Modifier
                     .size(200.dp)
                     .clip(RoundedCornerShape(16.dp))
@@ -172,7 +174,7 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Filled.MusicNote,
-                        contentDescription = "Album Art",
+                        contentDescription = stringResource(R.string.cd_album_art),
                         modifier = Modifier.size(80.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -228,29 +230,29 @@ private fun MetadataTab(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        InfoRow("Title", song.title.ifBlank { "-" })
+        InfoRow(stringResource(R.string.songinfo_field_title), song.title.ifBlank { "-" })
         InfoRow(
-            label = "Artist",
+            label = stringResource(R.string.songinfo_field_artist),
             value = song.artist.ifBlank { "-" },
             onClick = { onArtistClick(song.artist) }
         )
         InfoRow(
-            label = "Album",
+            label = stringResource(R.string.songinfo_field_album),
             value = song.album.ifBlank { "-" },
             onClick = {
                 onAlbumClick(song.album, song.artist)
             }
         )
-        InfoRow("Album Artist", song.albumArtist.ifBlank { "-" })
-        InfoRow("Track", song.trackRaw.ifBlank { "-" })
-        InfoRow("Disc", song.discRaw.ifBlank { "-" })
+        InfoRow(stringResource(R.string.songinfo_field_album_artist), song.albumArtist.ifBlank { "-" })
+        InfoRow(stringResource(R.string.songinfo_field_track), song.trackRaw.ifBlank { "-" })
+        InfoRow(stringResource(R.string.songinfo_field_disc), song.discRaw.ifBlank { "-" })
         InfoRow(
-            label = "Year",
+            label = stringResource(R.string.songinfo_field_year),
             value = if (song.year > 0) song.year.toString() else "-",
             onClick = if (song.year > 0) { { onYearClick(song.year) } } else null
         )
         InfoRow(
-            label = "Genre",
+            label = stringResource(R.string.songinfo_field_genre),
             value = song.genre.ifBlank { "-" },
             onClick = if (song.genre.isNotBlank()) { { onGenreClick(song.genre) } } else null
         )
@@ -267,19 +269,19 @@ private fun TechnicalTab(song: Song, sourceName: String) {
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        InfoRow("Source", sourceName)
-        InfoRow("Path", cleanPath(song.filePath))
-        InfoRow("Filename", Uri.decode(song.filePath).substringAfterLast('/').substringBefore('?'))
+        InfoRow(stringResource(R.string.songinfo_field_source), sourceName)
+        InfoRow(stringResource(R.string.songinfo_field_path), cleanPath(song.filePath))
+        InfoRow(stringResource(R.string.songinfo_field_filename), Uri.decode(song.filePath).substringAfterLast('/').substringBefore('?'))
 
         Spacer(modifier = Modifier.height(4.dp))
         HorizontalDivider()
         Spacer(modifier = Modifier.height(4.dp))
 
-        InfoRow("Size", if (song.fileSize > 0L) formatFileSize(song.fileSize) else "-")
-        InfoRow("Audio Codec", song.mimeType.ifBlank { "-" })
-        InfoRow("Sample Rate", if (song.sampleRate > 0) "${song.sampleRate} Hz" else "-")
-        InfoRow("Bitrate", if (song.bitrate > 0) "${song.bitrate} bps" else "-")
-        InfoRow("Tag Version", song.tagVersion.ifBlank { "-" })
+        InfoRow(stringResource(R.string.songinfo_field_size), if (song.fileSize > 0L) formatFileSize(song.fileSize) else "-")
+        InfoRow(stringResource(R.string.songinfo_field_audio_codec), song.mimeType.ifBlank { "-" })
+        InfoRow(stringResource(R.string.songinfo_field_sample_rate), if (song.sampleRate > 0) stringResource(R.string.songinfo_sample_rate_hz, song.sampleRate.toString()) else "-")
+        InfoRow(stringResource(R.string.songinfo_field_bitrate), if (song.bitrate > 0) stringResource(R.string.songinfo_bitrate_bps, song.bitrate.toString()) else "-")
+        InfoRow(stringResource(R.string.songinfo_field_tag_version), song.tagVersion.ifBlank { "-" })
     }
 }
 
@@ -292,10 +294,10 @@ private fun InfoRow(label: String, value: String, onClick: (() -> Unit)? = null)
             .padding(vertical = 6.dp)
     ) {
         Text(
-            text = "$label:",
+            text = stringResource(R.string.songinfo_label_format, label),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(100.dp)
+            modifier = Modifier.width(120.dp)
         )
         Text(
             text = value,

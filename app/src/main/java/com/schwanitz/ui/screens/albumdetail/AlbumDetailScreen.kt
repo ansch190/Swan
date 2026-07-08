@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.schwanitz.domain.model.SongArtwork
+import androidx.compose.ui.res.stringResource
+import com.schwanitz.R
 import com.schwanitz.ui.components.MarqueeText
 import com.schwanitz.ui.components.SongListItem
 import kotlinx.coroutines.launch
@@ -50,10 +52,10 @@ fun AlbumDetailScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Album Detail") },
+            title = { Text(stringResource(R.string.album_title)) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             }
         )
@@ -70,7 +72,7 @@ fun AlbumDetailScreen(
                                 coroutineScope.launch { pagerState.animateScrollToPage(index) }
                             }
                         ) {
-                            Text("CD-$cdNumber", modifier = Modifier.padding(12.dp))
+                            Text(stringResource(R.string.album_cd_format, cdNumber), modifier = Modifier.padding(12.dp))
                         }
                     }
                 }
@@ -118,7 +120,7 @@ private fun AlbumHeader(albumName: String, artworks: List<SongArtwork>) {
                 ) {
                     AsyncImage(
                         model = artworks[page].uri,
-                        contentDescription = "Album Art",
+                        contentDescription = stringResource(R.string.cd_album_art),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit
                     )
@@ -155,7 +157,7 @@ private fun AlbumHeader(albumName: String, artworks: List<SongArtwork>) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Filled.MusicNote,
-                        contentDescription = "Album Art",
+                        contentDescription = stringResource(R.string.cd_album_art),
                         modifier = Modifier.size(80.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

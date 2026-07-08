@@ -1,3 +1,207 @@
 <resources>
     <string name="app_name">Swan</string>
+
+    <!-- Bottom navigation -->
+    <string name="bottom_songs">Songs</string>
+    <string name="bottom_playlists">Playlists</string>
+    <string name="bottom_now_playing">Now Playing</string>
+
+    <!-- Shared actions -->
+    <string name="back">Back</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="create">Create</string>
+    <string name="done">Done</string>
+    <string name="edit">Edit</string>
+    <string name="name_label">Name</string>
+    <string name="retry">Retry</string>
+
+    <!-- Content descriptions (accessibility) -->
+    <string name="cd_album_art">Album Art</string>
+    <string name="cd_move_song">Move</string>
+    <string name="cd_remove_from_playlist">Remove from playlist</string>
+    <string name="cd_remove_from_favorites">Remove from favorites</string>
+    <string name="cd_add_to_favorites">Add to favorites</string>
+    <string name="cd_shuffle">Shuffle</string>
+    <string name="cd_previous">Previous</string>
+    <string name="cd_pause">Pause</string>
+    <string name="cd_play">Play</string>
+    <string name="cd_next">Next</string>
+    <string name="cd_repeat">Repeat</string>
+    <string name="cd_favorites_filter">Favorites</string>
+    <string name="cd_settings_icon">Settings</string>
+    <string name="cd_clear_search">Clear</string>
+    <string name="cd_show_album_art">Show album art</string>
+    <string name="cd_show_queue">Show queue</string>
+    <string name="cd_create_playlist">Create playlist</string>
+    <string name="cd_delete_playlist">Delete playlist</string>
+    <string name="cd_add_songs">Add songs</string>
+    <string name="cd_edit_done">Done</string>
+    <string name="cd_add_source">Add source</string>
+    <string name="cd_edit_source">Edit</string>
+    <string name="cd_delete_source">Delete</string>
+    <string name="cd_hide_password">Hide password</string>
+    <string name="cd_show_password">Show password</string>
+    <string name="cd_app_icon">App Icon</string>
+    <string name="cd_biography">Biography</string>
+    <string name="cd_artist_photo">Artist Photo</string>
+    <string name="cd_genre_icon">Genre Icon</string>
+    <string name="cd_year_photo">Year Photo</string>
+
+    <!-- Player controls -->
+    <string name="player_time_format">%1$d:%2$02d</string>
+
+    <!-- Home screen -->
+    <string name="home_title">Songs</string>
+    <string name="home_search_placeholder">Search songs…</string>
+    <string name="home_empty_search">No songs found</string>
+    <string name="home_empty_no_source">No music found.\nAdd a source in Settings.</string>
+    <string name="home_song_info">Info</string>
+
+    <!-- Now Playing screen -->
+    <string name="nowplaying_title">Now Playing</string>
+    <string name="nowplaying_queue_header">Queue</string>
+    <string name="nowplaying_empty_title">No song playing</string>
+    <string name="nowplaying_empty_desc">Select a song from the library to start playing</string>
+
+    <!-- Playlist list screen -->
+    <string name="playlist_list_title">Playlists</string>
+    <string name="playlist_list_empty">No playlists yet.\nTap + to create one.</string>
+    <string name="playlist_create_title">New Playlist</string>
+    <string name="playlist_song_count">%d songs</string>
+
+    <!-- Playlist detail screen -->
+    <string name="playlist_detail_delete_title">Delete playlist</string>
+    <string name="playlist_detail_delete_message">Delete playlist \"%s\"?</string>
+    <string name="playlist_remove_song_title">Remove song</string>
+    <string name="playlist_remove_song_message">Remove \"%s\" from playlist?</string>
+    <string name="playlist_remove_confirm">Remove</string>
+    <string name="playlist_empty">Playlist is empty</string>
+    <string name="playlist_rename_title">Rename playlist</string>
+    <string name="playlist_default_name">Playlist</string>
+
+    <!-- Select songs screen -->
+    <string name="select_songs_title">Select songs</string>
+
+    <!-- Song info screen -->
+    <string name="songinfo_title">Info</string>
+    <string name="songinfo_metadata_tab">Metadata</string>
+    <string name="songinfo_technical_tab">Technical</string>
+    <string name="songinfo_field_title">Title</string>
+    <string name="songinfo_field_artist">Artist</string>
+    <string name="songinfo_field_album">Album</string>
+    <string name="songinfo_field_album_artist">Album Artist</string>
+    <string name="songinfo_field_track">Track</string>
+    <string name="songinfo_field_disc">Disc</string>
+    <string name="songinfo_field_year">Year</string>
+    <string name="songinfo_field_genre">Genre</string>
+    <string name="songinfo_field_source">Source</string>
+    <string name="songinfo_field_path">Path</string>
+    <string name="songinfo_field_filename">Filename</string>
+    <string name="songinfo_field_size">Size</string>
+    <string name="songinfo_field_audio_codec">Audio Codec</string>
+    <string name="songinfo_field_sample_rate">Sample Rate</string>
+    <string name="songinfo_field_bitrate">Bitrate</string>
+    <string name="songinfo_field_tag_version">Tag-Version</string>
+    <string name="songinfo_label_format">%s:</string>
+    <string name="songinfo_size_gb">%.1f GB</string>
+    <string name="songinfo_size_mb">%.1f MB</string>
+    <string name="songinfo_size_kb">%.1f KB</string>
+    <string name="songinfo_size_b">%s B</string>
+    <string name="songinfo_sample_rate_hz">%s Hz</string>
+    <string name="songinfo_bitrate_bps">%s bps</string>
+
+    <!-- Settings dashboard -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_general">General</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_desc">App display language</string>
+    <string name="settings_music_sources">Sources</string>
+    <string name="settings_music_sources_desc">Manage local folders and network sources</string>
+    <string name="settings_about">About</string>
+    <string name="settings_about_desc">App information and version</string>
+
+    <!-- Settings sources screen -->
+    <string name="settings_sources_title">Sources</string>
+    <string name="settings_scanning">Scanning \"%1$s\": %2$d of %3$d</string>
+    <string name="settings_local_section">Local</string>
+    <string name="settings_network_section">Network</string>
+    <string name="settings_reload_all">Reload All</string>
+    <string name="settings_delete_source_title">Delete Source</string>
+    <string name="settings_delete_source_message">Delete source \"%s\"?</string>
+    <string name="settings_source_local">Local folder</string>
+    <string name="settings_source_webdav">WebDAV</string>
+    <string name="settings_source_smb">SMB share</string>
+
+    <!-- Add source screen -->
+    <string name="add_source_edit_title">Edit Source</string>
+    <string name="add_source_select_type_title">Select Source Type</string>
+    <string name="add_source_title">Add Source</string>
+    <string name="add_source_local">Local Folder</string>
+    <string name="add_source_local_desc">Select a folder on your device</string>
+    <string name="add_source_webdav">WebDAV</string>
+    <string name="add_source_webdav_desc">Nextcloud, ownCloud, pCloud and more</string>
+    <string name="add_source_smb">SMB Network</string>
+    <string name="add_source_smb_desc">Windows network shares</string>
+    <string name="add_source_name_placeholder">e.g. My Cloud</string>
+    <string name="add_source_folder_selected">Folder selected</string>
+    <string name="add_source_select_folder">Select Folder</string>
+    <string name="add_source_provider_custom">Custom</string>
+    <string name="add_source_provider_label">Provider</string>
+    <string name="add_source_server_url_label">Server URL</string>
+    <string name="add_source_username_label">Username</string>
+    <string name="add_source_password_label">Password</string>
+    <string name="add_source_path_label">Path (optional)</string>
+    <string name="add_source_path_placeholder">/Music</string>
+    <string name="add_source_testing">Testing…</string>
+    <string name="add_source_connected">Connected</string>
+    <string name="add_source_test_connection">Test Connection</string>
+    <string name="add_source_smb_coming_soon">SMB support coming soon</string>
+    <string name="add_source_unknown_error">Unknown error</string>
+    <string name="add_source_untitled">Untitled</string>
+    <string name="add_source_duplicate_local">This source already exists</string>
+    <string name="add_source_url_required">URL required</string>
+    <string name="add_source_duplicate_url">This URL already exists</string>
+
+    <!-- About screen -->
+    <string name="about_title">About</string>
+    <string name="about_app_name">Swan</string>
+    <string name="about_version">Version %s</string>
+    <string name="about_description">A modern music player for Android</string>
+    <string name="about_developer">Developer: Andreas Schwanitz</string>
+    <string name="about_licensed_under">Licensed under</string>
+    <string name="about_license_name">PolyForm Noncommercial License 1.0.0</string>
+    <string name="about_license_dialog_title">License Information</string>
+    <string name="about_view_online">View Online</string>
+    <string name="about_close">Close</string>
+
+    <!-- WebDAV provider -->
+    <string name="webdav_username_hint">Username</string>
+
+    <!-- Album detail screen -->
+    <string name="album_title">Album Detail</string>
+    <string name="album_cd_format">CD-%d</string>
+
+    <!-- Artist detail screen -->
+    <string name="artist_title">Artist Detail</string>
+    <string name="artist_biography_title">Biography</string>
+    <string name="artist_biography_dismiss">DISMISS</string>
+
+    <!-- Genre detail screen -->
+    <string name="genre_title">Genre Detail</string>
+
+    <!-- Year detail screen -->
+    <string name="year_title">Year Detail</string>
+
+    <!-- Language selection -->
+    <string name="language_title">App Language</string>
+    <string name="language_system">Follow system</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_english">English</string>
+
+    <!-- Common section labels -->
+    <string name="section_songs">Songs</string>
+    <string name="section_albums">Albums</string>
+    <string name="section_artists">Artists</string>
 </resources>

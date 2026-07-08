@@ -13,6 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.res.stringResource
+import com.schwanitz.R
 import com.schwanitz.domain.source.SourceConfig
 import com.schwanitz.domain.source.SourceType
 
@@ -33,15 +35,15 @@ fun SettingsScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Sources") },
+            title = { Text(stringResource(R.string.settings_sources_title)) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             },
             actions = {
                 IconButton(onClick = onAddSource) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add source")
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.cd_add_source))
                 }
             }
         )
@@ -57,7 +59,7 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Scanning \"${scanProgress.sourceName}\": ${scanProgress.scanned} of ${scanProgress.total}",
+                    text = stringResource(R.string.settings_scanning, scanProgress.sourceName, scanProgress.scanned, scanProgress.total),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -69,7 +71,7 @@ fun SettingsScreen(
             contentPadding = PaddingValues(bottom = 80.dp)
         ) {
             if (localSources.isNotEmpty()) {
-                item { SectionHeader("Local") }
+                item { SectionHeader(stringResource(R.string.settings_local_section)) }
                 items(localSources, key = { it.id }) { source ->
                     SourceItem(
                         source = source,
@@ -80,7 +82,7 @@ fun SettingsScreen(
             }
 
             if (networkSources.isNotEmpty()) {
-                item { SectionHeader("Network") }
+                item { SectionHeader(stringResource(R.string.settings_network_section)) }
                 items(networkSources, key = { it.id }) { source ->
                     SourceItem(
                         source = source,
@@ -103,7 +105,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Filled.Refresh, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Reload All")
+                        Text(stringResource(R.string.settings_reload_all))
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
@@ -114,8 +116,8 @@ fun SettingsScreen(
     sourceToDelete?.let { source ->
         AlertDialog(
             onDismissRequest = { sourceToDelete = null },
-            title = { Text("Delete Source") },
-            text = { Text("Delete source \"${source.name}\"?") },
+            title = { Text(stringResource(R.string.settings_delete_source_title)) },
+            text = { Text(stringResource(R.string.settings_delete_source_message, source.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -123,12 +125,12 @@ fun SettingsScreen(
                         sourceToDelete = null
                     }
                 ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { sourceToDelete = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -161,10 +163,10 @@ private fun SourceItem(
     val subtitle = when (source.type) {
         SourceType.LOCAL -> {
             val raw = source.folderUri?.substringAfterLast('/')
-            if (raw != null) Uri.decode(raw).substringAfter(':') else "Local folder"
+            if (raw != null) Uri.decode(raw).substringAfter(':') else stringResource(R.string.settings_source_local)
         }
-        SourceType.WEBDAV -> source.url ?: "WebDAV"
-        SourceType.SMB -> source.path ?: "SMB share"
+        SourceType.WEBDAV -> source.url ?: stringResource(R.string.settings_source_webdav)
+        SourceType.SMB -> source.path ?: stringResource(R.string.settings_source_smb)
     }
 
     val modifier = if (onEditClick != null) {
@@ -185,7 +187,7 @@ private fun SourceItem(
                     )
                     Icon(
                         Icons.Filled.Edit,
-                        contentDescription = "Edit",
+                        contentDescription = stringResource(R.string.cd_edit_source),
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -200,7 +202,7 @@ private fun SourceItem(
                 IconButton(onClick = onDelete) {
                     Icon(
                         Icons.Filled.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = stringResource(R.string.cd_delete_source),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }

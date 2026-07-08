@@ -22,6 +22,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.res.stringResource
+import com.schwanitz.R
 import com.schwanitz.domain.source.SourceType
 import kotlinx.coroutines.delay
 
@@ -59,10 +61,10 @@ fun AddSourceScreen(
         TopAppBar(
             title = {
                 Text(
-                    if (uiState.isEditing) "Edit Source"
+                    if (uiState.isEditing) stringResource(R.string.add_source_edit_title)
                     else when (uiState.step) {
-                        Step.SELECT_TYPE -> "Select Source Type"
-                        Step.CONFIGURE -> "Add Source"
+                        Step.SELECT_TYPE -> stringResource(R.string.add_source_select_type_title)
+                        Step.CONFIGURE -> stringResource(R.string.add_source_title)
                     }
                 )
             },
@@ -74,7 +76,7 @@ fun AddSourceScreen(
                         onNavigateBack()
                     }
                 }) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             },
             actions = {
@@ -90,7 +92,7 @@ fun AddSourceScreen(
                     ) {
                         Icon(
                             Icons.Filled.Check,
-                            contentDescription = "Save",
+                            contentDescription = stringResource(R.string.save),
                             tint = if (canSave) MaterialTheme.colorScheme.onSurface
                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                         )
@@ -175,22 +177,22 @@ private fun TypeSelectionContent(
     ) {
         TypeCard(
             icon = Icons.Filled.Folder,
-            title = "Local Folder",
-            description = "Select a folder on your device",
+            title = stringResource(R.string.add_source_local),
+            description = stringResource(R.string.add_source_local_desc),
             onClick = { onTypeSelected(SourceType.LOCAL) }
         )
 
         TypeCard(
             icon = Icons.Filled.Cloud,
-            title = "WebDAV",
-            description = "Nextcloud, ownCloud, pCloud and more",
+            title = stringResource(R.string.add_source_webdav),
+            description = stringResource(R.string.add_source_webdav_desc),
             onClick = { onTypeSelected(SourceType.WEBDAV) }
         )
 
         TypeCard(
             icon = Icons.Filled.DevicesOther,
-            title = "SMB Network",
-            description = "Windows network shares",
+            title = stringResource(R.string.add_source_smb),
+            description = stringResource(R.string.add_source_smb_desc),
             enabled = false,
             onClick = {}
         )
@@ -278,8 +280,8 @@ private fun ConfigureSourceContent(
         OutlinedTextField(
             value = sourceName,
             onValueChange = onNameChange,
-            label = { Text("Name") },
-            placeholder = { Text("e.g. My Cloud") },
+            label = { Text(stringResource(R.string.name_label)) },
+            placeholder = { Text(stringResource(R.string.add_source_name_placeholder)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -307,8 +309,8 @@ private fun ConfigureSourceContent(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = if (folderPathDisplay.isNotEmpty()) "Folder selected"
-                                else "Select Folder",
+                                text = if (folderPathDisplay.isNotEmpty()) stringResource(R.string.add_source_folder_selected)
+                                else stringResource(R.string.add_source_select_folder),
                                 style = MaterialTheme.typography.titleSmall
                             )
                             if (folderPathDisplay.isNotEmpty()) {
@@ -324,11 +326,11 @@ private fun ConfigureSourceContent(
             }
             SourceType.WEBDAV -> {
                 var expanded by remember { mutableStateOf(false) }
-                val providerLabel = selectedProvider?.label ?: "Custom"
+                val providerLabel = selectedProvider?.label ?: stringResource(R.string.add_source_provider_custom)
                 val urlPlaceholder = selectedProvider?.url ?: ""
                 val urlFocusRequester = remember { FocusRequester() }
                 LaunchedEffect(Unit) { urlFocusRequester.requestFocus() }
-                val usernameLabel = selectedProvider?.usernameHint ?: "Username"
+                val usernameLabel = selectedProvider?.usernameHint ?: stringResource(R.string.webdav_username_hint)
 
                 ExposedDropdownMenuBox(
                     expanded = expanded,
@@ -338,7 +340,7 @@ private fun ConfigureSourceContent(
                         value = providerLabel,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Provider") },
+                        label = { Text(stringResource(R.string.add_source_provider_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         singleLine = true,
                         modifier = Modifier
@@ -350,7 +352,7 @@ private fun ConfigureSourceContent(
                         onDismissRequest = { expanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Custom") },
+                            text = { Text(stringResource(R.string.add_source_provider_custom)) },
                             onClick = {
                                 onSelectProvider(null)
                                 expanded = false
@@ -382,7 +384,7 @@ private fun ConfigureSourceContent(
                 OutlinedTextField(
                     value = url,
                     onValueChange = onUrlChange,
-                    label = { Text("Server URL") },
+                    label = { Text(stringResource(R.string.add_source_server_url_label)) },
                     placeholder = { Text(urlPlaceholder) },
                     singleLine = true,
                         modifier = Modifier
@@ -416,7 +418,7 @@ private fun ConfigureSourceContent(
                 OutlinedTextField(
                     value = password,
                     onValueChange = onPasswordChange,
-                    label = { Text("Password") },
+                    label = { Text(stringResource(R.string.add_source_password_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -427,7 +429,7 @@ private fun ConfigureSourceContent(
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
                             Icon(
                                 imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                                contentDescription = if (passwordVisible) stringResource(R.string.cd_hide_password) else stringResource(R.string.cd_show_password)
                             )
                         }
                     }
@@ -435,8 +437,8 @@ private fun ConfigureSourceContent(
                 OutlinedTextField(
                     value = path,
                     onValueChange = onPathChange,
-                    label = { Text("Path (optional)") },
-                    placeholder = { Text("/Music") },
+                    label = { Text(stringResource(R.string.add_source_path_label)) },
+                    placeholder = { Text(stringResource(R.string.add_source_path_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -470,25 +472,25 @@ private fun ConfigureSourceContent(
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("Testing...")
+                            Text(stringResource(R.string.add_source_testing))
                         }
                         is ConnectionTestState.Success -> {
                             Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Connected")
+                            Text(stringResource(R.string.add_source_connected))
                         }
                         is ConnectionTestState.Failure -> {
                             Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Retry")
+                            Text(stringResource(R.string.retry))
                         }
-                        else -> Text("Test Connection")
+                        else -> Text(stringResource(R.string.add_source_test_connection))
                     }
                 }
             }
             SourceType.SMB -> {
                 Text(
-                    text = "SMB support coming soon",
+                    text = stringResource(R.string.add_source_smb_coming_soon),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

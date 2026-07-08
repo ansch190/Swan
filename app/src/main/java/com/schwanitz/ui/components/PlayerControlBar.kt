@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.schwanitz.R
 import com.schwanitz.player.PlayerState
 
 private fun formatTime(ms: Long): String {
@@ -71,7 +73,7 @@ fun PlayerControlBar(
             IconButton(onClick = onShuffle) {
                 Icon(
                     imageVector = Icons.Filled.Shuffle,
-                    contentDescription = "Shuffle",
+                    contentDescription = stringResource(R.string.cd_shuffle),
                     tint = if (playerState.shuffleMode)
                         MaterialTheme.colorScheme.primary
                     else
@@ -82,21 +84,21 @@ fun PlayerControlBar(
             IconButton(onClick = onSkipPrevious) {
                 Icon(
                     imageVector = Icons.Filled.SkipPrevious,
-                    contentDescription = "Previous"
+                    contentDescription = stringResource(R.string.cd_previous)
                 )
             }
 
             FilledIconButton(onClick = onPlayPause) {
                 Icon(
                     imageVector = if (playerState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (playerState.isPlaying) "Pause" else "Play"
+                    contentDescription = if (playerState.isPlaying) stringResource(R.string.cd_pause) else stringResource(R.string.cd_play)
                 )
             }
 
             IconButton(onClick = onSkipNext) {
                 Icon(
                     imageVector = Icons.Filled.SkipNext,
-                    contentDescription = "Next"
+                    contentDescription = stringResource(R.string.cd_next)
                 )
             }
 
@@ -106,7 +108,7 @@ fun PlayerControlBar(
                         1 -> Icons.Filled.RepeatOne
                         else -> Icons.Filled.Repeat
                     },
-                    contentDescription = "Repeat",
+                    contentDescription = stringResource(R.string.cd_repeat),
                     tint = if (playerState.repeatMode != 0)
                         MaterialTheme.colorScheme.primary
                     else

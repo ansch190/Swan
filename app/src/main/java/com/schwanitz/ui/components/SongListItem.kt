@@ -19,7 +19,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
+import com.schwanitz.R
 import com.schwanitz.domain.model.Song
 import com.schwanitz.ui.components.MarqueeText
 
@@ -69,7 +71,7 @@ fun SongListItem(
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Filled.MusicNote,
-                            contentDescription = "Album Art",
+                            contentDescription = stringResource(R.string.cd_album_art),
                             modifier = Modifier.size(24.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -105,7 +107,7 @@ fun SongListItem(
                         IconButton(modifier = dragHandleModifier, onClick = {}) {
                             Icon(
                                 imageVector = Icons.Filled.Menu,
-                                contentDescription = "Verschieben"
+                                contentDescription = stringResource(R.string.cd_move_song)
                             )
                         }
                     }
@@ -113,7 +115,7 @@ fun SongListItem(
                         IconButton(onClick = onRemoveClick) {
                             Icon(
                                 imageVector = Icons.Filled.Delete,
-                                contentDescription = "Aus Playlist entfernen",
+                                contentDescription = stringResource(R.string.cd_remove_from_playlist),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
@@ -123,7 +125,7 @@ fun SongListItem(
                 IconButton(onClick = onFavoriteClick) {
                     Icon(
                         imageVector = if (song.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = if (song.isFavorite) "Remove from favorites" else "Add to favorites",
+                        contentDescription = if (song.isFavorite) stringResource(R.string.cd_remove_from_favorites) else stringResource(R.string.cd_add_to_favorites),
                         tint = if (song.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

@@ -9,7 +9,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.schwanitz.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.schwanitz.ui.components.SongListItem
 
@@ -24,17 +26,17 @@ fun SelectSongsScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Songs auswÃ¤hlen") },
+            title = { Text(stringResource(R.string.select_songs_title)) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             },
             actions = {
                 IconButton(onClick = { viewModel.toggleFavoritesFilter() }) {
                     Icon(
                         imageVector = if (uiState.showFavoritesOnly) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = "Favorites",
+                        contentDescription = stringResource(R.string.cd_favorites_filter),
                         tint = if (uiState.showFavoritesOnly) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -47,7 +49,7 @@ fun SelectSongsScreen(
                 ) {
                     Icon(
                         Icons.Filled.Check,
-                        contentDescription = "Fertig",
+                        contentDescription = stringResource(R.string.done),
                         tint = if (selectedIds.isNotEmpty()) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -61,12 +63,12 @@ fun SelectSongsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            placeholder = { Text("Search songs...") },
+            placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
                 if (uiState.searchQuery.isNotEmpty()) {
                     IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                        Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                        Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.cd_clear_search))
                     }
                 }
             },
@@ -90,8 +92,8 @@ fun SelectSongsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (uiState.searchQuery.isNotBlank()) "No songs found"
-                        else "No music found.\nAdd a source in Settings.",
+                        text = if (uiState.searchQuery.isNotBlank()) stringResource(R.string.home_empty_search)
+                        else stringResource(R.string.home_empty_no_source),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }

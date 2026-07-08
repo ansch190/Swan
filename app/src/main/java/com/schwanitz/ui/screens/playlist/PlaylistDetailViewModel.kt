@@ -1,12 +1,15 @@
 ﻿package com.schwanitz.ui.screens.playlist
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.schwanitz.R
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -15,7 +18,8 @@ import javax.inject.Inject
 class PlaylistDetailViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
     private val playlistRepository: PlaylistRepository,
-    private val playerManager: MusicPlayerManager
+    private val playerManager: MusicPlayerManager,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _playlistId = MutableStateFlow<Long?>(null)
@@ -23,8 +27,8 @@ class PlaylistDetailViewModel @Inject constructor(
     val playlistName: StateFlow<String> = _playlistId
         .filterNotNull()
         .flatMapLatest { playlistRepository.getPlaylist(it) }
-        .map { it?.name ?: "Playlist" }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Playlist")
+        .map { it?.name ?: context.getString(R.string.playlist_default_name) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), context.getString(R.string.playlist_default_name))
 
     val songs: StateFlow<List<Song>> = _playlistId
         .filterNotNull()

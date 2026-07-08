@@ -34,6 +34,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import androidx.compose.ui.res.stringResource
+import com.schwanitz.R
 import com.schwanitz.ui.components.MarqueeText
 import com.schwanitz.ui.components.PlayerControlBar
 
@@ -47,12 +49,12 @@ fun NowPlayingScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Now Playing") },
+            title = { Text(stringResource(R.string.nowplaying_title)) },
             actions = {
                 IconButton(onClick = { showQueue = !showQueue }) {
                     Icon(
                         imageVector = if (showQueue) Icons.Filled.Image else Icons.Filled.List,
-                        contentDescription = if (showQueue) "Show album art" else "Show queue"
+                        contentDescription = if (showQueue) stringResource(R.string.cd_show_album_art) else stringResource(R.string.cd_show_queue)
                     )
                 }
             }
@@ -92,7 +94,7 @@ fun NowPlayingScreen(
                                 ) {
                                     AsyncImage(
                                         model = artworks[page].uri,
-                                        contentDescription = "Album Art",
+                                        contentDescription = stringResource(R.string.cd_album_art),
                                         modifier = Modifier.fillMaxSize(),
                                         contentScale = ContentScale.Fit
                                     )
@@ -123,7 +125,7 @@ fun NowPlayingScreen(
                         } else if (currentSong.albumArtUri != null) {
                             AsyncImage(
                                 model = currentSong.albumArtUri,
-                                contentDescription = "Album Art",
+                                contentDescription = stringResource(R.string.cd_album_art),
                                 modifier = Modifier
                                     .size(280.dp)
                                     .clip(RoundedCornerShape(16.dp))
@@ -139,7 +141,7 @@ fun NowPlayingScreen(
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = Icons.Filled.MusicNote,
-                                        contentDescription = "Album Art",
+                                        contentDescription = stringResource(R.string.cd_album_art),
                                         modifier = Modifier.size(96.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -201,7 +203,7 @@ fun NowPlayingScreen(
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
                         Text(
-                            text = "Queue",
+                            text = stringResource(R.string.nowplaying_queue_header),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -278,7 +280,7 @@ fun NowPlayingScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "No song playing",
+                        text = stringResource(R.string.nowplaying_empty_title),
                         style = MaterialTheme.typography.headlineMedium,
                         textAlign = TextAlign.Center
                     )
@@ -286,7 +288,7 @@ fun NowPlayingScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Select a song from the library to start playing",
+                        text = stringResource(R.string.nowplaying_empty_desc),
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
