@@ -205,6 +205,10 @@
     <string name="songinfo_lyrics_dismiss">CLOSE</string>
     <string name="source_format">Source: %s</string>
 
+    <string name="about_attribution_header">Third-party data</string>
+    <string name="about_discogs_attribution">Artist images: Discogs®</string>
+    <string name="about_lastfm_attribution">Artist biographies: Last.fm</string>
+
     <!-- Common section labels -->
     <string name="section_songs">Songs</string>
     <string name="section_albums">Albums</string>

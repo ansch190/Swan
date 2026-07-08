@@ -97,6 +97,30 @@ fun AboutScreen(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { showLicenseDialog = true }
                 )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = stringResource(R.string.about_attribution_header),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = stringResource(R.string.about_discogs_attribution),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { uriHandler.openUri("https://discogs.com") }
+                )
+
+                Text(
+                    text = stringResource(R.string.about_lastfm_attribution),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { uriHandler.openUri("https://last.fm") }
+                )
             }
         }
     }
