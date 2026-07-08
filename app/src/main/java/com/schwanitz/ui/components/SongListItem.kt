@@ -84,11 +84,19 @@ fun SongListItem(
             )
         },
         supportingContent = {
-            Text(
-                text = "${song.artist} \u2022 ${song.album}",
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            val subtitle = when {
+                song.artist.isNotBlank() && song.album.isNotBlank() -> "${song.artist} \u2022 ${song.album}"
+                song.artist.isNotBlank() -> song.artist
+                song.album.isNotBlank() -> song.album
+                else -> ""
+            }
+            if (subtitle.isNotEmpty()) {
+                Text(
+                    text = subtitle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         },
         trailingContent = {
             if (showDragHandle || onRemoveClick != null) {

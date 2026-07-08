@@ -172,7 +172,7 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
         Spacer(modifier = Modifier.height(16.dp))
 
         MarqueeText(
-            text = song.title,
+            text = song.title.ifBlank { "-" },
             modifier = Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
@@ -182,7 +182,7 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = song.artist,
+            text = song.artist.ifBlank { "-" },
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -190,7 +190,7 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
         Spacer(modifier = Modifier.height(2.dp))
 
         Text(
-            text = song.album,
+            text = song.album.ifBlank { "-" },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -211,9 +211,9 @@ private fun MetadataTab(song: Song) {
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        InfoRow("Title", song.title)
-        InfoRow("Artist", song.artist)
-        InfoRow("Album", song.album)
+        InfoRow("Title", song.title.ifBlank { "-" })
+        InfoRow("Artist", song.artist.ifBlank { "-" })
+        InfoRow("Album", song.album.ifBlank { "-" })
         InfoRow("Album Artist", song.albumArtist.ifBlank { "-" })
         InfoRow("Track", song.trackRaw.ifBlank { "-" })
         InfoRow("Disc", song.discRaw.ifBlank { "-" })

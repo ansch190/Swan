@@ -2,6 +2,7 @@
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.util.Log
 import com.schwanitz.domain.model.Song
 import com.schwanitz.api.MetadataManager
@@ -72,16 +73,26 @@ object MetadataExtractor {
                 return BuildSongResult(null, emptyList())
             }
 
-            if (metadataList.isEmpty()) {
-                Log.e("MetadataExtractor", "No tag metadata found for $songId")
-                return BuildSongResult(null, emptyList())
+            val tagFields = if (metadataList.isEmpty()) {
+                Log.w("MetadataExtractor", "No tag metadata found for $songId, using defaults")
+                TagFields()
+            } else {
+                val bestMetadata = metadataList.maxByOrNull { tagPriority(it.tagFormat) }
+                    ?: metadataList.first()
+                Log.e("MetadataExtractor", "Tag format=${bestMetadata.tagFormat}, fields=${bestMetadata.fields.size}, pictures=${bestMetadata.pictures.size}")
+                extractTagFields(bestMetadata, context)
             }
 
-            val bestMetadata = metadataList.maxByOrNull { tagPriority(it.tagFormat) }
-                ?: metadataList.first()
-            Log.e("MetadataExtractor", "Tag format=${bestMetadata.tagFormat}, fields=${bestMetadata.fields.size}, pictures=${bestMetadata.pictures.size}")
+            val fileName = try {
+                val decoded = Uri.decode(songId)
+                val lastPart = decoded.substringAfterLast('/')
+                val filenameWithExt = if (lastPart.contains(':')) lastPart.substringAfterLast(':') else lastPart
+                if (filenameWithExt.contains('.')) filenameWithExt.substringBeforeLast('.') else filenameWithExt
+            } catch (e: Exception) {
+                songId
+            }
 
-            val tagFields = extractTagFields(bestMetadata, context)
+            val finalTitle = tagFields.title.ifBlank { fileName }
             Log.e("MetadataExtractor", "Extracted for $songId: title=${tagFields.title} artist=${tagFields.artist} album=${tagFields.album} albumArtist=${tagFields.albumArtist} disc=${tagFields.discRaw} track=${tagFields.trackRaw} year=${tagFields.year} genre=${tagFields.genre} tag=${tagFields.tagVersion} artworks=${tagFields.artworkUris.size}")
 
             val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
@@ -102,7 +113,7 @@ object MetadataExtractor {
 
             val song = Song(
                 id = songId,
-                title = tagFields.title,
+                title = finalTitle,
                 artist = tagFields.artist,
                 album = tagFields.album,
                 durationMs = durationMs,
