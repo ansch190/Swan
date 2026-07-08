@@ -13,6 +13,9 @@ interface MusicRepository {
     fun getAlbumsByArtist(artist: String): Flow<List<com.schwanitz.domain.model.Album>>
     fun getSongsByYear(year: Int): Flow<List<Song>>
     fun getAlbumsByYear(year: Int): Flow<List<com.schwanitz.domain.model.Album>>
+    fun getSongsByGenre(genre: String): Flow<List<Song>>
+    fun getAlbumsByGenre(genre: String): Flow<List<com.schwanitz.domain.model.Album>>
+    fun getArtistsByGenre(genre: String): Flow<List<String>>
     suspend fun getSongById(songId: String): Song?
     suspend fun getSongArtworks(songId: String): List<SongArtwork>
     suspend fun toggleFavorite(songId: String)

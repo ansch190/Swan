@@ -75,6 +75,22 @@ class MusicRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getSongsByGenre(genre: String): Flow<List<Song>> {
+        return songDao.getSongsByGenre(genre).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getAlbumsByGenre(genre: String): Flow<List<com.schwanitz.domain.model.Album>> {
+        return songDao.getAlbumsByGenre(genre).map { projections ->
+            projections.map { com.schwanitz.domain.model.Album(it.album, it.albumArtUri) }
+        }
+    }
+
+    override fun getArtistsByGenre(genre: String): Flow<List<String>> {
+        return songDao.getArtistsByGenre(genre)
+    }
+
     override suspend fun getSongById(songId: String): Song? {
         return songDao.getSongById(songId)?.toDomain()
     }

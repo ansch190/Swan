@@ -30,6 +30,15 @@ interface SongDao {
     @Query("SELECT album, MAX(albumArtUri) as albumArtUri FROM songs WHERE year = :year AND isActive = 1 GROUP BY album ORDER BY album ASC")
     fun getAlbumsByYear(year: Int): Flow<List<AlbumProjection>>
 
+    @Query("SELECT * FROM songs WHERE genre = :genre AND isActive = 1 ORDER BY album ASC, discNumber ASC, trackNumber ASC")
+    fun getSongsByGenre(genre: String): Flow<List<SongEntity>>
+
+    @Query("SELECT album, MAX(albumArtUri) as albumArtUri FROM songs WHERE genre = :genre AND isActive = 1 GROUP BY album ORDER BY album ASC")
+    fun getAlbumsByGenre(genre: String): Flow<List<AlbumProjection>>
+
+    @Query("SELECT DISTINCT artist FROM songs WHERE genre = :genre AND isActive = 1 ORDER BY artist ASC")
+    fun getArtistsByGenre(genre: String): Flow<List<String>>
+
     data class AlbumProjection(
         val album: String,
         val albumArtUri: String?
