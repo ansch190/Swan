@@ -2,6 +2,7 @@
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -33,6 +34,7 @@ import kotlinx.coroutines.launch
 fun SongInfoScreen(
     songId: String,
     onNavigateBack: () -> Unit,
+    onAlbumClick: (String, String) -> Unit,
     viewModel: SongInfoViewModel = hiltViewModel()
 ) {
     LaunchedEffect(songId) {
@@ -63,7 +65,7 @@ fun SongInfoScreen(
                 CircularProgressIndicator()
             }
         } else {
-            SongHeader(song = song!!, artworks = artworks)
+            SongHeader(song = song!!, artworks = artworks, onAlbumClick = onAlbumClick)
 
             TabRow(selectedTabIndex = pagerState.currentPage) {
                 Tab(selected = pagerState.currentPage == 0, onClick = {
@@ -78,21 +80,21 @@ fun SongInfoScreen(
                 }
             }
 
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1f)
-            ) { page ->
-                when (page) {
-                    0 -> MetadataTab(song = song!!)
-                    1 -> TechnicalTab(song = song!!, sourceName = sourceName)
-                }
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f)
+        ) { page ->
+            when (page) {
+                0 -> MetadataTab(song = song!!, onAlbumClick = onAlbumClick)
+                1 -> TechnicalTab(song = song!!, sourceName = sourceName)
             }
+        }
         }
     }
 }
 
 @Composable
-private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
+private fun SongHeader(song: Song, artworks: List<SongArtwork>, onAlbumClick: (String, String) -> Unit) {
     Column(
         modifier = Modifier.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -202,7 +204,7 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
 }
 
 @Composable
-private fun MetadataTab(song: Song) {
+private fun MetadataTab(song: Song, onAlbumClick: (String, String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -213,7 +215,13 @@ private fun MetadataTab(song: Song) {
 
         InfoRow("Title", song.title.ifBlank { "-" })
         InfoRow("Artist", song.artist.ifBlank { "-" })
-        InfoRow("Album", song.album.ifBlank { "-" })
+        InfoRow(
+            label = "Album",
+            value = song.album.ifBlank { "-" },
+            onClick = {
+                onAlbumClick(song.album, song.artist)
+            }
+        )
         InfoRow("Album Artist", song.albumArtist.ifBlank { "-" })
         InfoRow("Track", song.trackRaw.ifBlank { "-" })
         InfoRow("Disc", song.discRaw.ifBlank { "-" })
@@ -249,10 +257,11 @@ private fun TechnicalTab(song: Song, sourceName: String) {
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
+private fun InfoRow(label: String, value: String, onClick: (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = 6.dp)
     ) {
         Text(
@@ -263,7 +272,8 @@ private fun InfoRow(label: String, value: String) {
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (onClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         )
     }
 }

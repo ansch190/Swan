@@ -6,7 +6,10 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "songs",
-    indices = [Index("sourceId")]
+    indices = [
+        Index("sourceId"),
+        Index("album", "artist")
+    ]
 )
 data class SongEntity(
     @PrimaryKey val id: String,

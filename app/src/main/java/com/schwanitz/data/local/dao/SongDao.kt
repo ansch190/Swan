@@ -15,6 +15,9 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE isActive = 1 AND (title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%')")
     fun searchSongs(query: String): Flow<List<SongEntity>>
 
+    @Query("SELECT * FROM songs WHERE album = :album AND isActive = 1 ORDER BY discNumber ASC, trackNumber ASC")
+    fun getSongsByAlbum(album: String): Flow<List<SongEntity>>
+
     @Query("SELECT * FROM songs WHERE id = :id")
     suspend fun getSongById(id: String): SongEntity?
 

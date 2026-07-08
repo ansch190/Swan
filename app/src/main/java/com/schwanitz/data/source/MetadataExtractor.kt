@@ -114,16 +114,16 @@ object MetadataExtractor {
             val song = Song(
                 id = songId,
                 title = finalTitle,
-                artist = tagFields.artist,
-                album = tagFields.album,
+                artist = tagFields.artist.trim(),
+                album = tagFields.album.trim(),
                 durationMs = durationMs,
                 albumArtUri = allUris.firstOrNull(),
                 sourceId = sourceId,
-                albumArtist = tagFields.albumArtist,
-                discNumber = tagFields.discRaw.substringBefore("/").trim().toIntOrNull() ?: 0,
-                trackNumber = tagFields.trackRaw.substringBefore("/").trim().toIntOrNull() ?: 0,
-                trackRaw = tagFields.trackRaw,
-                discRaw = tagFields.discRaw,
+                albumArtist = tagFields.albumArtist.trim(),
+                discNumber = tagFields.discRaw.trim().substringBefore('/').filter { it.isDigit() }.toIntOrNull() ?: 1,
+                trackNumber = tagFields.trackRaw.trim().substringBefore('/').filter { it.isDigit() }.toIntOrNull() ?: 0,
+                trackRaw = tagFields.trackRaw.trim(),
+                discRaw = tagFields.discRaw.trim(),
                 year = tagFields.year,
                 genre = tagFields.genre,
                 mimeType = mimeType,
@@ -160,7 +160,7 @@ object MetadataExtractor {
                 "TITLE", "TIT2", "\u00a9NAM" -> if (title.isEmpty()) title = value
                 "ARTIST", "TPE1", "\u00a9ART" -> if (artist.isEmpty()) artist = value
                 "ALBUM", "TALB", "\u00a9ALB" -> if (album.isEmpty()) album = value
-                "ALBUMARTIST", "TPE2", "ALBUM ARTIST" -> albumArtist = value
+                "ALBUMARTIST", "TPE2", "ALBUM ARTIST" -> if (albumArtist.isEmpty()) albumArtist = value
                 "DISCNUMBER", "TPOS", "DISC" -> discRaw = value
                 "TRACKNUMBER", "TRCK", "TRKN", "TRACK" -> trackRaw = value
                 "DATE", "TYER", "YEAR", "TDRC", "\u00a9DAY" -> {

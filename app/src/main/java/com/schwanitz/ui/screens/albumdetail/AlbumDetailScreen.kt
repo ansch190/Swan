@@ -1,0 +1,180 @@
+package com.schwanitz.ui.screens.albumdetail
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import com.schwanitz.domain.model.SongArtwork
+import com.schwanitz.ui.components.MarqueeText
+import com.schwanitz.ui.components.SongListItem
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AlbumDetailScreen(
+    albumName: String,
+    artistName: String,
+    onNavigateBack: () -> Unit,
+    viewModel: AlbumDetailViewModel = hiltViewModel()
+) {
+    LaunchedEffect(albumName, artistName) {
+        viewModel.loadAlbum(albumName, artistName)
+    }
+
+    val songs by viewModel.songs.collectAsState()
+    val artworks by viewModel.artworks.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+
+    val songsByCd = remember(songs) {
+        songs.groupBy { it.discNumber.coerceAtLeast(1) }.toSortedMap()
+    }
+    val cdList = songsByCd.keys.toList()
+    val pagerState = rememberPagerState(pageCount = { cdList.size.coerceAtLeast(1) })
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text("Album Detail") },
+            navigationIcon = {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                }
+            }
+        )
+
+        AlbumHeader(albumName = albumName, artworks = artworks)
+
+        if (cdList.isNotEmpty()) {
+            if (cdList.size > 1) {
+                TabRow(selectedTabIndex = pagerState.currentPage) {
+                    cdList.forEachIndexed { index, cdNumber ->
+                        Tab(
+                            selected = pagerState.currentPage == index,
+                            onClick = {
+                                coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                            }
+                        ) {
+                            Text("CD-$cdNumber", modifier = Modifier.padding(12.dp))
+                        }
+                    }
+                }
+            }
+
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f)
+            ) { page ->
+                val cdSongs = songsByCd[cdList[page]] ?: emptyList()
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(cdSongs) { song ->
+                        SongListItem(
+                            song = song,
+                            onClick = { viewModel.playSong(song, cdSongs) }
+                        )
+                    }
+                }
+            }
+        } else {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlbumHeader(albumName: String, artworks: List<SongArtwork>) {
+    Column(
+        modifier = Modifier.padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (artworks.isNotEmpty()) {
+            val artPagerState = rememberPagerState(pageCount = { artworks.size })
+            HorizontalPager(
+                state = artPagerState,
+                modifier = Modifier.size(200.dp)
+            ) { page ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    AsyncImage(
+                        model = artworks[page].uri,
+                        contentDescription = "Album Art",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+            }
+            if (artworks.size > 1) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    repeat(artworks.size) { index ->
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 3.dp)
+                                .size(if (artPagerState.currentPage == index) 8.dp else 6.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (artPagerState.currentPage == index)
+                                        MaterialTheme.colorScheme.onSurface
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                )
+                        )
+                    }
+                }
+            }
+        } else {
+            Surface(
+                modifier = Modifier.size(200.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Filled.MusicNote,
+                        contentDescription = "Album Art",
+                        modifier = Modifier.size(80.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        MarqueeText(
+            text = albumName.ifBlank { "-" },
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        HorizontalDivider()
+    }
+}

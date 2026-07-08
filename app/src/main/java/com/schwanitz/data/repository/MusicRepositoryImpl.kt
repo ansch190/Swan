@@ -45,6 +45,12 @@ class MusicRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getSongsByAlbum(album: String): Flow<List<Song>> {
+        return songDao.getSongsByAlbum(album).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
     override suspend fun getSongById(songId: String): Song? {
         return songDao.getSongById(songId)?.toDomain()
     }

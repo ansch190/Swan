@@ -8,6 +8,7 @@ interface MusicRepository {
     fun getAllSongs(): Flow<List<Song>>
     fun getFavoriteSongs(): Flow<List<Song>>
     fun searchSongs(query: String): Flow<List<Song>>
+    fun getSongsByAlbum(album: String): Flow<List<Song>>
     suspend fun getSongById(songId: String): Song?
     suspend fun getSongArtworks(songId: String): List<SongArtwork>
     suspend fun toggleFavorite(songId: String)
