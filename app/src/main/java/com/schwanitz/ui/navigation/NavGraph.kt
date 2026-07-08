@@ -19,6 +19,7 @@ import com.schwanitz.ui.screens.settings.SettingsScreen
 import com.schwanitz.ui.screens.songinfo.SongInfoScreen
 import com.schwanitz.ui.screens.albumdetail.AlbumDetailScreen
 import com.schwanitz.ui.screens.artistdetail.ArtistDetailScreen
+import com.schwanitz.ui.screens.yeardetail.YearDetailScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -49,6 +50,24 @@ fun NavGraph(navController: NavHostController) {
                 onArtistClick = { artist ->
                     val encodedArtist = Uri.encode(artist)
                     navController.navigate("artist_detail/$encodedArtist")
+                },
+                onYearClick = { year ->
+                    navController.navigate("year_detail/$year")
+                }
+            )
+        }
+
+        composable(
+            route = "year_detail/{year}",
+            arguments = listOf(navArgument("year") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val year = backStackEntry.arguments?.getInt("year") ?: 0
+            YearDetailScreen(
+                year = year,
+                onNavigateBack = { navController.popBackStack() },
+                onAlbumClick = { album, _ ->
+                    val encodedAlbum = Uri.encode(album)
+                    navController.navigate("album_detail/$encodedAlbum/unknown")
                 }
             )
         }

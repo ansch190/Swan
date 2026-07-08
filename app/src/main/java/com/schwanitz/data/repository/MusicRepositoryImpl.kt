@@ -63,6 +63,18 @@ class MusicRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getSongsByYear(year: Int): Flow<List<Song>> {
+        return songDao.getSongsByYear(year).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getAlbumsByYear(year: Int): Flow<List<com.schwanitz.domain.model.Album>> {
+        return songDao.getAlbumsByYear(year).map { projections ->
+            projections.map { com.schwanitz.domain.model.Album(it.album, it.albumArtUri) }
+        }
+    }
+
     override suspend fun getSongById(songId: String): Song? {
         return songDao.getSongById(songId)?.toDomain()
     }

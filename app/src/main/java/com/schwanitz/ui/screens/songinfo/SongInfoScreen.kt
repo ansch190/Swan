@@ -36,6 +36,7 @@ fun SongInfoScreen(
     onNavigateBack: () -> Unit,
     onAlbumClick: (String, String) -> Unit,
     onArtistClick: (String) -> Unit,
+    onYearClick: (Int) -> Unit,
     viewModel: SongInfoViewModel = hiltViewModel()
 ) {
     LaunchedEffect(songId) {
@@ -86,7 +87,7 @@ fun SongInfoScreen(
                 modifier = Modifier.weight(1f)
             ) { page ->
                 when (page) {
-                    0 -> MetadataTab(song = song!!, onAlbumClick = onAlbumClick, onArtistClick = onArtistClick)
+                    0 -> MetadataTab(song = song!!, onAlbumClick = onAlbumClick, onArtistClick = onArtistClick, onYearClick = onYearClick)
                     1 -> TechnicalTab(song = song!!, sourceName = sourceName)
                 }
             }
@@ -205,7 +206,7 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
 }
 
 @Composable
-private fun MetadataTab(song: Song, onAlbumClick: (String, String) -> Unit, onArtistClick: (String) -> Unit) {
+private fun MetadataTab(song: Song, onAlbumClick: (String, String) -> Unit, onArtistClick: (String) -> Unit, onYearClick: (Int) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -230,7 +231,11 @@ private fun MetadataTab(song: Song, onAlbumClick: (String, String) -> Unit, onAr
         InfoRow("Album Artist", song.albumArtist.ifBlank { "-" })
         InfoRow("Track", song.trackRaw.ifBlank { "-" })
         InfoRow("Disc", song.discRaw.ifBlank { "-" })
-        InfoRow("Year", if (song.year > 0) song.year.toString() else "-")
+        InfoRow(
+            label = "Year",
+            value = if (song.year > 0) song.year.toString() else "-",
+            onClick = if (song.year > 0) { { onYearClick(song.year) } } else null
+        )
         InfoRow("Genre", song.genre.ifBlank { "-" })
     }
 }
