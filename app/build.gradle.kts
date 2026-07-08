@@ -1,9 +1,12 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 android {
@@ -18,6 +21,15 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val localProps = Properties().apply {
+            val f = project.rootProject.file("local.properties")
+            if (f.exists()) load(f.inputStream())
+        }
+        val discogsKey = localProps.getProperty("discogsKey") ?: ""
+        val discogsSecret = localProps.getProperty("discogsSecret") ?: ""
+        buildConfigField("String", "DISCOGS_CONSUMER_KEY", "\"$discogsKey\"")
+        buildConfigField("String", "DISCOGS_CONSUMER_SECRET", "\"$discogsSecret\"")
     }
 
     buildTypes {
@@ -77,6 +89,7 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.okhttp)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.reorderable)
     implementation("com.github.ansch190:Tagix:android-SNAPSHOT")
     implementation("org.slf4j:slf4j-android:1.7.36")

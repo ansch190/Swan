@@ -1,8 +1,10 @@
 ﻿package com.schwanitz.di
 
+import com.schwanitz.data.repository.ArtistImageRepositoryImpl
 import com.schwanitz.data.repository.MusicRepositoryImpl
 import com.schwanitz.data.repository.PlaylistRepositoryImpl
 import com.schwanitz.data.repository.SourceManagerImpl
+import com.schwanitz.domain.repository.ArtistImageRepository
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.domain.repository.SourceManager
@@ -32,6 +34,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindSourceManager(impl: SourceManagerImpl): SourceManager
+
+    @Binds
+    @Singleton
+    abstract fun bindArtistImageRepository(impl: ArtistImageRepositoryImpl): ArtistImageRepository
 }
 
 @Module
@@ -46,3 +52,7 @@ object SourceModule {
     @IntoSet
     fun provideWebDavMusicSource(source: WebDavMusicSource): MusicSource = source
 }
+
+@Module
+@InstallIn(SingletonComponent::class)
+object DiscogsModule

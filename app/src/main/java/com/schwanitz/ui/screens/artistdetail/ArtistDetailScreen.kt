@@ -39,6 +39,7 @@ fun ArtistDetailScreen(
 
     val songs by viewModel.songs.collectAsState()
     val albums by viewModel.albums.collectAsState()
+    val artistImageUri by viewModel.artistImageUri.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
 
@@ -52,7 +53,7 @@ fun ArtistDetailScreen(
             }
         )
 
-        ArtistHeader(artistName = artistName)
+        ArtistHeader(artistName = artistName, imageUri = artistImageUri)
 
         TabRow(selectedTabIndex = pagerState.currentPage) {
             Tab(selected = pagerState.currentPage == 0, onClick = {
@@ -99,23 +100,34 @@ fun ArtistDetailScreen(
 }
 
 @Composable
-private fun ArtistHeader(artistName: String) {
+private fun ArtistHeader(artistName: String, imageUri: String?) {
     Column(
         modifier = Modifier.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(
             modifier = Modifier.size(200.dp),
-            shape = RoundedCornerShape(100.dp), // Circular for artist
+            shape = RoundedCornerShape(100.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Filled.Person,
-                    contentDescription = "Artist Photo",
-                    modifier = Modifier.size(100.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (imageUri != null) {
+                    AsyncImage(
+                        model = imageUri,
+                        contentDescription = "Artist Photo",
+                        modifier = Modifier
+                            .size(200.dp)
+                            .clip(RoundedCornerShape(100.dp)),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = "Artist Photo",
+                        modifier = Modifier.size(100.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 

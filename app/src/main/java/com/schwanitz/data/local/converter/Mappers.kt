@@ -1,6 +1,7 @@
 ﻿package com.schwanitz.data.local.converter
 
 import com.schwanitz.data.local.entity.*
+import com.schwanitz.domain.model.ArtistImage
 import com.schwanitz.domain.model.Playlist
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.model.SongArtwork
@@ -88,4 +89,12 @@ fun SongArtwork.toEntity(): SongArtworkEntity = SongArtworkEntity(
     sortOrder = sortOrder,
     pictureType = pictureType,
     uri = uri
+)
+
+fun ArtistImageEntity.toDomain(): ArtistImage = ArtistImage(
+    artistName = artistName,
+    discogsArtistId = discogsArtistId,
+    imageUrl = imageUrl,
+    localUri = localUri,
+    lastUpdated = lastUpdated
 )

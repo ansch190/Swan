@@ -2,10 +2,12 @@
 
 import android.content.Context
 import android.net.Uri
+import com.schwanitz.data.local.dao.ArtistImageDao
 import com.schwanitz.data.local.dao.SongArtworkDao
 import com.schwanitz.data.local.dao.SongDao
 import com.schwanitz.data.local.converter.toDomain
 import com.schwanitz.data.local.converter.toEntity
+import com.schwanitz.data.source.ArtistImageCache
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.model.SongArtwork
 import com.schwanitz.domain.repository.MusicRepository
@@ -22,6 +24,7 @@ import javax.inject.Singleton
 class MusicRepositoryImpl @Inject constructor(
     private val songDao: SongDao,
     private val songArtworkDao: SongArtworkDao,
+    private val artistImageDao: ArtistImageDao,
     private val sourceManager: SourceManager,
     private val sourceRegistry: MusicSourceRegistry,
     @ApplicationContext private val context: Context
@@ -107,6 +110,7 @@ class MusicRepositoryImpl @Inject constructor(
         songDao.deleteBySource(sourceId)
         songArtworkDao.deleteBySource(sourceId)
         cleanupOrphanedArtworkFiles()
+        cleanupOrphanedArtistImages()
     }
 
     override suspend fun refreshSource(sourceId: String, onProgress: (Int, Int) -> Unit) {
@@ -133,6 +137,7 @@ class MusicRepositoryImpl @Inject constructor(
             android.util.Log.e("MusicRepository", "Error during refreshSource for $sourceId", e)
         }
         cleanupOrphanedArtworkFiles()
+        cleanupOrphanedArtistImages()
     }
 
     override suspend fun setSourceActive(sourceId: String, active: Boolean) {
@@ -152,6 +157,20 @@ class MusicRepositoryImpl @Inject constructor(
             songArtworkDao.upsertAll(result.artworks.map { it.toEntity() })
         }
         cleanupOrphanedArtworkFiles()
+        cleanupOrphanedArtistImages()
+    }
+
+    private suspend fun cleanupOrphanedArtistImages() {
+        val activeArtists = songDao.getAllArtists().toSet() +
+            songDao.getAllAlbumArtists().toSet()
+        val allEntries = artistImageDao.getAll()
+        for (entry in allEntries) {
+            if (entry.artistName !in activeArtists) {
+                artistImageDao.delete(entry.artistName)
+            }
+        }
+        val remainingUris = artistImageDao.getAll().mapNotNull { it.localUri }.toSet()
+        ArtistImageCache.deleteUris(context, remainingUris)
     }
 
     private suspend fun cleanupOrphanedArtworkFiles() {

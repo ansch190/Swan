@@ -39,6 +39,12 @@ interface SongDao {
     @Query("SELECT DISTINCT artist FROM songs WHERE genre = :genre AND isActive = 1 ORDER BY artist ASC")
     fun getArtistsByGenre(genre: String): Flow<List<String>>
 
+    @Query("SELECT DISTINCT artist FROM songs")
+    suspend fun getAllArtists(): List<String>
+
+    @Query("SELECT DISTINCT albumArtist FROM songs WHERE albumArtist IS NOT NULL AND albumArtist != ''")
+    suspend fun getAllAlbumArtists(): List<String>
+
     data class AlbumProjection(
         val album: String,
         val albumArtUri: String?
