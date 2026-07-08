@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MusicNote
@@ -45,12 +46,22 @@ fun NowPlayingScreen(
     viewModel: NowPlayingViewModel = hiltViewModel()
 ) {
     val playerState by viewModel.playerState.collectAsState()
+    val lyrics by viewModel.lyrics.collectAsState()
     var showQueue by rememberSaveable { mutableStateOf(true) }
+    var showLyricsDialog by rememberSaveable { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(stringResource(R.string.nowplaying_title)) },
             actions = {
+                if (lyrics != null) {
+                    IconButton(onClick = { showLyricsDialog = true }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Article,
+                            contentDescription = stringResource(R.string.cd_lyrics)
+                        )
+                    }
+                }
                 IconButton(onClick = { showQueue = !showQueue }) {
                     Icon(
                         imageVector = if (showQueue) Icons.Filled.Image else Icons.Filled.List,
@@ -63,7 +74,10 @@ fun NowPlayingScreen(
         val currentSong = playerState.currentSong
         val artworks by viewModel.artworks.collectAsState()
         if (currentSong != null) {
-            LaunchedEffect(currentSong.id) { viewModel.loadArtworks(currentSong.id) }
+            LaunchedEffect(currentSong.id) {
+                viewModel.loadArtworks(currentSong.id)
+                viewModel.loadLyrics(currentSong.id, currentSong.title, currentSong.artist)
+            }
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -132,7 +146,7 @@ fun NowPlayingScreen(
                                     .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                                 contentScale = ContentScale.Fit
                             )
-                        } else {
+        } else {
                             Surface(
                                 modifier = Modifier.size(280.dp),
                                 shape = RoundedCornerShape(16.dp),
@@ -272,6 +286,26 @@ fun NowPlayingScreen(
                         }
                     }
                 }
+            }
+
+            val currentLyrics = lyrics
+            if (showLyricsDialog && currentLyrics != null) {
+                AlertDialog(
+                    onDismissRequest = { showLyricsDialog = false },
+                    title = { Text(text = stringResource(R.string.songinfo_lyrics_title)) },
+                    text = {
+                        Text(
+                            text = currentLyrics,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.verticalScroll(rememberScrollState())
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showLyricsDialog = false }) {
+                            Text(stringResource(R.string.songinfo_lyrics_dismiss))
+                        }
+                    }
+                )
             }
         } else {
             Box(

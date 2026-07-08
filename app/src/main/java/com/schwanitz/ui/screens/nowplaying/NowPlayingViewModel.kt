@@ -2,6 +2,7 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.schwanitz.data.genius.GeniusLyricsProvider
 import com.schwanitz.domain.model.SongArtwork
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.player.MusicPlayerManager
@@ -16,7 +17,8 @@ import javax.inject.Inject
 @HiltViewModel
 class NowPlayingViewModel @Inject constructor(
     val playerManager: MusicPlayerManager,
-    private val musicRepository: MusicRepository
+    private val musicRepository: MusicRepository,
+    private val lyricsProvider: GeniusLyricsProvider
 ) : ViewModel() {
 
     val playerState: StateFlow<com.schwanitz.player.PlayerState> =
@@ -26,6 +28,9 @@ class NowPlayingViewModel @Inject constructor(
     private val _artworks = MutableStateFlow<List<SongArtwork>>(emptyList())
     val artworks: StateFlow<List<SongArtwork>> = _artworks
 
+    private val _lyrics = MutableStateFlow<String?>(null)
+    val lyrics: StateFlow<String?> = _lyrics
+
     private var currentSongId: String? = null
 
     fun loadArtworks(songId: String) {
@@ -33,6 +38,13 @@ class NowPlayingViewModel @Inject constructor(
         currentSongId = songId
         viewModelScope.launch {
             _artworks.value = musicRepository.getSongArtworks(songId)
+        }
+    }
+
+    fun loadLyrics(songId: String, title: String, artist: String) {
+        _lyrics.value = null
+        viewModelScope.launch {
+            _lyrics.value = lyricsProvider.getLyrics(songId, title, artist)
         }
     }
 }
