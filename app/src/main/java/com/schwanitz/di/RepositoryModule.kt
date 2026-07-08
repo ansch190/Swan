@@ -52,7 +52,3 @@ object SourceModule {
     @IntoSet
     fun provideWebDavMusicSource(source: WebDavMusicSource): MusicSource = source
 }
-
-@Module
-@InstallIn(SingletonComponent::class)
-object DiscogsModule

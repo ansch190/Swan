@@ -31,6 +31,7 @@ class GenreDetailViewModel @Inject constructor(
 
     private val _artistImageUris = MutableStateFlow<Map<String, String?>>(emptyMap())
     val artistImageUris: StateFlow<Map<String, String?>> = _artistImageUris
+    private val imageUris = mutableMapOf<String, String?>()
 
     fun loadGenre(genre: String) {
         viewModelScope.launch {
@@ -51,14 +52,14 @@ class GenreDetailViewModel @Inject constructor(
         }
     }
 
-    private fun loadArtistImages(artists: List<String>) {
+    private suspend fun loadArtistImages(artists: List<String>) {
         artists.forEach { artist ->
-            if (artist !in _artistImageUris.value) {
-                _artistImageUris.value = _artistImageUris.value + (artist to null)
-                viewModelScope.launch {
-                    val uri = artistImageRepository.getArtistImage(artist)
-                    _artistImageUris.value = _artistImageUris.value + (artist to uri)
-                }
+            if (!imageUris.containsKey(artist)) {
+                imageUris[artist] = null
+                _artistImageUris.value = imageUris.toMap()
+                val uri = artistImageRepository.getArtistImage(artist)
+                imageUris[artist] = uri
+                _artistImageUris.value = imageUris.toMap()
             }
         }
     }
