@@ -147,7 +147,7 @@ class GeniusApiService @Inject constructor() {
             .trim()
 
         Log.e("GeniusAPI", "Cleaned lyrics (${cleaned.length} chars): ${cleaned.take(500)}")
-        return "$cleaned\n\nSource: Genius"
+        return cleaned
     }
 
     private fun String.normalizeForMatch(): String {

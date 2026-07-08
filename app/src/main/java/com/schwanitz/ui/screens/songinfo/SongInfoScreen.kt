@@ -127,6 +127,12 @@ fun SongInfoScreen(
                         .verticalScroll(rememberScrollState())
                 ) {
                     Text(text = lyrics!!)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.source_format, "Genius"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             },
             confirmButton = {

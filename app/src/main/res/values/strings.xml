@@ -203,6 +203,7 @@
     <string name="cd_lyrics">Show lyrics</string>
     <string name="songinfo_lyrics_title">Lyrics</string>
     <string name="songinfo_lyrics_dismiss">CLOSE</string>
+    <string name="source_format">Source: %s</string>
 
     <!-- Common section labels -->
     <string name="section_songs">Songs</string>

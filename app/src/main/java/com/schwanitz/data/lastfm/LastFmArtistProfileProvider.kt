@@ -24,7 +24,7 @@ class LastFmArtistProfileProvider @Inject constructor(
         return ArtistProfile(
             artistName = artistName,
             summary = cleanSummary,
-            content = "$cleanContent\n\nSource: Last.fm",
+            content = cleanContent,
             source = "lastfm",
             lastUpdated = System.currentTimeMillis()
         )

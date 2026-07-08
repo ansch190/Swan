@@ -294,11 +294,20 @@ fun NowPlayingScreen(
                     onDismissRequest = { showLyricsDialog = false },
                     title = { Text(text = stringResource(R.string.songinfo_lyrics_title)) },
                     text = {
-                        Text(
-                            text = currentLyrics,
-                            style = MaterialTheme.typography.bodyLarge,
+                        Column(
                             modifier = Modifier.verticalScroll(rememberScrollState())
-                        )
+                        ) {
+                            Text(
+                                text = currentLyrics,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.source_format, "Genius"),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     },
                     confirmButton = {
                         TextButton(onClick = { showLyricsDialog = false }) {
