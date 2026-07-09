@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.schwanitz.domain.model.SongArtwork
@@ -34,6 +35,7 @@ fun AlbumDetailScreen(
     albumName: String,
     artistName: String,
     onNavigateBack: () -> Unit,
+    onSeriesClick: (String) -> Unit = {},
     viewModel: AlbumDetailViewModel = hiltViewModel()
 ) {
     LaunchedEffect(albumName, artistName) {
@@ -42,6 +44,7 @@ fun AlbumDetailScreen(
 
     val songs by viewModel.songs.collectAsState()
     val artworks by viewModel.artworks.collectAsState()
+    val series by viewModel.series.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
     val songsByCd = remember(songs) {
@@ -56,6 +59,16 @@ fun AlbumDetailScreen(
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                }
+            },
+            actions = {
+                series?.let { s ->
+                    IconButton(onClick = { onSeriesClick(s.name) }) {
+                        Icon(
+                            painter = painterResource(R.drawable.album_series),
+                            contentDescription = stringResource(R.string.cd_series_icon)
+                        )
+                    }
                 }
             }
         )

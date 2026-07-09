@@ -67,4 +67,25 @@ interface SongDao {
 
     @Query("UPDATE songs SET isActive = :active WHERE sourceId = :sourceId")
     suspend fun setActiveBySource(sourceId: String, active: Boolean)
+
+    @Query("""
+        SELECT s.* FROM songs s
+        INNER JOIN album_series_mapping asm ON s.album = asm.albumName
+        WHERE asm.seriesId = :seriesId AND s.isActive = 1
+        ORDER BY asm.volumeNumber ASC, s.discNumber ASC, s.trackNumber ASC
+    """)
+    fun getSongsBySeries(seriesId: Long): Flow<List<SongEntity>>
+
+    @Query("""
+        SELECT s.album, MAX(s.albumArtUri) as albumArtUri
+        FROM songs s
+        INNER JOIN album_series_mapping asm ON s.album = asm.albumName
+        WHERE asm.seriesId = :seriesId AND s.isActive = 1
+        GROUP BY s.album
+        ORDER BY asm.volumeNumber ASC
+    """)
+    fun getAlbumsInSeries(seriesId: Long): Flow<List<AlbumProjection>>
+
+    @Query("SELECT DISTINCT album FROM songs WHERE isActive = 1")
+    suspend fun getAllActiveAlbumNames(): List<String>
 }

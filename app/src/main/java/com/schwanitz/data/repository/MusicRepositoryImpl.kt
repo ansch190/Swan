@@ -2,6 +2,7 @@
 
 import android.content.Context
 import android.net.Uri
+import com.schwanitz.data.local.dao.AlbumSeriesDao
 import com.schwanitz.data.local.dao.ArtistImageDao
 import com.schwanitz.data.local.dao.ArtistProfileDao
 import com.schwanitz.data.local.dao.SongArtworkDao
@@ -10,6 +11,9 @@ import com.schwanitz.data.local.dao.SongLyricsDao
 import com.schwanitz.data.local.converter.toDomain
 import com.schwanitz.data.local.converter.toEntity
 import com.schwanitz.data.source.ArtistImageCache
+import com.schwanitz.data.source.SeriesDetector
+import com.schwanitz.domain.model.Album
+import com.schwanitz.domain.model.AlbumSeries
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.model.SongArtwork
 import com.schwanitz.domain.repository.MusicRepository
@@ -29,6 +33,7 @@ class MusicRepositoryImpl @Inject constructor(
     private val songLyricsDao: SongLyricsDao,
     private val artistImageDao: ArtistImageDao,
     private val artistProfileDao: ArtistProfileDao,
+    private val albumSeriesDao: AlbumSeriesDao,
     private val sourceManager: SourceManager,
     private val sourceRegistry: MusicSourceRegistry,
     @ApplicationContext private val context: Context
@@ -110,12 +115,54 @@ class MusicRepositoryImpl @Inject constructor(
         songDao.toggleFavorite(songId)
     }
 
-    override suspend fun deleteBySource(sourceId: String) {
-        songLyricsDao.deleteBySource(sourceId)
-        songArtworkDao.deleteBySource(sourceId)
-        songDao.deleteBySource(sourceId)
+    override suspend fun setSourceActive(sourceId: String, active: Boolean) {
+        songDao.setActiveBySource(sourceId, active)
+    }
+
+    override suspend fun reloadEnabled(onProgress: (sourceName: String, scanned: Int, total: Int) -> Unit) {
+        val enabledSources = sourceManager.getEnabledSources()
+        for (config in enabledSources) {
+            val source = sourceRegistry.get(config.type) ?: continue
+            songLyricsDao.deleteBySource(config.id)
+            songArtworkDao.deleteBySource(config.id)
+            songDao.deleteBySource(config.id)
+            val result = source.loadSongs(config) { scanned, total ->
+                onProgress(config.name, scanned, total)
+            }
+            songDao.upsertAll(result.songs.map { it.toEntity().copy(isActive = true) })
+            songArtworkDao.upsertAll(result.artworks.map { it.toEntity() })
+        }
         cleanupOrphanedArtworkFiles()
         cleanupOrphanedArtistImages()
+        refreshAlbumSeries()
+    }
+
+    override fun getAlbumSeries(): Flow<List<AlbumSeries>> {
+        return albumSeriesDao.getAllSeries().map { entities ->
+            entities.map { AlbumSeries(it.id, it.name) }
+        }
+    }
+
+    override fun getSeriesForAlbum(albumName: String): Flow<AlbumSeries?> {
+        return albumSeriesDao.getSeriesByAlbumName(albumName).map { entity ->
+            entity?.let { AlbumSeries(it.id, it.name) }
+        }
+    }
+
+    override suspend fun getSeriesByName(name: String): AlbumSeries? {
+        return albumSeriesDao.getSeriesByName(name)?.let { AlbumSeries(it.id, it.name) }
+    }
+
+    override fun getSongsBySeries(seriesId: Long): Flow<List<Song>> {
+        return songDao.getSongsBySeries(seriesId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getAlbumsInSeries(seriesId: Long): Flow<List<Album>> {
+        return songDao.getAlbumsInSeries(seriesId).map { projections ->
+            projections.map { Album(it.album, it.albumArtUri) }
+        }
     }
 
     override suspend fun refreshSource(sourceId: String, onProgress: (Int, Int) -> Unit) {
@@ -144,27 +191,22 @@ class MusicRepositoryImpl @Inject constructor(
         }
         cleanupOrphanedArtworkFiles()
         cleanupOrphanedArtistImages()
+        refreshAlbumSeries()
     }
 
-    override suspend fun setSourceActive(sourceId: String, active: Boolean) {
-        songDao.setActiveBySource(sourceId, active)
-    }
-
-    override suspend fun reloadEnabled(onProgress: (sourceName: String, scanned: Int, total: Int) -> Unit) {
-        val enabledSources = sourceManager.getEnabledSources()
-        for (config in enabledSources) {
-            val source = sourceRegistry.get(config.type) ?: continue
-            songLyricsDao.deleteBySource(config.id)
-            songArtworkDao.deleteBySource(config.id)
-            songDao.deleteBySource(config.id)
-            val result = source.loadSongs(config) { scanned, total ->
-                onProgress(config.name, scanned, total)
-            }
-            songDao.upsertAll(result.songs.map { it.toEntity().copy(isActive = true) })
-            songArtworkDao.upsertAll(result.artworks.map { it.toEntity() })
-        }
+    override suspend fun deleteBySource(sourceId: String) {
+        songLyricsDao.deleteBySource(sourceId)
+        songArtworkDao.deleteBySource(sourceId)
+        songDao.deleteBySource(sourceId)
         cleanupOrphanedArtworkFiles()
         cleanupOrphanedArtistImages()
+        refreshAlbumSeries()
+    }
+
+    private suspend fun refreshAlbumSeries() {
+        val albumNames = songDao.getAllActiveAlbumNames().toSet()
+        val detected = SeriesDetector.detectSeries(albumNames)
+        albumSeriesDao.replaceAllSeries(detected)
     }
 
     private suspend fun cleanupOrphanedArtistImages() {

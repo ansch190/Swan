@@ -3,6 +3,7 @@
 import android.content.Context
 import androidx.room.Room
 import com.schwanitz.data.local.AppDatabase
+import com.schwanitz.data.local.dao.AlbumSeriesDao
 import com.schwanitz.data.local.dao.ArtistImageDao
 import com.schwanitz.data.local.dao.ArtistProfileDao
 import com.schwanitz.data.local.dao.PlaylistDao
@@ -51,4 +52,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSongLyricsDao(db: AppDatabase): SongLyricsDao = db.songLyricsDao()
+
+    @Provides
+    fun provideAlbumSeriesDao(db: AppDatabase): AlbumSeriesDao = db.albumSeriesDao()
 }

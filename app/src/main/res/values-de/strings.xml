@@ -48,6 +48,7 @@
     <string name="cd_artist_photo">Künstlerfoto</string>
     <string name="cd_genre_icon">Genre-Symbol</string>
     <string name="cd_year_photo">Jahres-Symbol</string>
+    <string name="cd_series_icon">Serie anzeigen</string>
 
     <!-- Player controls -->
     <string name="player_time_format">%1$d:%2$02d</string>
@@ -183,6 +184,9 @@
     <!-- Album detail screen -->
     <string name="album_title">Album-Detail</string>
     <string name="album_cd_format">CD-%d</string>
+
+    <!-- Series detail screen -->
+    <string name="series_title">Serien-Detail</string>
 
     <!-- Artist detail screen -->
     <string name="artist_title">Künstler-Detail</string>
