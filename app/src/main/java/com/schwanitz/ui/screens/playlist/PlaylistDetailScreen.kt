@@ -42,6 +42,7 @@ fun PlaylistDetailScreen(
 
     val playlistName by viewModel.playlistName.collectAsState()
     val songs by viewModel.songs.collectAsState()
+    val isFavorites by viewModel.isFavoritesPlaylist.collectAsState()
     var localSongs by remember { mutableStateOf(songs) }
     var isEditing by rememberSaveable { mutableStateOf(false) }
     var pendingDeletions by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -97,7 +98,7 @@ fun PlaylistDetailScreen(
             title = {
                 Text(
                     text = playlistName,
-                    modifier = if (!isEditing) Modifier.clickable { showRenameDialog = true } else Modifier
+                    modifier = if (!isEditing && !isFavorites) Modifier.clickable { showRenameDialog = true } else Modifier
                 )
             },
             navigationIcon = {
@@ -106,23 +107,25 @@ fun PlaylistDetailScreen(
                 }
             },
             actions = {
-                if (isEditing) {
-                    IconButton(onClick = {
-                        viewModel.savePlaylistChanges(
-                            songIds = localSongs.map { it.id },
-                            deleteSongIds = pendingDeletions.toList()
-                        )
-                        pendingDeletions = emptySet()
-                        isEditing = false
-                    }) {
-                        Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.cd_edit_done))
-                    }
-                    IconButton(onClick = onAddSongsClick) {
-                        Icon(Icons.Filled.PlaylistAdd, contentDescription = stringResource(R.string.cd_add_songs))
-                    }
-                } else {
-                    IconButton(onClick = { isEditing = true }) {
-                        Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.edit))
+                if (!isFavorites) {
+                    if (isEditing) {
+                        IconButton(onClick = {
+                            viewModel.savePlaylistChanges(
+                                songIds = localSongs.map { it.id },
+                                deleteSongIds = pendingDeletions.toList()
+                            )
+                            pendingDeletions = emptySet()
+                            isEditing = false
+                        }) {
+                            Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.cd_edit_done))
+                        }
+                        IconButton(onClick = onAddSongsClick) {
+                            Icon(Icons.Filled.PlaylistAdd, contentDescription = stringResource(R.string.cd_add_songs))
+                        }
+                    } else {
+                        IconButton(onClick = { isEditing = true }) {
+                            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.edit))
+                        }
                     }
                 }
             }
@@ -145,7 +148,7 @@ fun PlaylistDetailScreen(
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
                 items(localSongs, key = { it.id }) { song ->
-                    if (isEditing) {
+                    if (isEditing && !isFavorites) {
                         ReorderableItem(reorderableState, key = song.id) { isDragging ->
                             val alpha = if (isDragging) 0.7f else 1f
                             val dragHandle = Modifier.draggableHandle()
@@ -171,7 +174,7 @@ fun PlaylistDetailScreen(
         }
     }
 
-    if (showRenameDialog) {
+    if (showRenameDialog && !isFavorites) {
         AlertDialog(
             onDismissRequest = { showRenameDialog = false },
             title = { Text(stringResource(R.string.playlist_rename_title)) },

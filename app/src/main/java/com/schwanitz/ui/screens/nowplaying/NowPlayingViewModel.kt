@@ -3,6 +3,7 @@
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.data.genius.GeniusLyricsProvider
+import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.model.SongArtwork
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.player.MusicPlayerManager
@@ -10,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -31,6 +33,10 @@ class NowPlayingViewModel @Inject constructor(
     private val _lyrics = MutableStateFlow<String?>(null)
     val lyrics: StateFlow<String?> = _lyrics
 
+    val favoriteIds: StateFlow<Set<String>> = musicRepository.getFavoriteSongs()
+        .map { songs -> songs.map { it.id }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
     private var currentSongId: String? = null
 
     fun loadArtworks(songId: String) {
@@ -45,6 +51,12 @@ class NowPlayingViewModel @Inject constructor(
         _lyrics.value = null
         viewModelScope.launch {
             _lyrics.value = lyricsProvider.getLyrics(songId, title, artist)
+        }
+    }
+
+    fun toggleFavorite(song: Song) {
+        viewModelScope.launch {
+            musicRepository.toggleFavorite(song.id)
         }
     }
 }

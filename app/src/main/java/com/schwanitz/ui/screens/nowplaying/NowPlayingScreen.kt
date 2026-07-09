@@ -20,6 +20,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
@@ -47,6 +49,7 @@ fun NowPlayingScreen(
 ) {
     val playerState by viewModel.playerState.collectAsState()
     val lyrics by viewModel.lyrics.collectAsState()
+    val favoriteIds by viewModel.favoriteIds.collectAsState()
     var showQueue by rememberSaveable { mutableStateOf(true) }
     var showLyricsDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -277,6 +280,17 @@ fun NowPlayingScreen(
                                                             else MaterialTheme.colorScheme.onSurfaceVariant,
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            IconButton(onClick = { viewModel.toggleFavorite(song) }) {
+                                                Icon(
+                                                    imageVector = if (song.id in favoriteIds) Icons.Filled.Favorite
+                                                                  else Icons.Filled.FavoriteBorder,
+                                                    contentDescription = if (song.id in favoriteIds) stringResource(R.string.cd_remove_from_favorites)
+                                                                        else stringResource(R.string.cd_add_to_favorites),
+                                                    tint = if (song.id in favoriteIds) MaterialTheme.colorScheme.primary
+                                                           else MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
                                             }
                                         }

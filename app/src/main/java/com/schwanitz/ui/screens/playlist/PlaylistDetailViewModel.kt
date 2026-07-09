@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private const val FAVORITES_PLAYLIST_ID = -1L
+
 @HiltViewModel
 class PlaylistDetailViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
@@ -24,15 +26,30 @@ class PlaylistDetailViewModel @Inject constructor(
 
     private val _playlistId = MutableStateFlow<Long?>(null)
 
+    val isFavoritesPlaylist: StateFlow<Boolean> = _playlistId
+        .map { it == FAVORITES_PLAYLIST_ID }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     val playlistName: StateFlow<String> = _playlistId
         .filterNotNull()
-        .flatMapLatest { playlistRepository.getPlaylist(it) }
-        .map { it?.name ?: context.getString(R.string.playlist_default_name) }
+        .flatMapLatest { id ->
+            if (id == FAVORITES_PLAYLIST_ID) {
+                flowOf(context.getString(R.string.playlist_favorites_name))
+            } else {
+                playlistRepository.getPlaylist(id).map { it?.name ?: context.getString(R.string.playlist_default_name) }
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), context.getString(R.string.playlist_default_name))
 
     val songs: StateFlow<List<Song>> = _playlistId
         .filterNotNull()
-        .flatMapLatest { playlistRepository.getPlaylistSongs(it) }
+        .flatMapLatest { id ->
+            if (id == FAVORITES_PLAYLIST_ID) {
+                musicRepository.getFavoriteSongs()
+            } else {
+                playlistRepository.getPlaylistSongs(id)
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun loadPlaylist(playlistId: Long) {
@@ -42,7 +59,9 @@ class PlaylistDetailViewModel @Inject constructor(
     fun renamePlaylist(newName: String) {
         viewModelScope.launch {
             _playlistId.value?.let { id ->
-                playlistRepository.renamePlaylist(id, newName)
+                if (id != FAVORITES_PLAYLIST_ID) {
+                    playlistRepository.renamePlaylist(id, newName)
+                }
             }
         }
     }
@@ -60,13 +79,16 @@ class PlaylistDetailViewModel @Inject constructor(
     fun moveSong(songIds: List<String>) {
         viewModelScope.launch {
             val pid = _playlistId.value ?: return@launch
-            playlistRepository.reorderSongs(pid, songIds)
+            if (pid != FAVORITES_PLAYLIST_ID) {
+                playlistRepository.reorderSongs(pid, songIds)
+            }
         }
     }
 
     fun savePlaylistChanges(songIds: List<String>, deleteSongIds: List<String>) {
         viewModelScope.launch {
             val pid = _playlistId.value ?: return@launch
+            if (pid == FAVORITES_PLAYLIST_ID) return@launch
             deleteSongIds.forEach { playlistRepository.removeSongFromPlaylist(pid, it) }
             playlistRepository.reorderSongs(pid, songIds)
         }

@@ -67,6 +67,7 @@
 
     <!-- Playlist list screen -->
     <string name="playlist_list_title">Listen</string>
+    <string name="playlist_favorites_name">Favoriten</string>
     <string name="playlist_list_empty">Noch keine Listen.\nTippe auf + um eine zu erstellen.</string>
     <string name="playlist_create_title">Neue Liste</string>
     <string name="playlist_song_count">%d Lieder</string>

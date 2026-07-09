@@ -64,7 +64,7 @@ fun PlaylistListScreen(
                     PlaylistListItem(
                         playlist = playlist,
                         onClick = { onPlaylistClick(playlist.id) },
-                        onDelete = { playlistToDelete = playlist }
+                        onDelete = if (!playlist.isFavorite) {{ playlistToDelete = playlist }} else null
                     )
                 }
             }
@@ -133,16 +133,16 @@ fun PlaylistListScreen(
 private fun PlaylistListItem(
     playlist: PlaylistListItemData,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: (() -> Unit)?
 ) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
         leadingContent = {
             Icon(
-                imageVector = Icons.Filled.QueueMusic,
+                imageVector = if (playlist.isFavorite) Icons.Filled.Favorite else Icons.Filled.QueueMusic,
                 contentDescription = null,
                 modifier = Modifier.size(40.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = if (playlist.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary
             )
         },
         headlineContent = { Text(playlist.name) },
@@ -150,12 +150,14 @@ private fun PlaylistListItem(
             Text(stringResource(R.string.playlist_song_count, playlist.songCount))
         },
         trailingContent = {
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.cd_delete_playlist),
-                    tint = MaterialTheme.colorScheme.error
-                )
+            if (onDelete != null) {
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = stringResource(R.string.cd_delete_playlist),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     )

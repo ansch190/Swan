@@ -67,6 +67,7 @@
 
     <!-- Playlist list screen -->
     <string name="playlist_list_title">Playlists</string>
+    <string name="playlist_favorites_name">Favorites</string>
     <string name="playlist_list_empty">No playlists yet.\nTap + to create one.</string>
     <string name="playlist_create_title">New Playlist</string>
     <string name="playlist_song_count">%d songs</string>
