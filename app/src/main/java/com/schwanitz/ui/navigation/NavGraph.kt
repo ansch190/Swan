@@ -138,7 +138,12 @@ fun NavGraph(navController: NavHostController) {
         }
 
         composable(BottomNavItem.NowPlaying.route) {
-            NowPlayingScreen()
+            NowPlayingScreen(
+                onSongInfoClick = { songId ->
+                    val encodedId = Uri.encode(songId)
+                    navController.navigate("song_info/$encodedId")
+                }
+            )
         }
 
         composable("playlist_detail/{playlistId}") { backStackEntry ->

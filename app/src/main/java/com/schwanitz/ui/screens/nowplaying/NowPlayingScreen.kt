@@ -18,11 +18,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Article
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -45,29 +45,29 @@ import com.schwanitz.ui.components.PlayerControlBar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NowPlayingScreen(
+    onSongInfoClick: (String) -> Unit = {},
     viewModel: NowPlayingViewModel = hiltViewModel()
 ) {
     val playerState by viewModel.playerState.collectAsState()
-    val lyrics by viewModel.lyrics.collectAsState()
     val favoriteIds by viewModel.favoriteIds.collectAsState()
     var showQueue by rememberSaveable { mutableStateOf(true) }
-    var showLyricsDialog by rememberSaveable { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(stringResource(R.string.nowplaying_title)) },
             actions = {
-                if (lyrics != null) {
-                    IconButton(onClick = { showLyricsDialog = true }) {
+                val currentSong = playerState.currentSong
+                if (currentSong != null) {
+                    IconButton(onClick = { onSongInfoClick(currentSong.id) }) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Article,
-                            contentDescription = stringResource(R.string.cd_lyrics)
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = stringResource(R.string.songinfo_title)
                         )
                     }
                 }
                 IconButton(onClick = { showQueue = !showQueue }) {
                     Icon(
-                        imageVector = if (showQueue) Icons.Filled.Image else Icons.Filled.List,
+                        imageVector = if (showQueue) Icons.Filled.Image else Icons.AutoMirrored.Filled.List,
                         contentDescription = if (showQueue) stringResource(R.string.cd_show_album_art) else stringResource(R.string.cd_show_queue)
                     )
                 }
@@ -79,7 +79,6 @@ fun NowPlayingScreen(
         if (currentSong != null) {
             LaunchedEffect(currentSong.id) {
                 viewModel.loadArtworks(currentSong.id)
-                viewModel.loadLyrics(currentSong.id, currentSong.title, currentSong.artist)
             }
             Box(
                 modifier = Modifier
@@ -149,7 +148,7 @@ fun NowPlayingScreen(
                                     .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                                 contentScale = ContentScale.Fit
                             )
-        } else {
+                        } else {
                             Surface(
                                 modifier = Modifier.size(280.dp),
                                 shape = RoundedCornerShape(16.dp),
@@ -300,35 +299,6 @@ fun NowPlayingScreen(
                         }
                     }
                 }
-            }
-
-            val currentLyrics = lyrics
-            if (showLyricsDialog && currentLyrics != null) {
-                AlertDialog(
-                    onDismissRequest = { showLyricsDialog = false },
-                    title = { Text(text = stringResource(R.string.songinfo_lyrics_title)) },
-                    text = {
-                        Column(
-                            modifier = Modifier.verticalScroll(rememberScrollState())
-                        ) {
-                            Text(
-                                text = currentLyrics,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.source_format, "Genius"),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showLyricsDialog = false }) {
-                            Text(stringResource(R.string.songinfo_lyrics_dismiss))
-                        }
-                    }
-                )
             }
         } else {
             Box(
