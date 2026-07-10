@@ -15,6 +15,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.schwanitz.R
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import kotlinx.coroutines.launch
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,37 +41,81 @@ fun PlaylistListScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text(stringResource(R.string.playlist_list_title)) },
-            actions = {
-                IconButton(onClick = { showDialog = true }) {
-                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.cd_create_playlist))
+    var showExportFormat by remember { mutableStateOf(false) }
+    var playlistToExport by remember { mutableStateOf<PlaylistListItemData?>(null) }
+    var pendingExportFormat by remember { mutableStateOf(PlaylistListViewModel.PlaylistExportFormat.M3U) }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("*/*")
+    ) { uri ->
+        if (uri != null && playlistToExport != null) {
+            showExportFormat = false
+            coroutineScope.launch {
+                try {
+                    val content = viewModel.getPlaylistExportContent(
+                        playlistToExport!!.id,
+                        playlistToExport!!.name,
+                        pendingExportFormat
+                    )
+                    context.contentResolver.openOutputStream(uri)?.use { out ->
+                        out.write(content.toByteArray(Charsets.UTF_8))
+                    }
+                    Toast.makeText(context, context.getString(R.string.export_success), Toast.LENGTH_SHORT).show()
+                } catch (_: Exception) { }
+            }
+        }
+    }
+
+    if (showExportFormat) {
+        BackHandler { showExportFormat = false }
+
+        ExportFormatSelectionContent(
+            onBack = { showExportFormat = false },
+            onFormatSelected = { format ->
+                pendingExportFormat = format
+                playlistToExport?.let { p ->
+                    exportLauncher.launch("${p.name}.${format.extension}")
                 }
             }
         )
+    } else {
+        Column(modifier = Modifier.fillMaxSize()) {
+            TopAppBar(
+                title = { Text(stringResource(R.string.playlist_list_title)) },
+                actions = {
+                    IconButton(onClick = { showDialog = true }) {
+                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.cd_create_playlist))
+                    }
+                }
+            )
 
-        if (uiState.playlists.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(R.string.playlist_list_empty),
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 80.dp)
-            ) {
-                items(uiState.playlists, key = { it.id }) { playlist ->
-                    PlaylistListItem(
-                        playlist = playlist,
-                        onClick = { onPlaylistClick(playlist.id) },
-                        onDelete = if (!playlist.isFavorite) {{ playlistToDelete = playlist }} else null
+            if (uiState.playlists.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.playlist_list_empty),
+                        style = MaterialTheme.typography.bodyLarge
                     )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(uiState.playlists, key = { it.id }) { playlist ->
+                        PlaylistListItem(
+                            playlist = playlist,
+                            onClick = { onPlaylistClick(playlist.id) },
+                            onExport = {
+                                playlistToExport = playlist
+                                showExportFormat = true
+                            },
+                            onDelete = if (!playlist.isFavorite) {{ playlistToDelete = playlist }} else null
+                        )
+                    }
                 }
             }
         }
@@ -133,6 +183,7 @@ fun PlaylistListScreen(
 private fun PlaylistListItem(
     playlist: PlaylistListItemData,
     onClick: () -> Unit,
+    onExport: (() -> Unit)?,
     onDelete: (() -> Unit)?
 ) {
     ListItem(
@@ -150,15 +201,104 @@ private fun PlaylistListItem(
             Text(stringResource(R.string.playlist_song_count, playlist.songCount))
         },
         trailingContent = {
-            if (onDelete != null) {
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = stringResource(R.string.cd_delete_playlist),
-                        tint = MaterialTheme.colorScheme.error
-                    )
+            if (onExport != null || onDelete != null) {
+                var showMenu by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = null
+                        )
+                    }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.export)) },
+                            onClick = { showMenu = false; onExport?.invoke() }
+                        )
+                        if (onDelete != null) {
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
+                                onClick = { showMenu = false; onDelete() }
+                            )
+                        }
+                    }
                 }
             }
         }
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExportFormatSelectionContent(
+    onBack: () -> Unit,
+    onFormatSelected: (PlaylistListViewModel.PlaylistExportFormat) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text(stringResource(R.string.export_choose_format)) },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Filled.ArrowBack, contentDescription = null)
+                }
+            }
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            PlaylistListViewModel.PlaylistExportFormat.entries.forEach { format ->
+                ExportFormatCard(
+                    icon = format.toIcon(),
+                    title = stringResource(format.labelRes),
+                    description = stringResource(format.descriptionRes),
+                    onClick = { onFormatSelected(format) }
+                )
+            }
+        }
+    }
+}
+
+private fun PlaylistListViewModel.PlaylistExportFormat.toIcon(): androidx.compose.ui.graphics.vector.ImageVector = when (this) {
+    PlaylistListViewModel.PlaylistExportFormat.M3U -> Icons.Filled.PlaylistPlay
+    PlaylistListViewModel.PlaylistExportFormat.PLS -> Icons.Filled.List
+    PlaylistListViewModel.PlaylistExportFormat.XSPF -> Icons.Filled.Code
+    PlaylistListViewModel.PlaylistExportFormat.WPL -> Icons.Filled.DesktopWindows
+    PlaylistListViewModel.PlaylistExportFormat.ASX -> Icons.Filled.VideoFile
+    PlaylistListViewModel.PlaylistExportFormat.B4S -> Icons.Filled.FileCopy
+}
+
+@Composable
+private fun ExportFormatCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(16.dp))
+            Column {
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                Text(text = description, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
 }

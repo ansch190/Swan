@@ -222,4 +222,19 @@
     <string name="section_years">Years</string>
     <string name="section_genres">Genres</string>
     <string name="path_copied">Path copied to clipboard</string>
+    <string name="export">Export</string>
+    <string name="export_choose_format">Choose format</string>
+    <string name="export_format_m3u">M3U</string>
+    <string name="export_format_m3u_desc">Universal playlist format</string>
+    <string name="export_format_pls">PLS</string>
+    <string name="export_format_pls_desc">Shoutcast/Winamp playlist</string>
+    <string name="export_format_xspf">XSPF</string>
+    <string name="export_format_xspf_desc">XML playlist standard (VLC)</string>
+    <string name="export_format_wpl">WPL</string>
+    <string name="export_format_wpl_desc">Windows Media Player</string>
+    <string name="export_format_asx">ASX</string>
+    <string name="export_format_asx_desc">Windows Media metafile</string>
+    <string name="export_format_b4s">B4S</string>
+    <string name="export_format_b4s_desc">Winamp XML playlist</string>
+    <string name="export_success">Playlist exported</string>
 </resources>
