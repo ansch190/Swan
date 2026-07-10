@@ -18,12 +18,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.net.Uri
+import android.provider.DocumentsContract
+import android.widget.Toast
 import coil.compose.AsyncImage
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.model.SongArtwork
@@ -317,6 +325,8 @@ private fun MetadataTab(
 
 @Composable
 private fun TechnicalTab(song: Song, sourceName: String) {
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -326,7 +336,11 @@ private fun TechnicalTab(song: Song, sourceName: String) {
         Spacer(modifier = Modifier.height(8.dp))
 
         InfoRow(stringResource(R.string.songinfo_field_source), sourceName)
-        InfoRow(stringResource(R.string.songinfo_field_path), cleanPath(song.filePath))
+        InfoRow(
+            label = stringResource(R.string.songinfo_field_path),
+            value = cleanPath(song.filePath),
+            onValueClick = { openFolder(context, song.filePath) }
+        )
         InfoRow(stringResource(R.string.songinfo_field_filename), Uri.decode(song.filePath).substringAfterLast('/').substringBefore('?'))
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -377,6 +391,38 @@ private fun formatDuration(ms: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "%d:%02d".format(minutes, seconds)
+}
+
+private fun openFolder(context: Context, fileUri: String) {
+    copyPathToClipboard(context, fileUri)
+
+    val uri = Uri.parse(fileUri)
+    val parentUri: Uri? = when {
+        uri.scheme == "content" && DocumentsContract.isDocumentUri(context, uri) -> {
+            try {
+                val docId = DocumentsContract.getDocumentId(uri)
+                val parentDocId = docId.substringBeforeLast("/")
+                DocumentsContract.buildDocumentUri(uri.authority, parentDocId)
+            } catch (_: Exception) { null }
+        }
+        else -> null
+    }
+
+    if (parentUri != null) {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(parentUri, DocumentsContract.Document.MIME_TYPE_DIR)
+                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            })
+        } catch (_: ActivityNotFoundException) { }
+    }
+}
+
+private fun copyPathToClipboard(context: Context, fileUri: String) {
+    val path = cleanPath(fileUri)
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("file_path", path))
+    Toast.makeText(context, R.string.path_copied, Toast.LENGTH_SHORT).show()
 }
 
 private fun cleanPath(path: String): String {

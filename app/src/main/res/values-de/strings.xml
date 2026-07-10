@@ -221,4 +221,5 @@
     <string name="section_artists">Künstler</string>
     <string name="section_years">Jahre</string>
     <string name="section_genres">Genres</string>
+    <string name="path_copied">Pfad kopiert</string>
 </resources>
