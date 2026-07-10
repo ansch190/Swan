@@ -219,4 +219,6 @@
     <string name="section_songs">Songs</string>
     <string name="section_albums">Albums</string>
     <string name="section_artists">Artists</string>
+    <string name="section_years">Years</string>
+    <string name="section_genres">Genres</string>
 </resources>

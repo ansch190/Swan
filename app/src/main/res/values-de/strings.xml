@@ -219,4 +219,6 @@
     <string name="section_songs">Lieder</string>
     <string name="section_albums">Alben</string>
     <string name="section_artists">Künstler</string>
+    <string name="section_years">Jahre</string>
+    <string name="section_genres">Genres</string>
 </resources>

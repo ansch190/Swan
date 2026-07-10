@@ -54,6 +54,10 @@ fun NavGraph(navController: NavHostController) {
                     val encodedArtist = Uri.encode(artist)
                     navController.navigate("artist_detail/$encodedArtist")
                 },
+                onAllArtistsClick = { navController.navigate("all_artists") },
+                onAllAlbumsClick = { navController.navigate("all_albums") },
+                onAllYearsClick = { navController.navigate("all_years") },
+                onAllGenresClick = { navController.navigate("all_genres") },
                 onYearClick = { year ->
                     navController.navigate("year_detail/$year")
                 },
@@ -110,6 +114,45 @@ fun NavGraph(navController: NavHostController) {
                     val encodedAlbum = Uri.encode(album)
                     val encodedArtist = Uri.encode(artist)
                     navController.navigate("album_detail/$encodedAlbum/$encodedArtist")
+                }
+            )
+        }
+
+        composable("all_artists") {
+            com.schwanitz.ui.screens.artistlist.ArtistListScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onArtistClick = { artist ->
+                    val encodedArtist = Uri.encode(artist)
+                    navController.navigate("artist_detail/$encodedArtist")
+                }
+            )
+        }
+
+        composable("all_albums") {
+            com.schwanitz.ui.screens.albumlist.AlbumListScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onAlbumClick = { albumName ->
+                    val encoded = Uri.encode(albumName)
+                    navController.navigate("album_detail/$encoded/unknown")
+                }
+            )
+        }
+
+        composable("all_years") {
+            com.schwanitz.ui.screens.yearlist.YearListScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onYearClick = { year ->
+                    navController.navigate("year_detail/$year")
+                }
+            )
+        }
+
+        composable("all_genres") {
+            com.schwanitz.ui.screens.genrelist.GenreListScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onGenreClick = { genre ->
+                    val encoded = Uri.encode(genre)
+                    navController.navigate("genre_detail/$encoded")
                 }
             )
         }

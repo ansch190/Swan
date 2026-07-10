@@ -26,6 +26,11 @@ interface MusicRepository {
     suspend fun setSourceActive(sourceId: String, active: Boolean)
     suspend fun reloadEnabled(onProgress: (sourceName: String, scanned: Int, total: Int) -> Unit = { _, _, _ -> })
 
+    fun getAllArtists(): Flow<List<String>>
+    fun getAllAlbums(): Flow<List<Album>>
+    fun getAllYears(): Flow<List<Int>>
+    fun getAllGenres(): Flow<List<String>>
+
     fun getAlbumSeries(): Flow<List<AlbumSeries>>
     fun getSeriesForAlbum(albumName: String): Flow<AlbumSeries?>
     suspend fun getSeriesByName(name: String): AlbumSeries?

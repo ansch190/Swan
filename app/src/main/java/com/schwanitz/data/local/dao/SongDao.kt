@@ -42,6 +42,9 @@ interface SongDao {
     @Query("SELECT DISTINCT artist FROM songs")
     suspend fun getAllArtists(): List<String>
 
+    @Query("SELECT DISTINCT artist FROM songs WHERE isActive = 1 ORDER BY artist ASC")
+    fun getAllArtistsFlow(): Flow<List<String>>
+
     @Query("SELECT DISTINCT albumArtist FROM songs WHERE albumArtist IS NOT NULL AND albumArtist != ''")
     suspend fun getAllAlbumArtists(): List<String>
 
@@ -85,6 +88,15 @@ interface SongDao {
         ORDER BY asm.volumeNumber ASC
     """)
     fun getAlbumsInSeries(seriesId: Long): Flow<List<AlbumProjection>>
+
+    @Query("SELECT album, MAX(albumArtUri) as albumArtUri FROM songs WHERE isActive = 1 GROUP BY album ORDER BY album ASC")
+    fun getAllAlbums(): Flow<List<AlbumProjection>>
+
+    @Query("SELECT DISTINCT year FROM songs WHERE isActive = 1 AND year > 0 ORDER BY year DESC")
+    fun getAllYears(): Flow<List<Int>>
+
+    @Query("SELECT DISTINCT genre FROM songs WHERE isActive = 1 AND genre != '' ORDER BY genre ASC")
+    fun getAllGenres(): Flow<List<String>>
 
     @Query("SELECT DISTINCT album FROM songs WHERE isActive = 1")
     suspend fun getAllActiveAlbumNames(): List<String>

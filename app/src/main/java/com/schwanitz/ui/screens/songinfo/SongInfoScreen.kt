@@ -39,6 +39,10 @@ fun SongInfoScreen(
     onNavigateBack: () -> Unit,
     onAlbumClick: (String, String) -> Unit,
     onArtistClick: (String) -> Unit,
+    onAllArtistsClick: () -> Unit,
+    onAllAlbumsClick: () -> Unit,
+    onAllYearsClick: () -> Unit,
+    onAllGenresClick: () -> Unit,
     onYearClick: (Int) -> Unit,
     onGenreClick: (String) -> Unit,
     viewModel: SongInfoViewModel = hiltViewModel()
@@ -107,6 +111,10 @@ fun SongInfoScreen(
                         song = song!!,
                         onAlbumClick = onAlbumClick,
                         onArtistClick = onArtistClick,
+                        onAllArtistsClick = onAllArtistsClick,
+                        onAllAlbumsClick = onAllAlbumsClick,
+                        onAllYearsClick = onAllYearsClick,
+                        onAllGenresClick = onAllGenresClick,
                         onYearClick = onYearClick,
                         onGenreClick = onGenreClick
                     )
@@ -259,6 +267,10 @@ private fun MetadataTab(
     song: Song,
     onAlbumClick: (String, String) -> Unit,
     onArtistClick: (String) -> Unit,
+    onAllArtistsClick: () -> Unit,
+    onAllAlbumsClick: () -> Unit,
+    onAllYearsClick: () -> Unit,
+    onAllGenresClick: () -> Unit,
     onYearClick: (Int) -> Unit,
     onGenreClick: (String) -> Unit
 ) {
@@ -274,12 +286,14 @@ private fun MetadataTab(
         InfoRow(
             label = stringResource(R.string.songinfo_field_artist),
             value = song.artist.ifBlank { "-" },
-            onClick = { onArtistClick(song.artist) }
+            onLabelClick = onAllArtistsClick,
+            onValueClick = { onArtistClick(song.artist) }
         )
         InfoRow(
             label = stringResource(R.string.songinfo_field_album),
             value = song.album.ifBlank { "-" },
-            onClick = {
+            onLabelClick = onAllAlbumsClick,
+            onValueClick = {
                 onAlbumClick(song.album, song.artist)
             }
         )
@@ -289,12 +303,14 @@ private fun MetadataTab(
         InfoRow(
             label = stringResource(R.string.songinfo_field_year),
             value = if (song.year > 0) song.year.toString() else "-",
-            onClick = if (song.year > 0) { { onYearClick(song.year) } } else null
+            onLabelClick = onAllYearsClick,
+            onValueClick = if (song.year > 0) { { onYearClick(song.year) } } else null
         )
         InfoRow(
             label = stringResource(R.string.songinfo_field_genre),
             value = song.genre.ifBlank { "-" },
-            onClick = if (song.genre.isNotBlank()) { { onGenreClick(song.genre) } } else null
+            onLabelClick = onAllGenresClick,
+            onValueClick = if (song.genre.isNotBlank()) { { onGenreClick(song.genre) } } else null
         )
     }
 }
@@ -326,23 +342,32 @@ private fun TechnicalTab(song: Song, sourceName: String) {
 }
 
 @Composable
-private fun InfoRow(label: String, value: String, onClick: (() -> Unit)? = null) {
+private fun InfoRow(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    onLabelClick: (() -> Unit)? = null,
+    onValueClick: (() -> Unit)? = null
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = 6.dp)
     ) {
         Text(
             text = stringResource(R.string.songinfo_label_format, label),
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(120.dp)
+            color = if (onLabelClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .width(120.dp)
+                .then(if (onLabelClick != null) Modifier.clickable(onClick = onLabelClick) else Modifier)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyLarge,
-            color = if (onClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            color = if (onValueClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .then(if (onValueClick != null) Modifier.clickable(onClick = onValueClick) else Modifier)
         )
     }
 }

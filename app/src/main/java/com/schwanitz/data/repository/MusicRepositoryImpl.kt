@@ -103,6 +103,24 @@ class MusicRepositoryImpl @Inject constructor(
         return songDao.getArtistsByGenre(genre)
     }
 
+    override fun getAllArtists(): Flow<List<String>> {
+        return songDao.getAllArtistsFlow()
+    }
+
+    override fun getAllAlbums(): Flow<List<Album>> {
+        return songDao.getAllAlbums().map { projections ->
+            projections.map { Album(it.album, it.albumArtUri) }
+        }
+    }
+
+    override fun getAllYears(): Flow<List<Int>> {
+        return songDao.getAllYears()
+    }
+
+    override fun getAllGenres(): Flow<List<String>> {
+        return songDao.getAllGenres()
+    }
+
     override suspend fun getSongById(songId: String): Song? {
         return songDao.getSongById(songId)?.toDomain()
     }
