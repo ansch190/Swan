@@ -40,6 +40,7 @@ fun SeriesDetailScreen(
     }
 
     val songs by viewModel.songs.collectAsState()
+    val sortedSongs = remember(songs) { songs.sortedBy { it.title } }
     val albums by viewModel.albums.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
@@ -76,10 +77,10 @@ fun SeriesDetailScreen(
             when (page) {
                 0 -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(songs) { song ->
+                        items(sortedSongs) { song ->
                             SongListItem(
                                 song = song,
-                                onClick = { viewModel.playSong(song, songs) }
+                                onClick = { viewModel.playSong(song, sortedSongs) }
                             )
                         }
                     }

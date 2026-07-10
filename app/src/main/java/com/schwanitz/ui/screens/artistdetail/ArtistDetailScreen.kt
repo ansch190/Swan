@@ -43,6 +43,7 @@ fun ArtistDetailScreen(
     }
 
     val songs by viewModel.songs.collectAsState()
+    val sortedSongs = remember(songs) { songs.sortedBy { it.title } }
     val albums by viewModel.albums.collectAsState()
     val artistImageUri by viewModel.artistImageUri.collectAsState()
     val artistProfile by viewModel.artistProfile.collectAsState()
@@ -89,10 +90,10 @@ fun ArtistDetailScreen(
             when (page) {
                 0 -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(songs) { song ->
+                        items(sortedSongs) { song ->
                             SongListItem(
                                 song = song,
-                                onClick = { viewModel.playSong(song, songs) }
+                                onClick = { viewModel.playSong(song, sortedSongs) }
                             )
                         }
                     }
