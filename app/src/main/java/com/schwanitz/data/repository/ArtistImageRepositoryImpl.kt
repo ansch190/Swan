@@ -24,6 +24,11 @@ class ArtistImageRepositoryImpl @Inject constructor(
     override suspend fun getArtistImage(artistName: String): String? {
         Log.e("ArtistImage", "getArtistImage: start for '$artistName'")
 
+        if (artistName.isBlank()) {
+            Log.e("ArtistImage", "Artist name is blank - skipping")
+            return null
+        }
+
         if (BuildConfig.DISCOGS_CONSUMER_KEY.isBlank()) {
             Log.e("ArtistImage", "DISCOGS_CONSUMER_KEY is empty - set discogsKey in local.properties")
             return null

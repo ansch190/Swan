@@ -181,7 +181,7 @@ private fun AlbumHeader(albumName: String, artworks: List<SongArtwork>) {
         Spacer(modifier = Modifier.height(16.dp))
 
         MarqueeText(
-            text = albumName.ifBlank { "-" },
+            text = if (albumName.isBlank()) stringResource(R.string.album_no_album) else albumName,
             modifier = Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,

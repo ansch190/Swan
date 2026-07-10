@@ -141,7 +141,7 @@ private fun YearHeader(year: Int) {
 private fun AlbumListItem(albumName: String, albumArtUri: String?, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
-        headlineContent = { Text(albumName) },
+        headlineContent = { Text(if (albumName.isBlank()) stringResource(R.string.album_no_album) else albumName) },
         leadingContent = {
             if (albumArtUri != null) {
                 AsyncImage(

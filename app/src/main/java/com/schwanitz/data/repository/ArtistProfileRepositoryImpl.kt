@@ -18,6 +18,11 @@ class ArtistProfileRepositoryImpl @Inject constructor(
 ) : ArtistProfileRepository {
 
     override suspend fun getArtistProfile(artistName: String): ArtistProfile? {
+        if (artistName.isBlank()) {
+            Log.e("ArtistProfile", "Artist name is blank - skipping")
+            return null
+        }
+
         val cached = profileDao.get(artistName)
         if (cached != null && !isExpired(cached)) {
             Log.e("ArtistProfile", "Cache hit for '$artistName'")

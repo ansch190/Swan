@@ -60,7 +60,7 @@ fun ArtistListScreen(
 private fun ArtistListItem(artistName: String, imageUri: String?, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
-        headlineContent = { Text(artistName) },
+        headlineContent = { Text(if (artistName.isBlank()) stringResource(R.string.artist_no_artist) else artistName) },
         leadingContent = {
             if (imageUri != null) {
                 AsyncImage(

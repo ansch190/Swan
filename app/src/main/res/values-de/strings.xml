@@ -182,6 +182,7 @@
     <string name="webdav_username_hint">Benutzername</string>
 
     <!-- Album detail screen -->
+    <string name="album_no_album">&lt;Kein Album&gt;</string>
     <string name="album_title">Album-Detail</string>
     <string name="album_cd_format">CD-%d</string>
 
@@ -189,6 +190,7 @@
     <string name="series_title">Serien-Detail</string>
 
     <!-- Artist detail screen -->
+    <string name="artist_no_artist">&lt;Kein Künstler&gt;</string>
     <string name="artist_title">Künstler-Detail</string>
     <string name="artist_biography_title">Biografie</string>
     <string name="artist_biography_dismiss">SCHLIESSEN</string>

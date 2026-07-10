@@ -175,7 +175,7 @@ private fun ArtistHeader(artistName: String, imageUri: String?) {
         Spacer(modifier = Modifier.height(16.dp))
 
         MarqueeText(
-            text = artistName.ifBlank { "-" },
+            text = if (artistName.isBlank()) stringResource(R.string.artist_no_artist) else artistName,
             modifier = Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
@@ -191,7 +191,7 @@ private fun ArtistHeader(artistName: String, imageUri: String?) {
 private fun AlbumListItem(albumName: String, albumArtUri: String?, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
-        headlineContent = { Text(albumName) },
+        headlineContent = { Text(if (albumName.isBlank()) stringResource(R.string.album_no_album) else albumName) },
         leadingContent = {
             if (albumArtUri != null) {
                 AsyncImage(

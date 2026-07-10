@@ -54,6 +54,11 @@ class GenreDetailViewModel @Inject constructor(
 
     private suspend fun loadArtistImages(artists: List<String>) {
         artists.forEach { artist ->
+            if (artist.isBlank()) {
+                imageUris[artist] = null
+                _artistImageUris.value = imageUris.toMap()
+                return@forEach
+            }
             if (!imageUris.containsKey(artist)) {
                 imageUris[artist] = null
                 _artistImageUris.value = imageUris.toMap()
