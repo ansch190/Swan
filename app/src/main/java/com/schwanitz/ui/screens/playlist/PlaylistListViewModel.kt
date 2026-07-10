@@ -89,7 +89,7 @@ class PlaylistListViewModel @Inject constructor(
         XSPF(R.string.export_format_xspf, R.string.export_format_xspf_desc, "xspf", "application/xspf+xml"),
         WPL(R.string.export_format_wpl, R.string.export_format_wpl_desc, "wpl", "application/vnd.ms-wpl"),
         ASX(R.string.export_format_asx, R.string.export_format_asx_desc, "asx", "video/x-ms-asf"),
-        B4S(R.string.export_format_b4s, R.string.export_format_b4s_desc, "b4s", "text/xml")
+        B4S(R.string.export_format_b4s, R.string.export_format_b4s_desc, "b4s", "application/x-winamp-playlist")
     }
 
     suspend fun getPlaylistExportContent(
@@ -208,19 +208,19 @@ class PlaylistListViewModel @Inject constructor(
     }
 
     private fun buildB4s(name: String, songs: List<Song>): String = buildString {
-        appendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-        appendLine("<WinampXML>")
-        appendLine("    <playlist>")
+        appendLine("<playlist>")
         for (song in songs) {
-            appendLine("        <entry>")
-            appendLine("            <title>${escapeXml(song.title)}</title>")
-            appendLine("            <artist>${escapeXml(song.artist)}</artist>")
-            appendLine("            <duration>${song.durationMs / 1000}</duration>")
-            appendLine("            <file>${escapeXml(song.id)}</file>")
-            appendLine("        </entry>")
+            val path = escapeXml(song.id)
+            if (song.title.isNotBlank()) {
+                appendLine("<entry playstring=\"file:${path}\">")
+                appendLine("    <name>${escapeXml(song.title)}</name>")
+                appendLine("    <length>${song.durationMs / 1000}</length>")
+                appendLine("</entry>")
+            } else {
+                appendLine("<entry playstring=\"file:${path}\"/>")
+            }
         }
-        appendLine("    </playlist>")
-        appendLine("</WinampXML>")
+        appendLine("</playlist>")
     }
 
     private fun escapeXml(s: String): String = s
