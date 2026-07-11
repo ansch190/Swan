@@ -49,6 +49,10 @@ fun GenreDetailScreen(
     val artistImageUris by viewModel.artistImageUris.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 3 })
+    val isSelecting by viewModel.isSelecting.collectAsState()
+    val selectedSongIds by viewModel.selectedSongIds.collectAsState()
+    val playlists by viewModel.playlists.collectAsState()
+    var showPlaylistPicker by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -87,23 +91,65 @@ fun GenreDetailScreen(
             when (page) {
                 0 -> {
                     var contextMenuSong by remember { mutableStateOf<Song?>(null) }
+                    var selectionContextMenuSong by remember { mutableStateOf<Song?>(null) }
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(sortedSongs) { song ->
+                            val isSelected = song.id in selectedSongIds
                             Box {
                                 SongListItem(
                                     song = song,
-                                    onClick = { viewModel.playSong(song) },
-                                    onLongClick = { contextMenuSong = song }
+                                    onClick = {
+                                        if (isSelecting) viewModel.toggleSelection(song.id)
+                                        else viewModel.playSong(song)
+                                    },
+                                    onLongClick = {
+                                        if (isSelecting && isSelected) selectionContextMenuSong = song
+                                        else contextMenuSong = song
+                                    },
+                                    selected = isSelecting && isSelected
                                 )
                                 DropdownMenu(
                                     expanded = contextMenuSong?.id == song.id,
                                     onDismissRequest = { contextMenuSong = null }
                                 ) {
                                     DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.context_selection)) },
+                                        onClick = {
+                                            contextMenuSong = null
+                                            viewModel.enterSelection(song)
+                                        }
+                                    )
+                                    DropdownMenuItem(
                                         text = { Text(stringResource(R.string.context_play_all)) },
                                         onClick = {
                                             contextMenuSong = null
                                             viewModel.playAllFromSong(song)
+                                        }
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = selectionContextMenuSong?.id == song.id,
+                                    onDismissRequest = { selectionContextMenuSong = null }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.context_selection_play)) },
+                                        onClick = {
+                                            selectionContextMenuSong = null
+                                            viewModel.playSelection()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.context_add_to_playlist)) },
+                                        onClick = {
+                                            selectionContextMenuSong = null
+                                            showPlaylistPicker = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.context_add_to_queue)) },
+                                        onClick = {
+                                            selectionContextMenuSong = null
+                                            viewModel.addSelectionToQueue()
                                         }
                                     )
                                 }
@@ -135,6 +181,31 @@ fun GenreDetailScreen(
                 }
             }
         }
+    }
+
+    if (showPlaylistPicker) {
+        AlertDialog(
+            onDismissRequest = { showPlaylistPicker = false },
+            title = { Text(stringResource(R.string.playlist_picker_title)) },
+            text = {
+                LazyColumn {
+                    items(playlists) { playlist ->
+                        ListItem(
+                            headlineContent = { Text(playlist.name) },
+                            modifier = Modifier.clickable {
+                                showPlaylistPicker = false
+                                viewModel.addSelectionToPlaylist(playlist.id)
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPlaylistPicker = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 }
 

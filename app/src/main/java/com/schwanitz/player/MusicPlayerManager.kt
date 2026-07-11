@@ -100,20 +100,7 @@ class MusicPlayerManager @Inject constructor(
         player.stop()
         player.clearMediaItems()
 
-        queue.forEachIndexed { index, s ->
-            val builder = MediaItem.Builder()
-                .setMediaId(s.id)
-                .setUri(s.filePath)
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setTitle(s.title)
-                        .setArtist(s.artistName)
-                        .setAlbumTitle(s.albumName)
-                        .setArtworkUri((s.albumArtUriLarge ?: s.albumArtUri)?.let { Uri.parse(it) })
-                        .build()
-                )
-            player.addMediaItem(builder.build())
-        }
+        queue.forEach { s -> player.addMediaItem(buildMediaItem(s)) }
 
         val playIndex = queue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
         player.seekTo(playIndex, 0)
@@ -132,6 +119,38 @@ class MusicPlayerManager @Inject constructor(
             repeatMode = Player.REPEAT_MODE_OFF,
             error = null
         )
+    }
+
+    fun addToQueue(songs: List<Song>) {
+        if (songs.isEmpty()) return
+        appContext.startService(
+            Intent(appContext, MusicPlayerService::class.java).apply {
+                action = MusicPlayerService.ACTION_PLAY
+            }
+        )
+        val needsPrepare = player.playbackState == Player.STATE_IDLE
+        songs.forEach { s -> player.addMediaItem(buildMediaItem(s)) }
+        songQueue = songQueue + songs
+        if (needsPrepare) {
+            player.prepare()
+            player.play()
+        }
+        _playerState.value = _playerState.value.copy(queue = songQueue)
+    }
+
+    private fun buildMediaItem(song: Song): MediaItem {
+        return MediaItem.Builder()
+            .setMediaId(song.id)
+            .setUri(song.filePath)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(song.title)
+                    .setArtist(song.artistName)
+                    .setAlbumTitle(song.albumName)
+                    .setArtworkUri((song.albumArtUriLarge ?: song.albumArtUri)?.let { Uri.parse(it) })
+                    .build()
+            )
+            .build()
     }
 
     fun togglePlayPause() {

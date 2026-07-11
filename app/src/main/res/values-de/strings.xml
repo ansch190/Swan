@@ -61,6 +61,11 @@
     <string name="home_song_info">Info</string>
     <string name="context_play_all">Alle Abspielen</string>
     <string name="context_play_entire_album">Gesamtes Album Abspielen</string>
+    <string name="context_selection">Auswahl</string>
+    <string name="context_selection_play">Auswahl Abspielen</string>
+    <string name="context_add_to_playlist">Zu Playlist hinzufügen</string>
+    <string name="context_add_to_queue">Zu Warteschlange hinzufügen</string>
+    <string name="playlist_picker_title">Playlist auswählen</string>
 
     <!-- Now Playing screen -->
     <string name="nowplaying_title">Spielt jetzt</string>

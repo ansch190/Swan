@@ -61,6 +61,11 @@
     <string name="home_song_info">Info</string>
     <string name="context_play_all">Play All</string>
     <string name="context_play_entire_album">Play Entire Album</string>
+    <string name="context_selection">Select</string>
+    <string name="context_selection_play">Play Selection</string>
+    <string name="context_add_to_playlist">Add to Playlist</string>
+    <string name="context_add_to_queue">Add to Queue</string>
+    <string name="playlist_picker_title">Select Playlist</string>
 
     <!-- Now Playing screen -->
     <string name="nowplaying_title">Now Playing</string>
