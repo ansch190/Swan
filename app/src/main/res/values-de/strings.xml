@@ -231,7 +231,7 @@
     <string name="section_artists">Künstler</string>
     <string name="section_years">Jahre</string>
     <string name="section_genres">Genres</string>
-    <string name="section_series">Serie(n)</string>
+    <string name="section_series">Serien</string>
     <string name="path_copied">Pfad kopiert</string>
     <string name="export">Exportieren</string>
     <string name="export_choose_format">Format wählen</string>
