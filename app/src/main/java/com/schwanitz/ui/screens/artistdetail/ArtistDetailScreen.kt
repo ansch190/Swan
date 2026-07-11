@@ -11,7 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
@@ -26,9 +25,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
-import com.schwanitz.domain.model.Song
+import com.schwanitz.ui.components.AlbumListItem
 import com.schwanitz.ui.components.MarqueeText
-import com.schwanitz.ui.components.SongListItem
+import com.schwanitz.ui.components.PlaylistPickerDialog
+import com.schwanitz.ui.components.SelectableSongItem
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -94,70 +94,20 @@ fun ArtistDetailScreen(
         ) { page ->
             when (page) {
                 0 -> {
-                    var contextMenuSong by remember { mutableStateOf<Song?>(null) }
-                    var selectionContextMenuSong by remember { mutableStateOf<Song?>(null) }
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(sortedSongs) { song ->
-                            val isSelected = song.id in selectedSongIds
-                            Box {
-                                SongListItem(
-                                    song = song,
-                                    onClick = {
-                                        if (isSelecting) viewModel.toggleSelection(song.id)
-                                        else viewModel.playSong(song)
-                                    },
-                                    onLongClick = {
-                                        if (isSelecting && isSelected) selectionContextMenuSong = song
-                                        else contextMenuSong = song
-                                    },
-                                    selected = isSelecting && isSelected
-                                )
-                                DropdownMenu(
-                                    expanded = contextMenuSong?.id == song.id,
-                                    onDismissRequest = { contextMenuSong = null }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.context_selection)) },
-                                        onClick = {
-                                            contextMenuSong = null
-                                            viewModel.enterSelection(song)
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.context_play_all)) },
-                                        onClick = {
-                                            contextMenuSong = null
-                                            viewModel.playAllFromSong(song)
-                                        }
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = selectionContextMenuSong?.id == song.id,
-                                    onDismissRequest = { selectionContextMenuSong = null }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.context_selection_play)) },
-                                        onClick = {
-                                            selectionContextMenuSong = null
-                                            viewModel.playSelection()
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.context_add_to_playlist)) },
-                                        onClick = {
-                                            selectionContextMenuSong = null
-                                            showPlaylistPicker = true
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.context_add_to_queue)) },
-                                        onClick = {
-                                            selectionContextMenuSong = null
-                                            viewModel.addSelectionToQueue()
-                                        }
-                                    )
-                                }
-                            }
+                            SelectableSongItem(
+                                song = song,
+                                isSelecting = isSelecting,
+                                isSelected = song.id in selectedSongIds,
+                                onSongClick = { viewModel.playSong(song) },
+                                onToggleSelection = { viewModel.toggleSelection(song.id) },
+                                onEnterSelection = { viewModel.enterSelection(song) },
+                                onPlayAll = { viewModel.playAllFromSong(song) },
+                                onPlaySelection = { viewModel.playSelection() },
+                                onAddToPlaylist = { showPlaylistPicker = true },
+                                onAddToQueue = { viewModel.addSelectionToQueue() }
+                            )
                         }
                     }
                 }
@@ -203,30 +153,12 @@ fun ArtistDetailScreen(
         )
     }
 
-    if (showPlaylistPicker) {
-        AlertDialog(
-            onDismissRequest = { showPlaylistPicker = false },
-            title = { Text(stringResource(R.string.playlist_picker_title)) },
-            text = {
-                LazyColumn {
-                    items(playlists) { playlist ->
-                        ListItem(
-                            headlineContent = { Text(playlist.name) },
-                            modifier = Modifier.clickable {
-                                showPlaylistPicker = false
-                                viewModel.addSelectionToPlaylist(playlist.id)
-                            }
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showPlaylistPicker = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
-    }
+    PlaylistPickerDialog(
+        show = showPlaylistPicker,
+        playlists = playlists,
+        onDismiss = { showPlaylistPicker = false },
+        onPlaylistSelected = { viewModel.addSelectionToPlaylist(it) }
+    )
 }
 
 @Composable
@@ -274,39 +206,4 @@ private fun ArtistHeader(artistName: String, imageUri: String?) {
         Spacer(modifier = Modifier.height(16.dp))
         HorizontalDivider()
     }
-}
-
-@Composable
-private fun AlbumListItem(albumName: String, albumArtUri: String?, onClick: () -> Unit) {
-    ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
-        headlineContent = { Text(if (albumName.isBlank()) stringResource(R.string.album_no_album) else albumName) },
-        leadingContent = {
-            if (albumArtUri != null) {
-                AsyncImage(
-                    model = albumArtUri,
-                    contentDescription = stringResource(R.string.cd_album_art),
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                )
-            } else {
-                Surface(
-                    modifier = Modifier.size(40.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Filled.Album,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-    )
 }
