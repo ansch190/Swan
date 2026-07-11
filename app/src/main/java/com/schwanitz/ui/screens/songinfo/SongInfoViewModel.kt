@@ -3,8 +3,8 @@
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.data.genius.GeniusLyricsProvider
+import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.model.SongArtwork
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.domain.repository.SourceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,11 +26,17 @@ class SongInfoViewModel @Inject constructor(
     private val _sourceName = MutableStateFlow("")
     val sourceName: StateFlow<String> = _sourceName
 
-    private val _artworks = MutableStateFlow<List<SongArtwork>>(emptyList())
-    val artworks: StateFlow<List<SongArtwork>> = _artworks
+    private val _artworks = MutableStateFlow<List<AlbumArtwork>>(emptyList())
+    val artworks: StateFlow<List<AlbumArtwork>> = _artworks
 
     private val _lyrics = MutableStateFlow<String?>(null)
     val lyrics: StateFlow<String?> = _lyrics
+
+    private val _trackTotal = MutableStateFlow(0)
+    val trackTotal: StateFlow<Int> = _trackTotal
+
+    private val _discTotal = MutableStateFlow(0)
+    val discTotal: StateFlow<Int> = _discTotal
 
     fun loadSong(songId: String) {
         viewModelScope.launch {
@@ -39,8 +45,19 @@ class SongInfoViewModel @Inject constructor(
             if (s != null) {
                 val config = sourceManager.getSourceById(s.sourceId)
                 _sourceName.value = config?.name ?: s.sourceId
-                _artworks.value = musicRepository.getSongArtworks(songId)
-                _lyrics.value = lyricsProvider.getLyrics(songId, s.title, s.artist)
+                _artworks.value = if (s.albumId != null) {
+                    musicRepository.getAlbumArtworks(s.albumId)
+                } else {
+                    emptyList()
+                }
+                _lyrics.value = lyricsProvider.getLyrics(songId, s.title, s.artistName)
+                if (s.albumId != null) {
+                    _trackTotal.value = musicRepository.getTrackTotal(s.albumId, s.discNumber)
+                    _discTotal.value = musicRepository.getDiscTotal(s.albumId)
+                } else {
+                    _trackTotal.value = 0
+                    _discTotal.value = 0
+                }
             }
         }
     }

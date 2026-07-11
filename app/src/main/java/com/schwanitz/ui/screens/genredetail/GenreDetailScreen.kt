@@ -111,7 +111,7 @@ fun GenreDetailScreen(
                             AlbumListItem(
                                 albumName = album.name,
                                 albumArtUri = album.albumArtUri,
-                                onClick = { onAlbumClick(album.name, "") }
+                                onClick = { onAlbumClick(album.name, album.albumArtist) }
                             )
                         }
                     }

@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.schwanitz.domain.model.SongArtwork
+import com.schwanitz.domain.model.AlbumArtwork
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
 import com.schwanitz.ui.components.MarqueeText
@@ -33,13 +33,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun AlbumDetailScreen(
     albumName: String,
-    artistName: String,
+    albumArtistName: String,
     onNavigateBack: () -> Unit,
     onSeriesClick: (String) -> Unit = {},
     viewModel: AlbumDetailViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(albumName, artistName) {
-        viewModel.loadAlbum(albumName, artistName)
+    LaunchedEffect(albumName, albumArtistName) {
+        viewModel.loadAlbum(albumName, albumArtistName)
     }
 
     val songs by viewModel.songs.collectAsState()
@@ -114,7 +114,7 @@ fun AlbumDetailScreen(
 }
 
 @Composable
-private fun AlbumHeader(albumName: String, artworks: List<SongArtwork>) {
+private fun AlbumHeader(albumName: String, artworks: List<AlbumArtwork>) {
     Column(
         modifier = Modifier.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -132,7 +132,7 @@ private fun AlbumHeader(albumName: String, artworks: List<SongArtwork>) {
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 ) {
                     AsyncImage(
-                        model = artworks[page].uri,
+                        model = artworks[page].uriLarge,
                         contentDescription = stringResource(R.string.cd_album_art),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit

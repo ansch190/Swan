@@ -7,8 +7,17 @@ import androidx.room.Query
 import androidx.room.Transaction
 import com.schwanitz.data.local.entity.AlbumSeriesEntity
 import com.schwanitz.data.local.entity.AlbumSeriesMappingEntity
-import com.schwanitz.data.source.SeriesDetector.SeriesResult
 import kotlinx.coroutines.flow.Flow
+
+data class SeriesVolume(
+    val albumId: Long,
+    val volumeNumber: Int
+)
+
+data class SeriesInput(
+    val seriesName: String,
+    val volumes: List<SeriesVolume>
+)
 
 @Dao
 interface AlbumSeriesDao {
@@ -25,9 +34,9 @@ interface AlbumSeriesDao {
     @Query("""
         SELECT ase.* FROM album_series ase
         INNER JOIN album_series_mapping asm ON ase.id = asm.seriesId
-        WHERE asm.albumName = :albumName LIMIT 1
+        WHERE asm.albumId = :albumId LIMIT 1
     """)
-    fun getSeriesByAlbumName(albumName: String): Flow<AlbumSeriesEntity?>
+    fun getSeriesByAlbumId(albumId: Long): Flow<AlbumSeriesEntity?>
 
     @Query("SELECT * FROM album_series_mapping WHERE seriesId = :seriesId ORDER BY volumeNumber ASC")
     fun getMappingsForSeries(seriesId: Long): Flow<List<AlbumSeriesMappingEntity>>
@@ -42,14 +51,14 @@ interface AlbumSeriesDao {
     suspend fun deleteAllSeries()
 
     @Transaction
-    suspend fun replaceAllSeries(seriesList: List<SeriesResult>) {
+    suspend fun replaceAllSeries(seriesList: List<SeriesInput>) {
         deleteAllSeries()
         for (series in seriesList) {
             val id = insertSeries(AlbumSeriesEntity(name = series.seriesName))
             insertMappings(series.volumes.map { v ->
                 AlbumSeriesMappingEntity(
                     seriesId = id,
-                    albumName = v.albumName,
+                    albumId = v.albumId,
                     volumeNumber = v.volumeNumber
                 )
             })

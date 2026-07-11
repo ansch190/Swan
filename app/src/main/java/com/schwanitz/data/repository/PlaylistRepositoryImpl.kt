@@ -2,8 +2,9 @@
 
 import com.schwanitz.data.local.dao.PlaylistDao
 import com.schwanitz.data.local.entity.PlaylistEntity
-import com.schwanitz.data.local.entity.PlaylistSongCrossRef
+import com.schwanitz.data.local.entity.PlaylistSongMapping
 import com.schwanitz.data.local.converter.toDomain
+import com.schwanitz.data.local.converter.toSongDomain
 import com.schwanitz.data.local.entity.PlaylistWithCount
 import com.schwanitz.domain.model.Playlist
 import com.schwanitz.domain.model.Song
@@ -36,12 +37,12 @@ class PlaylistRepositoryImpl @Inject constructor(
 
     override fun getPlaylistSongs(playlistId: Long): Flow<List<Song>> {
         return playlistDao.getPlaylistSongsOrdered(playlistId).map { list ->
-            list.map { it.toDomain() }
+            list.map { it.toSongDomain() }
         }
     }
 
-    override suspend fun createPlaylist(name: String, description: String): Long {
-        val entity = PlaylistEntity(name = name, description = description)
+    override suspend fun createPlaylist(name: String): Long {
+        val entity = PlaylistEntity(name = name)
         return playlistDao.createPlaylist(entity)
     }
 
@@ -58,7 +59,7 @@ class PlaylistRepositoryImpl @Inject constructor(
     }
 
     override suspend fun addSongToPlaylist(playlistId: Long, songId: String, order: Int) {
-        val crossRef = PlaylistSongCrossRef(
+        val crossRef = PlaylistSongMapping(
             playlistId = playlistId,
             songId = songId,
             orderIndex = order
@@ -71,7 +72,7 @@ class PlaylistRepositoryImpl @Inject constructor(
     }
 
     override suspend fun removeSongFromPlaylist(playlistId: Long, songId: String) {
-        val crossRef = PlaylistSongCrossRef(
+        val crossRef = PlaylistSongMapping(
             playlistId = playlistId,
             songId = songId,
             orderIndex = 0

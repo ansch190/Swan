@@ -3,13 +3,16 @@
 import android.content.Context
 import androidx.room.Room
 import com.schwanitz.data.local.AppDatabase
+import com.schwanitz.data.local.dao.AlbumArtworkDao
+import com.schwanitz.data.local.dao.AlbumDao
 import com.schwanitz.data.local.dao.AlbumSeriesDao
-import com.schwanitz.data.local.dao.ArtistImageDao
-import com.schwanitz.data.local.dao.ArtistProfileDao
+import com.schwanitz.data.local.dao.AlbumSongDao
+import com.schwanitz.data.local.dao.ArtistDao
+import com.schwanitz.data.local.dao.ArtistPicDao
 import com.schwanitz.data.local.dao.PlaylistDao
-import com.schwanitz.data.local.dao.SongArtworkDao
 import com.schwanitz.data.local.dao.SongDao
 import com.schwanitz.data.local.dao.SongLyricsDao
+import com.schwanitz.data.local.dao.SongTechnicalInfoDao
 import com.schwanitz.data.local.dao.SourceConfigDao
 import dagger.Module
 import dagger.Provides
@@ -42,17 +45,26 @@ object DatabaseModule {
     fun provideSourceConfigDao(db: AppDatabase): SourceConfigDao = db.sourceConfigDao()
 
     @Provides
-    fun provideSongArtworkDao(db: AppDatabase): SongArtworkDao = db.songArtworkDao()
+    fun provideAlbumDao(db: AppDatabase): AlbumDao = db.albumDao()
 
     @Provides
-    fun provideArtistImageDao(db: AppDatabase): ArtistImageDao = db.artistImageDao()
+    fun provideAlbumArtworkDao(db: AppDatabase): AlbumArtworkDao = db.albumArtworkDao()
 
     @Provides
-    fun provideArtistProfileDao(db: AppDatabase): ArtistProfileDao = db.artistProfileDao()
+    fun provideArtistDao(db: AppDatabase): ArtistDao = db.artistDao()
+
+    @Provides
+    fun provideArtistPicDao(db: AppDatabase): ArtistPicDao = db.artistPicDao()
 
     @Provides
     fun provideSongLyricsDao(db: AppDatabase): SongLyricsDao = db.songLyricsDao()
 
     @Provides
     fun provideAlbumSeriesDao(db: AppDatabase): AlbumSeriesDao = db.albumSeriesDao()
+
+    @Provides
+    fun provideAlbumSongDao(db: AppDatabase): AlbumSongDao = db.albumSongDao()
+
+    @Provides
+    fun provideSongTechnicalInfoDao(db: AppDatabase): SongTechnicalInfoDao = db.songTechnicalInfoDao()
 }

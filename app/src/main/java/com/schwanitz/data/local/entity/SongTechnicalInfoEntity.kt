@@ -6,7 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "song_lyrics",
+    tableName = "song_technical_info",
     foreignKeys = [
         ForeignKey(
             entity = SongEntity::class,
@@ -17,8 +17,10 @@ import androidx.room.PrimaryKey
     ],
     indices = [Index("songId")]
 )
-data class SongLyricsEntity(
+data class SongTechnicalInfoEntity(
     @PrimaryKey val songId: String,
-    val lyrics: String,
-    val fetchedAt: Long
+    val fileSize: Long = 0L,
+    val bitrate: Int = 0,
+    val sampleRate: Int = 0,
+    val mimeType: String = ""
 )

@@ -1,11 +1,11 @@
-﻿package com.schwanitz.data.local.entity
+package com.schwanitz.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 
 @Entity(
-    tableName = "playlist_song_cross_ref",
+    tableName = "playlist_song_mapping",
     primaryKeys = ["playlistId", "songId"],
     foreignKeys = [
         ForeignKey(
@@ -23,7 +23,7 @@ import androidx.room.Index
     ],
     indices = [Index("songId")]
 )
-data class PlaylistSongCrossRef(
+data class PlaylistSongMapping(
     val playlistId: Long,
     val songId: String,
     val orderIndex: Int

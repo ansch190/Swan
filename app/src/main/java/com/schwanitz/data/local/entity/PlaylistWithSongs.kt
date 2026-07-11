@@ -10,7 +10,7 @@ data class PlaylistWithSongs(
         parentColumn = "id",
         entityColumn = "id",
         associateBy = Junction(
-            PlaylistSongCrossRef::class,
+            PlaylistSongMapping::class,
             parentColumn = "playlistId",
             entityColumn = "songId"
         )

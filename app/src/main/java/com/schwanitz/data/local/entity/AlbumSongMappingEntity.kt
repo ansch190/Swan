@@ -3,15 +3,15 @@ package com.schwanitz.data.local.entity
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
-import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "album_series_mapping",
+    tableName = "album_song_mapping",
+    primaryKeys = ["songId", "albumId"],
     foreignKeys = [
         ForeignKey(
-            entity = AlbumSeriesEntity::class,
+            entity = SongEntity::class,
             parentColumns = ["id"],
-            childColumns = ["seriesId"],
+            childColumns = ["songId"],
             onDelete = ForeignKey.CASCADE
         ),
         ForeignKey(
@@ -21,11 +21,11 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("seriesId"), Index("albumId")]
+    indices = [Index("albumId")]
 )
-data class AlbumSeriesMappingEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val seriesId: Long,
+data class AlbumSongMappingEntity(
+    val songId: String,
     val albumId: Long,
-    val volumeNumber: Int
+    val trackNumber: Int = 0,
+    val discNumber: Int = 0
 )

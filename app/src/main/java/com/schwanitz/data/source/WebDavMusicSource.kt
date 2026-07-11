@@ -3,8 +3,9 @@
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.util.Log
+import com.schwanitz.domain.model.Album
+import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.model.SongArtwork
 import com.schwanitz.domain.source.LoadSongsResult
 import com.schwanitz.domain.source.MusicSource
 import com.schwanitz.domain.source.SourceConfig
@@ -53,10 +54,10 @@ class WebDavMusicSource @Inject constructor(
         config: SourceConfig,
         onProgress: (Int, Int) -> Unit
     ): LoadSongsResult = withContext(Dispatchers.IO) {
-        val baseUrl = config.url?.trimEnd('/') ?: return@withContext LoadSongsResult(emptyList(), emptyList())
+        val baseUrl = config.url?.trimEnd('/') ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
         val username = config.username
         val password = config.password
-        
+
         val rawPath = config.path?.let { "/${it.trimStart('/')}" } ?: "/"
         val startUrl = if (rawPath.startsWith("http")) rawPath else "$baseUrl$rawPath"
 
@@ -66,33 +67,54 @@ class WebDavMusicSource @Inject constructor(
         Log.d("WebDavMusicSource", "Finished collecting. Found $total audio files.")
 
         val songs = mutableListOf<Song>()
-        val allArtworks = mutableListOf<SongArtwork>()
+        val albumMap = mutableMapOf<String, Album>()
+        val albumArtworkMap = mutableMapOf<String, MutableList<AlbumArtwork>>()
+        val albumArtworkCache = mutableMapOf<String, List<String>>()
 
         Log.e("WebDavMusicSource", "Starting metadata extraction for $total files")
         audioEntries.forEachIndexed { index, (url, fileSize) ->
             val t0 = System.currentTimeMillis()
             onProgress(index + 1, total)
-            val result = extractMetadata(url, config.id, username, password, fileSize)
+            val result = extractMetadata(url, config.id, username, password, fileSize, albumArtworkCache)
             val dt = System.currentTimeMillis() - t0
             if (result.song != null) {
                 Log.e("WebDavMusicSource", "[${index + 1}/$total] '${result.song.title}' OK (${dt}ms)")
+
+                val albumKey = "${result.song.albumArtistName}|${result.song.albumName}|${result.song.year}"
+                if (albumKey !in albumMap) {
+                    val albumEntry = Album(
+                        name = result.song.albumName,
+                        albumArtist = result.song.albumArtistName,
+                        year = result.song.year
+                    )
+                    albumMap[albumKey] = albumEntry
+                }
+
+                val albumForSong = albumMap[albumKey]!!
+                val songWithAlbumId = result.song.copy(albumId = albumForSong.id)
+                songs.add(songWithAlbumId)
+
+                if (result.artworks.isNotEmpty()) {
+                    val artworkList = albumArtworkMap.getOrPut(albumKey) { mutableListOf() }
+                    for (artResult in result.artworks) {
+                        artworkList.add(
+                            AlbumArtwork(
+                                albumId = 0,
+                                sortOrder = artworkList.size,
+                                uriLarge = artResult.largeUri,
+                                uriSmall = artResult.smallUri
+                            )
+                        )
+                    }
+                }
             } else {
                 Log.w("WebDavMusicSource", "[${index + 1}/$total] ${url.substringAfterLast('/')} -> FAILED (${dt}ms)")
             }
-            result.song?.let { songs.add(it) }
-            result.artworkUris.forEachIndexed { artIndex, artUri ->
-                allArtworks.add(
-                    SongArtwork(
-                        songId = url,
-                        sortOrder = artIndex,
-                        pictureType = "Front Cover",
-                        uri = artUri
-                    )
-                )
-            }
         }
 
-        LoadSongsResult(songs, allArtworks)
+        val albums = albumMap.values.toList()
+        val allArtworks = albumArtworkMap.toMap()
+        LoadSongsResult(songs, albums, allArtworks)
     }
 
     private fun collectAudioFiles(
@@ -116,7 +138,7 @@ class WebDavMusicSource @Inject constructor(
                 val entryPath = entry.href.trim('/').lowercase()
                 val currentPathOnly = path.toHttpUrlOrNull()?.encodedPath ?: path
                 val currentPath = currentPathOnly.trim('/').lowercase()
-                
+
                 if (entryPath != currentPath && entryPath.isNotEmpty()) {
                     if (entryPath.startsWith(currentPath) || currentPath.isEmpty()) {
                         collectAudioFiles(baseUrl, username, password, entry.href, result)
@@ -135,7 +157,7 @@ class WebDavMusicSource @Inject constructor(
         path: String
     ): List<WebDavEntry> {
         val url = if (path.startsWith("http")) {
-            path 
+            path
         } else {
             val base = baseUrl.trimEnd('/')
             val p = if (path.startsWith("/")) path else "/$path"
@@ -157,13 +179,13 @@ class WebDavMusicSource @Inject constructor(
                     Log.e("WebDavMusicSource", "Unauthorized for $url")
                     return emptyList()
                 }
-                
+
                 val responseBody = response.body?.string()
                 if (!response.isSuccessful || responseBody == null) {
                     Log.w("WebDavMusicSource", "PROPFIND failed: ${response.code} for $url")
                     return emptyList()
                 }
-                
+
                 parsePropfindResponse(responseBody, url)
             }
         } catch (e: Exception) {
@@ -177,7 +199,7 @@ class WebDavMusicSource @Inject constructor(
         requestUrl: String
     ): List<WebDavEntry> {
         val entries = mutableListOf<WebDavEntry>()
-        
+
         val normalizedRequestPath = requestUrl.toHttpUrlOrNull()?.encodedPath?.trim('/')?.lowercase() ?: ""
 
         try {
@@ -210,7 +232,7 @@ class WebDavMusicSource @Inject constructor(
                         if (currentHref != null) {
                             val entryEncodedPath = currentHref.toHttpUrlOrNull()?.encodedPath ?: currentHref
                             val normalizedEntryPath = entryEncodedPath.trim('/').lowercase()
-                            
+
                             if (normalizedEntryPath != normalizedRequestPath) {
                                 entries.add(WebDavEntry(currentHref, isCollection, currentContentLength))
                             }
@@ -233,7 +255,8 @@ class WebDavMusicSource @Inject constructor(
         sourceId: String,
         username: String?,
         password: String?,
-        fileSize: Long = 0L
+        fileSize: Long = 0L,
+        albumArtworkCache: MutableMap<String, List<String>>
     ): BuildSongResult {
         val partialFile = try {
             val t0 = System.currentTimeMillis()
@@ -253,7 +276,8 @@ class WebDavMusicSource @Inject constructor(
                 Log.e("WebDavMusicSource", "Extracting metadata from partial file: ${partialFile.absolutePath}")
                 retriever.setDataSource(partialFile.absolutePath)
                 return MetadataExtractor.buildSong(
-                    source, retriever, audioUrl, sourceId, context, fileSize
+                    source, retriever, audioUrl, sourceId, context, fileSize,
+                    albumArtworkCache = albumArtworkCache
                 )
             } finally {
                 try { retriever.release() } catch (_: Exception) {}
@@ -310,7 +334,7 @@ class WebDavMusicSource @Inject constructor(
         try {
             val entries = propfind(url, username, password, path.ifBlank { "/" })
             if (entries.isEmpty()) {
-                Result.failure(Exception("Could not connect â€” check URL and credentials"))
+                Result.failure(Exception("Could not connect — check URL and credentials"))
             } else {
                 Result.success("Connected successfully (${entries.size} items found)")
             }

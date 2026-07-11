@@ -21,10 +21,11 @@ private val tagixExecutor = Executors.newCachedThreadPool { r ->
 
 data class BuildSongResult(
     val song: Song?,
-    val artworkUris: List<String>
+    val artworkUris: List<String>,
+    val artworks: List<ArtworkResult> = emptyList()
 )
 
-data class TagFields(
+data class TextFields(
     val title: String = "",
     val artist: String = "",
     val album: String = "",
@@ -33,8 +34,7 @@ data class TagFields(
     val trackRaw: String = "",
     val year: Int = 0,
     val genre: String = "",
-    val tagVersion: String = "",
-    val artworkUris: List<String> = emptyList()
+    val tagVersion: String = ""
 )
 
 object MetadataExtractor {
@@ -47,7 +47,8 @@ object MetadataExtractor {
         songId: String,
         sourceId: String,
         context: Context,
-        fileSize: Long = 0L
+        fileSize: Long = 0L,
+        albumArtworkCache: MutableMap<String, List<String>> = mutableMapOf()
     ): BuildSongResult {
         return try {
             val metadataList: List<Metadata>
@@ -73,14 +74,15 @@ object MetadataExtractor {
                 return BuildSongResult(null, emptyList())
             }
 
-            val tagFields = if (metadataList.isEmpty()) {
-                Log.w("MetadataExtractor", "No tag metadata found for $songId, using defaults")
-                TagFields()
-            } else {
-                val bestMetadata = metadataList.maxByOrNull { tagPriority(it.tagFormat) }
-                    ?: metadataList.first()
+            val bestMetadata = metadataList.maxByOrNull { tagPriority(it.tagFormat) }
+                ?: metadataList.firstOrNull()
+
+            val textFields = if (bestMetadata != null) {
                 Log.e("MetadataExtractor", "Tag format=${bestMetadata.tagFormat}, fields=${bestMetadata.fields.size}, pictures=${bestMetadata.pictures.size}")
-                extractTagFields(bestMetadata, context)
+                extractTextFields(bestMetadata)
+            } else {
+                Log.w("MetadataExtractor", "No tag metadata found for $songId, using defaults")
+                TextFields()
             }
 
             val fileName = try {
@@ -92,8 +94,8 @@ object MetadataExtractor {
                 songId
             }
 
-            val finalTitle = tagFields.title.ifBlank { fileName }
-            Log.e("MetadataExtractor", "Extracted for $songId: title=${tagFields.title} artist=${tagFields.artist} album=${tagFields.album} albumArtist=${tagFields.albumArtist} disc=${tagFields.discRaw} track=${tagFields.trackRaw} year=${tagFields.year} genre=${tagFields.genre} tag=${tagFields.tagVersion} artworks=${tagFields.artworkUris.size}")
+            val finalTitle = textFields.title.ifBlank { fileName }
+            Log.e("MetadataExtractor", "Extracted for $songId: title=${textFields.title} artist=${textFields.artist} album=${textFields.album} albumArtist=${textFields.albumArtist} disc=${textFields.discRaw} track=${textFields.trackRaw} year=${textFields.year} genre=${textFields.genre} tag=${textFields.tagVersion}")
 
             val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
             val durationMs = durationStr?.toLongOrNull() ?: 0L
@@ -102,45 +104,65 @@ object MetadataExtractor {
             val sampleRate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)?.toIntOrNull() ?: 0
             val bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull() ?: 0
 
-            val mmrArtworkBytes = retriever.embeddedPicture
+            val albumKey = "${textFields.albumArtist.trim()}|${textFields.album.trim()}|${textFields.year}"
 
-            val allUris = mutableListOf<String>()
-            if (mmrArtworkBytes != null) {
-                val uri = ArtworkCache.save(mmrArtworkBytes, context, 0)
-                allUris.add(uri)
+            val allUris: List<String>
+            val allArtworks: List<ArtworkResult>
+
+            if (albumKey.isNotEmpty() && albumKey in albumArtworkCache) {
+                allUris = albumArtworkCache[albumKey]!!
+                allArtworks = emptyList()
+                Log.e("MetadataExtractor", "Artwork cache HIT for album key: $albumKey (${allUris.size} URIs)")
+            } else {
+                val mmrUris = mutableListOf<String>()
+                val artworkResults = mutableListOf<ArtworkResult>()
+
+                val mmrArtworkBytes = retriever.embeddedPicture
+                if (mmrArtworkBytes != null) {
+                    val result = ArtworkCache.saveScaled(mmrArtworkBytes, context, 0)
+                    mmrUris.add(result.largeUri)
+                    artworkResults.add(result)
+                }
+
+                val tagArtResults = if (bestMetadata != null) saveArtwork(bestMetadata, context) else emptyList()
+                val tagUris = tagArtResults.map { it.largeUri }
+                allUris = (mmrUris + tagUris.filter { it !in mmrUris })
+
+                allArtworks = artworkResults + tagArtResults.filter { it.largeUri !in mmrUris }
+
+                if (albumKey.isNotEmpty() && allUris.isNotEmpty()) {
+                    albumArtworkCache[albumKey] = allUris
+                    Log.e("MetadataExtractor", "Artwork cache STORE for album key: $albumKey (${allUris.size} URIs)")
+                }
             }
-            allUris.addAll(tagFields.artworkUris.filter { it !in allUris })
 
             val song = Song(
                 id = songId,
                 title = finalTitle,
-                artist = tagFields.artist.trim(),
-                album = tagFields.album.trim(),
+                artistName = textFields.artist.trim(),
+                albumName = textFields.album.trim(),
                 durationMs = durationMs,
-                albumArtUri = allUris.firstOrNull(),
                 sourceId = sourceId,
-                albumArtist = tagFields.albumArtist.trim(),
-                discNumber = tagFields.discRaw.trim().substringBefore('/').filter { it.isDigit() }.toIntOrNull() ?: 1,
-                trackNumber = tagFields.trackRaw.trim().substringBefore('/').filter { it.isDigit() }.toIntOrNull() ?: 0,
-                trackRaw = tagFields.trackRaw.trim(),
-                discRaw = tagFields.discRaw.trim(),
-                year = tagFields.year,
-                genre = tagFields.genre,
+                albumArtistName = textFields.albumArtist.trim(),
+                discNumber = textFields.discRaw.trim().substringBefore('/').filter { it.isDigit() }.toIntOrNull() ?: 1,
+                trackNumber = textFields.trackRaw.trim().substringBefore('/').filter { it.isDigit() }.toIntOrNull() ?: 0,
+                year = textFields.year,
+                genre = textFields.genre,
                 mimeType = mimeType,
                 sampleRate = sampleRate,
                 bitrate = bitrate,
-                tagVersion = tagFields.tagVersion,
+                tagVersion = textFields.tagVersion,
                 fileSize = fileSize
             )
 
-            BuildSongResult(song, allUris)
+            BuildSongResult(song, allUris, allArtworks)
         } catch (e: Exception) {
             Log.e("MetadataExtractor", "buildSong failed for $songId", e)
             BuildSongResult(null, emptyList())
         }
     }
 
-    private fun extractTagFields(metadata: Metadata, context: Context): TagFields {
+    private fun extractTextFields(metadata: Metadata): TextFields {
         var title = ""
         var artist = ""
         var album = ""
@@ -171,12 +193,7 @@ object MetadataExtractor {
         }
         Log.e("MetadataExtractor", "  extracted: title=$title artist=$artist album=$album albumArtist=$albumArtist disc=$discRaw track=$trackRaw year=$year genre=$genre")
 
-        val artworkUris = metadata.pictures.mapIndexed { index, picture ->
-            Log.e("MetadataExtractor", "  picture[$index]: ${picture.data.size} bytes, mime=${picture.mimeType}")
-            ArtworkCache.save(picture.data, context, index)
-        }
-
-        return TagFields(
+        return TextFields(
             title = title,
             artist = artist,
             album = album,
@@ -185,9 +202,15 @@ object MetadataExtractor {
             trackRaw = trackRaw,
             year = year,
             genre = genre,
-            tagVersion = formatTagixVersion(metadata.tagFormat),
-            artworkUris = artworkUris
+            tagVersion = formatTagixVersion(metadata.tagFormat)
         )
+    }
+
+    private fun saveArtwork(metadata: Metadata, context: Context): List<ArtworkResult> {
+        return metadata.pictures.mapIndexed { index, picture ->
+            Log.e("MetadataExtractor", "  picture[$index]: ${picture.data.size} bytes, mime=${picture.mimeType}")
+            ArtworkCache.saveScaled(picture.data, context, index)
+        }
     }
 
     private fun tagPriority(tagFormat: String): Int = when {

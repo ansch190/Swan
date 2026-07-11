@@ -2,7 +2,7 @@ package com.schwanitz.ui.screens.artistlist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.schwanitz.domain.repository.ArtistImageRepository
+import com.schwanitz.domain.repository.ArtistRepository
 import com.schwanitz.domain.repository.MusicRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +13,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ArtistListViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
-    private val artistImageRepository: ArtistImageRepository
+    private val artistRepository: ArtistRepository
 ) : ViewModel() {
 
     private val _allArtists = MutableStateFlow<List<String>>(emptyList())
@@ -25,7 +25,7 @@ class ArtistListViewModel @Inject constructor(
 
     fun loadArtists() {
         viewModelScope.launch {
-            musicRepository.getAllArtists().collect {
+            musicRepository.getAllArtistNames().collect {
                 _allArtists.value = it
                 loadArtistImages(it)
             }
@@ -42,7 +42,8 @@ class ArtistListViewModel @Inject constructor(
             if (!imageUris.containsKey(artist)) {
                 imageUris[artist] = null
                 _artistImageUris.value = imageUris.toMap()
-                val uri = artistImageRepository.getArtistImage(artist)
+                val artistEntity = artistRepository.getArtistByName(artist)
+                val uri = artistEntity?.let { artistRepository.getArtistImageSmall(it.id) }
                 imageUris[artist] = uri
                 _artistImageUris.value = imageUris.toMap()
             }

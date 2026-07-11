@@ -33,9 +33,9 @@ fun NavGraph(navController: NavHostController) {
         composable(BottomNavItem.Songs.route) {
             HomeScreen(
                 onSettingsClick = { navController.navigate("settings") },
-                onSongInfoClick = { songId -> 
+                onSongInfoClick = { songId ->
                     val encodedId = Uri.encode(songId)
-                    navController.navigate("song_info/$encodedId") 
+                    navController.navigate("song_info/$encodedId")
                 }
             )
         }
@@ -45,10 +45,10 @@ fun NavGraph(navController: NavHostController) {
             SongInfoScreen(
                 songId = songId,
                 onNavigateBack = { navController.popBackStack() },
-                onAlbumClick = { album, artist ->
+                onAlbumClick = { album, albumArtist ->
                     val encodedAlbum = Uri.encode(album)
-                    val encodedArtist = Uri.encode(artist)
-                    navController.navigate("album_detail/$encodedAlbum/$encodedArtist")
+                    val encodedAlbumArtist = Uri.encode(albumArtist)
+                    navController.navigate("album_detail/$encodedAlbum/$encodedAlbumArtist")
                 },
                 onArtistClick = { artist ->
                     val encodedArtist = Uri.encode(artist)
@@ -80,9 +80,10 @@ fun NavGraph(navController: NavHostController) {
                     val encodedArtist = Uri.encode(artist)
                     navController.navigate("artist_detail/$encodedArtist")
                 },
-                onAlbumClick = { album, _ ->
+                onAlbumClick = { album, albumArtist ->
                     val encodedAlbum = Uri.encode(album)
-                    navController.navigate("album_detail/$encodedAlbum/unknown")
+                    val encodedAlbumArtist = Uri.encode(albumArtist)
+                    navController.navigate("album_detail/$encodedAlbum/$encodedAlbumArtist")
                 }
             )
         }
@@ -95,9 +96,10 @@ fun NavGraph(navController: NavHostController) {
             YearDetailScreen(
                 year = year,
                 onNavigateBack = { navController.popBackStack() },
-                onAlbumClick = { album, _ ->
+                onAlbumClick = { album, albumArtist ->
                     val encodedAlbum = Uri.encode(album)
-                    navController.navigate("album_detail/$encodedAlbum/unknown")
+                    val encodedAlbumArtist = Uri.encode(albumArtist)
+                    navController.navigate("album_detail/$encodedAlbum/$encodedAlbumArtist")
                 }
             )
         }
@@ -110,10 +112,10 @@ fun NavGraph(navController: NavHostController) {
             ArtistDetailScreen(
                 artistName = artistName,
                 onNavigateBack = { navController.popBackStack() },
-                onAlbumClick = { album, artist ->
+                onAlbumClick = { album, albumArtist ->
                     val encodedAlbum = Uri.encode(album)
-                    val encodedArtist = Uri.encode(artist)
-                    navController.navigate("album_detail/$encodedAlbum/$encodedArtist")
+                    val encodedAlbumArtist = Uri.encode(albumArtist)
+                    navController.navigate("album_detail/$encodedAlbum/$encodedAlbumArtist")
                 }
             )
         }
@@ -131,9 +133,10 @@ fun NavGraph(navController: NavHostController) {
         composable("all_albums") {
             com.schwanitz.ui.screens.albumlist.AlbumListScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onAlbumClick = { albumName ->
+                onAlbumClick = { albumName, albumArtist ->
                     val encoded = Uri.encode(albumName)
-                    navController.navigate("album_detail/$encoded/unknown")
+                    val encodedArtist = Uri.encode(albumArtist)
+                    navController.navigate("album_detail/$encoded/$encodedArtist")
                 }
             )
         }
@@ -158,17 +161,17 @@ fun NavGraph(navController: NavHostController) {
         }
 
         composable(
-            route = "album_detail/{albumName}/{artistName}",
+            route = "album_detail/{albumName}/{albumArtistName}",
             arguments = listOf(
                 navArgument("albumName") { type = NavType.StringType },
-                navArgument("artistName") { type = NavType.StringType }
+                navArgument("albumArtistName") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val albumName = backStackEntry.arguments?.getString("albumName") ?: ""
-            val artistName = backStackEntry.arguments?.getString("artistName") ?: ""
+            val albumArtistName = backStackEntry.arguments?.getString("albumArtistName") ?: ""
             AlbumDetailScreen(
                 albumName = albumName,
-                artistName = artistName,
+                albumArtistName = albumArtistName,
                 onNavigateBack = { navController.popBackStack() },
                 onSeriesClick = { seriesName ->
                     val encoded = Uri.encode(seriesName)
@@ -185,9 +188,10 @@ fun NavGraph(navController: NavHostController) {
             SeriesDetailScreen(
                 seriesName = seriesName,
                 onNavigateBack = { navController.popBackStack() },
-                onAlbumClick = { album, _ ->
+                onAlbumClick = { album, albumArtist ->
                     val encodedAlbum = Uri.encode(album)
-                    navController.navigate("album_detail/$encodedAlbum/unknown")
+                    val encodedAlbumArtist = Uri.encode(albumArtist)
+                    navController.navigate("album_detail/$encodedAlbum/$encodedAlbumArtist")
                 }
             )
         }

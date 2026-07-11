@@ -87,9 +87,9 @@ fun SongListItem(
         },
         supportingContent = {
             val subtitle = when {
-                song.artist.isNotBlank() && song.album.isNotBlank() -> "${song.artist} \u2022 ${song.album}"
-                song.artist.isNotBlank() -> song.artist
-                song.album.isNotBlank() -> song.album
+                song.artistName.isNotBlank() && song.albumName.isNotBlank() -> "${song.artistName} \u2022 ${song.albumName}"
+                song.artistName.isNotBlank() -> song.artistName
+                song.albumName.isNotBlank() -> song.albumName
                 else -> ""
             }
             if (subtitle.isNotEmpty()) {

@@ -2,8 +2,8 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.model.SongArtwork
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.player.MusicPlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,20 +25,24 @@ class NowPlayingViewModel @Inject constructor(
         playerManager.playerState
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), playerManager.playerState.value)
 
-    private val _artworks = MutableStateFlow<List<SongArtwork>>(emptyList())
-    val artworks: StateFlow<List<SongArtwork>> = _artworks
+    private val _artworks = MutableStateFlow<List<AlbumArtwork>>(emptyList())
+    val artworks: StateFlow<List<AlbumArtwork>> = _artworks
 
     val favoriteIds: StateFlow<Set<String>> = musicRepository.getFavoriteSongs()
         .map { songs -> songs.map { it.id }.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
-    private var currentSongId: String? = null
+    private var currentAlbumId: Long? = null
 
-    fun loadArtworks(songId: String) {
-        if (songId == currentSongId) return
-        currentSongId = songId
+    fun loadArtworks(albumId: Long?) {
+        if (albumId == currentAlbumId) return
+        currentAlbumId = albumId
         viewModelScope.launch {
-            _artworks.value = musicRepository.getSongArtworks(songId)
+            _artworks.value = if (albumId != null) {
+                musicRepository.getAlbumArtworks(albumId)
+            } else {
+                emptyList()
+            }
         }
     }
 

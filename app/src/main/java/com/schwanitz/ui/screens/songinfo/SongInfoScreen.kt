@@ -34,7 +34,7 @@ import android.provider.DocumentsContract
 import android.widget.Toast
 import coil.compose.AsyncImage
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.model.SongArtwork
+import com.schwanitz.domain.model.AlbumArtwork
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
 import com.schwanitz.ui.components.MarqueeText
@@ -63,6 +63,8 @@ fun SongInfoScreen(
     val sourceName by viewModel.sourceName.collectAsState()
     val artworks by viewModel.artworks.collectAsState()
     val lyrics by viewModel.lyrics.collectAsState()
+    val trackTotal by viewModel.trackTotal.collectAsState()
+    val discTotal by viewModel.discTotal.collectAsState()
     var showLyricsDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
@@ -117,6 +119,8 @@ fun SongInfoScreen(
                 when (page) {
                     0 -> MetadataTab(
                         song = song!!,
+                        trackTotal = trackTotal,
+                        discTotal = discTotal,
                         onAlbumClick = onAlbumClick,
                         onArtistClick = onArtistClick,
                         onAllArtistsClick = onAllArtistsClick,
@@ -161,7 +165,7 @@ fun SongInfoScreen(
 }
 
 @Composable
-private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
+private fun SongHeader(song: Song, artworks: List<AlbumArtwork>) {
     Column(
         modifier = Modifier.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -182,7 +186,7 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 ) {
                     AsyncImage(
-                        model = artworks[page].uri,
+                        model = artworks[page].uriLarge,
                         contentDescription = stringResource(R.string.cd_album_art),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit
@@ -211,9 +215,9 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
                     }
                 }
             }
-        } else if (song.albumArtUri != null) {
+        } else if (song.albumArtUriLarge != null) {
             AsyncImage(
-                model = song.albumArtUri,
+                model = song.albumArtUriLarge,
                 contentDescription = stringResource(R.string.cd_album_art),
                 modifier = Modifier
                     .size(200.dp)
@@ -251,7 +255,7 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = song.artist.ifBlank { "-" },
+            text = song.artistName.ifBlank { "-" },
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -259,7 +263,7 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
         Spacer(modifier = Modifier.height(2.dp))
 
         Text(
-            text = song.album.ifBlank { "-" },
+            text = song.albumName.ifBlank { "-" },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -273,6 +277,8 @@ private fun SongHeader(song: Song, artworks: List<SongArtwork>) {
 @Composable
 private fun MetadataTab(
     song: Song,
+    trackTotal: Int,
+    discTotal: Int,
     onAlbumClick: (String, String) -> Unit,
     onArtistClick: (String) -> Unit,
     onAllArtistsClick: () -> Unit,
@@ -293,21 +299,33 @@ private fun MetadataTab(
         InfoRow(stringResource(R.string.songinfo_field_title), song.title.ifBlank { "-" })
         InfoRow(
             label = stringResource(R.string.songinfo_field_artist),
-            value = song.artist.ifBlank { "-" },
+            value = song.artistName.ifBlank { "-" },
             onLabelClick = onAllArtistsClick,
-            onValueClick = { onArtistClick(song.artist) }
+            onValueClick = { onArtistClick(song.artistName) }
         )
         InfoRow(
             label = stringResource(R.string.songinfo_field_album),
-            value = song.album.ifBlank { "-" },
+            value = song.albumName.ifBlank { "-" },
             onLabelClick = onAllAlbumsClick,
             onValueClick = {
-                onAlbumClick(song.album, song.artist)
+                onAlbumClick(song.albumName, song.albumArtistName)
             }
         )
-        InfoRow(stringResource(R.string.songinfo_field_album_artist), song.albumArtist.ifBlank { "-" })
-        InfoRow(stringResource(R.string.songinfo_field_track), song.trackRaw.ifBlank { "-" })
-        InfoRow(stringResource(R.string.songinfo_field_disc), song.discRaw.ifBlank { "-" })
+        InfoRow(stringResource(R.string.songinfo_field_album_artist), song.albumArtistName.ifBlank { "-" })
+        InfoRow(
+            stringResource(R.string.songinfo_field_track),
+            if (song.trackNumber > 0) {
+                if (trackTotal > 0) "%02d/%02d".format(song.trackNumber, trackTotal)
+                else "%02d".format(song.trackNumber)
+            } else "-"
+        )
+        InfoRow(
+            stringResource(R.string.songinfo_field_disc),
+            if (song.discNumber > 0) {
+                if (discTotal > 0) "%02d/%02d".format(song.discNumber, discTotal)
+                else "%02d".format(song.discNumber)
+            } else "-"
+        )
         InfoRow(
             label = stringResource(R.string.songinfo_field_year),
             value = if (song.year > 0) song.year.toString() else "-",

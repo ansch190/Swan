@@ -1,27 +1,26 @@
 ﻿package com.schwanitz.data.local.converter
 
+import com.schwanitz.data.local.dao.PlaylistDao
+import com.schwanitz.data.local.dao.SongDao
 import com.schwanitz.data.local.entity.*
-import com.schwanitz.domain.model.ArtistImage
-import com.schwanitz.domain.model.ArtistProfile
-import com.schwanitz.domain.model.Playlist
-import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.model.SongArtwork
+import com.schwanitz.domain.model.*
 
-fun SongEntity.toDomain(): Song = Song(
+fun SongDao.SongWithNames.toDomain(): Song = Song(
     id = id,
     title = title,
-    artist = artist,
-    album = album,
+    artistId = artistId,
+    artistName = artistName ?: "",
+    albumId = albumId,
+    albumName = albumName ?: "",
+    albumArtistName = albumArtistName ?: "",
     durationMs = durationMs,
     albumArtUri = albumArtUri,
+    albumArtUriLarge = albumArtUriLarge,
     sourceId = sourceId,
     isFavorite = isFavorite,
     isActive = isActive,
-    albumArtist = albumArtist,
     discNumber = discNumber,
     trackNumber = trackNumber,
-    trackRaw = trackRaw,
-    discRaw = discRaw,
     year = year,
     genre = genre,
     mimeType = mimeType,
@@ -34,18 +33,131 @@ fun SongEntity.toDomain(): Song = Song(
 fun Song.toEntity(): SongEntity = SongEntity(
     id = id,
     title = title,
-    artist = artist,
-    album = album,
+    artistId = artistId,
     durationMs = durationMs,
-    albumArtUri = albumArtUri,
     sourceId = sourceId,
     isFavorite = isFavorite,
     isActive = isActive,
+    genre = genre,
+    tagVersion = tagVersion
+)
+
+fun Song.toMappingEntity(albumId: Long): AlbumSongMappingEntity = AlbumSongMappingEntity(
+    songId = id,
+    albumId = albumId,
+    trackNumber = trackNumber,
+    discNumber = discNumber
+)
+
+fun Song.toTechnicalInfoEntity(): SongTechnicalInfoEntity = SongTechnicalInfoEntity(
+    songId = id,
+    fileSize = fileSize,
+    bitrate = bitrate,
+    sampleRate = sampleRate,
+    mimeType = mimeType
+)
+
+fun AlbumEntity.toDomain(): Album = Album(
+    id = id,
+    name = name,
     albumArtist = albumArtist,
+    year = year
+)
+
+fun Album.toEntity(): AlbumEntity = AlbumEntity(
+    id = id,
+    name = name,
+    albumArtist = albumArtist,
+    year = year
+)
+
+fun AlbumArtworkEntity.toDomain(): AlbumArtwork = AlbumArtwork(
+    albumId = albumId,
+    sortOrder = sortOrder,
+    uriLarge = uriLarge,
+    uriSmall = uriSmall
+)
+
+fun AlbumArtwork.toEntity(): AlbumArtworkEntity = AlbumArtworkEntity(
+    albumId = albumId,
+    sortOrder = sortOrder,
+    uriLarge = uriLarge,
+    uriSmall = uriSmall
+)
+
+fun PlaylistWithSongs.toDomain(): Playlist = Playlist(
+    id = playlist.id,
+    name = playlist.name,
+    songs = songs.map {
+        Song(
+            id = it.id,
+            title = it.title,
+            artistId = it.artistId,
+            durationMs = it.durationMs,
+            albumArtUri = null,
+            sourceId = it.sourceId,
+            isFavorite = it.isFavorite,
+            isActive = it.isActive,
+            genre = it.genre,
+            tagVersion = it.tagVersion
+        )
+    }
+)
+
+fun PlaylistEntity.toDomain(songs: List<SongEntity> = emptyList()): Playlist = Playlist(
+    id = id,
+    name = name,
+    songs = songs.map {
+        Song(
+            id = it.id,
+            title = it.title,
+            artistId = it.artistId,
+            durationMs = it.durationMs,
+            albumArtUri = null,
+            sourceId = it.sourceId,
+            isFavorite = it.isFavorite,
+            isActive = it.isActive,
+            genre = it.genre,
+            tagVersion = it.tagVersion
+        )
+    }
+)
+
+fun Playlist.toEntity(): PlaylistEntity = PlaylistEntity(
+    id = id,
+    name = name
+)
+
+fun ArtistEntity.toDomain(): Artist = Artist(
+    id = id,
+    name = name,
+    biography = biography,
+    biographyLastUpdated = biographyLastUpdated
+)
+
+fun Artist.toEntity(): ArtistEntity = ArtistEntity(
+    id = id,
+    name = name,
+    biography = biography,
+    biographyLastUpdated = biographyLastUpdated
+)
+
+fun PlaylistDao.PlaylistSongWithNames.toSongDomain(): Song = Song(
+    id = id,
+    title = title,
+    artistId = artistId,
+    artistName = artistName ?: "",
+    albumId = albumId,
+    albumName = albumName ?: "",
+    albumArtistName = albumArtistName ?: "",
+    durationMs = durationMs,
+    albumArtUri = albumArtUri,
+    albumArtUriLarge = albumArtUriLarge,
+    sourceId = sourceId,
+    isFavorite = isFavorite,
+    isActive = isActive,
     discNumber = discNumber,
     trackNumber = trackNumber,
-    trackRaw = trackRaw,
-    discRaw = discRaw,
     year = year,
     genre = genre,
     mimeType = mimeType,
@@ -53,65 +165,4 @@ fun Song.toEntity(): SongEntity = SongEntity(
     bitrate = bitrate,
     fileSize = fileSize,
     tagVersion = tagVersion
-)
-
-fun PlaylistWithSongs.toDomain(): Playlist = Playlist(
-    id = playlist.id,
-    name = playlist.name,
-    description = playlist.description,
-    createdAt = playlist.createdAt,
-    songs = songs.map { it.toDomain() }
-)
-
-fun PlaylistEntity.toDomain(songs: List<SongEntity> = emptyList()): Playlist = Playlist(
-    id = id,
-    name = name,
-    description = description,
-    createdAt = createdAt,
-    songs = songs.map { it.toDomain() }
-)
-
-fun Playlist.toEntity(): PlaylistEntity = PlaylistEntity(
-    id = id,
-    name = name,
-    description = description,
-    createdAt = createdAt
-)
-
-fun SongArtworkEntity.toDomain(): SongArtwork = SongArtwork(
-    songId = songId,
-    sortOrder = sortOrder,
-    pictureType = pictureType,
-    uri = uri
-)
-
-fun SongArtwork.toEntity(): SongArtworkEntity = SongArtworkEntity(
-    songId = songId,
-    sortOrder = sortOrder,
-    pictureType = pictureType,
-    uri = uri
-)
-
-fun ArtistImageEntity.toDomain(): ArtistImage = ArtistImage(
-    artistName = artistName,
-    discogsArtistId = discogsArtistId,
-    imageUrl = imageUrl,
-    localUri = localUri,
-    lastUpdated = lastUpdated
-)
-
-fun ArtistProfileEntity.toDomain(): ArtistProfile = ArtistProfile(
-    artistName = artistName,
-    summary = summary,
-    content = profile,
-    source = source,
-    lastUpdated = lastUpdated
-)
-
-fun ArtistProfile.toEntity(): ArtistProfileEntity = ArtistProfileEntity(
-    artistName = artistName,
-    profile = content,
-    summary = summary,
-    source = source,
-    lastUpdated = lastUpdated
 )

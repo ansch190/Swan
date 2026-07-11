@@ -39,14 +39,14 @@ fun ArtistDetailScreen(
     viewModel: ArtistDetailViewModel = hiltViewModel()
 ) {
     LaunchedEffect(artistName) {
-        viewModel.loadArtist(artistName)
+        viewModel.loadArtistByName(artistName)
     }
 
     val songs by viewModel.songs.collectAsState()
     val sortedSongs = remember(songs) { songs.sortedBy { it.title } }
     val albums by viewModel.albums.collectAsState()
     val artistImageUri by viewModel.artistImageUri.collectAsState()
-    val artistProfile by viewModel.artistProfile.collectAsState()
+    val artistBiography by viewModel.artistBiography.collectAsState()
     var showBioDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
@@ -60,7 +60,7 @@ fun ArtistDetailScreen(
                 }
             },
             actions = {
-                if (artistProfile != null) {
+                if (artistBiography != null) {
                     IconButton(onClick = { showBioDialog = true }) {
                         Icon(Icons.Filled.Info, contentDescription = stringResource(R.string.cd_biography))
                     }
@@ -113,7 +113,7 @@ fun ArtistDetailScreen(
         }
     }
 
-    if (showBioDialog && artistProfile != null) {
+    if (showBioDialog && artistBiography != null) {
         AlertDialog(
             onDismissRequest = { showBioDialog = false },
             title = { Text(stringResource(R.string.artist_biography_title)) },
@@ -123,7 +123,7 @@ fun ArtistDetailScreen(
                         .heightIn(max = 400.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    Text(text = artistProfile!!.content)
+                    Text(text = artistBiography!!)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = stringResource(R.string.source_format, "Last.fm"),

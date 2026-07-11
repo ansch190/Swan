@@ -78,7 +78,7 @@ fun NowPlayingScreen(
         val artworks by viewModel.artworks.collectAsState()
         if (currentSong != null) {
             LaunchedEffect(currentSong.id) {
-                viewModel.loadArtworks(currentSong.id)
+                viewModel.loadArtworks(currentSong.albumId)
             }
             Box(
                 modifier = Modifier
@@ -109,7 +109,7 @@ fun NowPlayingScreen(
                                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                 ) {
                                     AsyncImage(
-                                        model = artworks[page].uri,
+                                        model = artworks[page].uriLarge,
                                         contentDescription = stringResource(R.string.cd_album_art),
                                         modifier = Modifier.fillMaxSize(),
                                         contentScale = ContentScale.Fit
@@ -138,9 +138,9 @@ fun NowPlayingScreen(
                                     }
                                 }
                             }
-                        } else if (currentSong.albumArtUri != null) {
+                        } else if (currentSong.albumArtUriLarge != null) {
                             AsyncImage(
-                                model = currentSong.albumArtUri,
+                                model = currentSong.albumArtUriLarge,
                                 contentDescription = stringResource(R.string.cd_album_art),
                                 modifier = Modifier
                                     .size(280.dp)
@@ -177,7 +177,7 @@ fun NowPlayingScreen(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = currentSong.artist,
+                        text = currentSong.artistName,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -187,7 +187,7 @@ fun NowPlayingScreen(
                     Spacer(modifier = Modifier.height(2.dp))
 
                     Text(
-                        text = currentSong.album,
+                        text = currentSong.albumName,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -273,7 +273,7 @@ fun NowPlayingScreen(
                                                     modifier = Modifier.fillMaxWidth()
                                                 )
                                                 Text(
-                                                    text = song.artist,
+                                                    text = song.artistName,
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                                                             else MaterialTheme.colorScheme.onSurfaceVariant,

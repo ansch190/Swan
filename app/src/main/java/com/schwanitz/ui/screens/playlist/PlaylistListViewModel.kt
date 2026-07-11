@@ -142,7 +142,7 @@ class PlaylistListViewModel @Inject constructor(
         appendLine("#EXTM3U")
         for (song in songs) {
             val seconds = song.durationMs / 1000
-            val display = if (song.artist.isNotBlank()) "${song.artist} - ${song.title}" else song.title
+            val display = if (song.artistName.isNotBlank()) "${song.artistName} - ${song.title}" else song.title
             appendLine("#EXTINF:$seconds,$display")
             appendLine(song.id)
         }
@@ -168,8 +168,8 @@ class PlaylistListViewModel @Inject constructor(
         for (song in songs) {
             appendLine("        <track>")
             if (song.title.isNotBlank()) appendLine("            <title>${escapeXml(song.title)}</title>")
-            if (song.artist.isNotBlank()) appendLine("            <creator>${escapeXml(song.artist)}</creator>")
-            if (song.album.isNotBlank()) appendLine("            <album>${escapeXml(song.album)}</album>")
+            if (song.artistName.isNotBlank()) appendLine("            <creator>${escapeXml(song.artistName)}</creator>")
+            if (song.albumName.isNotBlank()) appendLine("            <album>${escapeXml(song.albumName)}</album>")
             appendLine("            <duration>${song.durationMs}</duration>")
             appendLine("            <location>${escapeXml(song.id)}</location>")
             appendLine("        </track>")
@@ -200,7 +200,7 @@ class PlaylistListViewModel @Inject constructor(
         for (song in songs) {
             appendLine("    <entry>")
             if (song.title.isNotBlank()) appendLine("        <title>${escapeXml(song.title)}</title>")
-            if (song.artist.isNotBlank()) appendLine("        <author>${escapeXml(song.artist)}</author>")
+            if (song.artistName.isNotBlank()) appendLine("        <author>${escapeXml(song.artistName)}</author>")
             appendLine("        <ref href=\"${escapeXml(song.id)}\"/>")
             appendLine("    </entry>")
         }

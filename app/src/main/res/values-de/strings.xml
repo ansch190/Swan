@@ -94,8 +94,8 @@
     <string name="songinfo_field_artist">Künstler</string>
     <string name="songinfo_field_album">Album</string>
     <string name="songinfo_field_album_artist">Album-Künstler</string>
-    <string name="songinfo_field_track">Titel</string>
-    <string name="songinfo_field_disc">Disc</string>
+    <string name="songinfo_field_track">Titel-Nr.</string>
+    <string name="songinfo_field_disc">CD-Nr.</string>
     <string name="songinfo_field_year">Jahr</string>
     <string name="songinfo_field_genre">Genre</string>
     <string name="songinfo_field_source">Quelle</string>

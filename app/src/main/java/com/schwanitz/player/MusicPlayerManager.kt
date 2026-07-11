@@ -107,9 +107,9 @@ class MusicPlayerManager @Inject constructor(
                 .setMediaMetadata(
                     MediaMetadata.Builder()
                         .setTitle(s.title)
-                        .setArtist(s.artist)
-                        .setAlbumTitle(s.album)
-                        .setArtworkUri(s.albumArtUri?.let { Uri.parse(it) })
+                        .setArtist(s.artistName)
+                        .setAlbumTitle(s.albumName)
+                        .setArtworkUri((s.albumArtUriLarge ?: s.albumArtUri)?.let { Uri.parse(it) })
                         .build()
                 )
             player.addMediaItem(builder.build())

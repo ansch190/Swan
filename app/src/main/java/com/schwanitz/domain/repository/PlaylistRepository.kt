@@ -9,7 +9,7 @@ interface PlaylistRepository {
     fun getAllPlaylistSongCounts(): Flow<Map<Long, Int>>
     fun getPlaylist(playlistId: Long): Flow<Playlist?>
     fun getPlaylistSongs(playlistId: Long): Flow<List<Song>>
-    suspend fun createPlaylist(name: String, description: String = ""): Long
+    suspend fun createPlaylist(name: String): Long
     suspend fun deletePlaylist(playlistId: Long)
     suspend fun renamePlaylist(playlistId: Long, newName: String)
     suspend fun getPlaylistSongCount(playlistId: Long): Int

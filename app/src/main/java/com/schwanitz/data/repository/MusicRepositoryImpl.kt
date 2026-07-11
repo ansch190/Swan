@@ -2,37 +2,44 @@
 
 import android.content.Context
 import android.net.Uri
+import com.schwanitz.data.local.dao.AlbumArtworkDao
+import com.schwanitz.data.local.dao.AlbumDao
 import com.schwanitz.data.local.dao.AlbumSeriesDao
-import com.schwanitz.data.local.dao.ArtistImageDao
-import com.schwanitz.data.local.dao.ArtistProfileDao
-import com.schwanitz.data.local.dao.SongArtworkDao
+import com.schwanitz.data.local.dao.AlbumSongDao
+import com.schwanitz.data.local.dao.ArtistDao
+import com.schwanitz.data.local.dao.ArtistPicDao
 import com.schwanitz.data.local.dao.SongDao
 import com.schwanitz.data.local.dao.SongLyricsDao
+import com.schwanitz.data.local.dao.SongTechnicalInfoDao
 import com.schwanitz.data.local.converter.toDomain
 import com.schwanitz.data.local.converter.toEntity
+import com.schwanitz.data.local.converter.toMappingEntity
+import com.schwanitz.data.local.converter.toTechnicalInfoEntity
+import com.schwanitz.data.local.entity.ArtistEntity
 import com.schwanitz.data.source.ArtistImageCache
 import com.schwanitz.data.source.SeriesDetector
 import com.schwanitz.domain.model.Album
+import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.AlbumSeries
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.model.SongArtwork
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.domain.repository.SourceManager
-import com.schwanitz.domain.source.SourceConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class MusicRepositoryImpl @Inject constructor(
     private val songDao: SongDao,
-    private val songArtworkDao: SongArtworkDao,
+    private val albumDao: AlbumDao,
+    private val albumArtworkDao: AlbumArtworkDao,
     private val songLyricsDao: SongLyricsDao,
-    private val artistImageDao: ArtistImageDao,
-    private val artistProfileDao: ArtistProfileDao,
+    private val songTechnicalInfoDao: SongTechnicalInfoDao,
+    private val albumSongDao: AlbumSongDao,
+    private val artistDao: ArtistDao,
+    private val artistPicDao: ArtistPicDao,
     private val albumSeriesDao: AlbumSeriesDao,
     private val sourceManager: SourceManager,
     private val sourceRegistry: MusicSourceRegistry,
@@ -57,21 +64,21 @@ class MusicRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getSongsByAlbum(album: String): Flow<List<Song>> {
-        return songDao.getSongsByAlbum(album).map { entities ->
+    override fun getSongsByAlbumId(albumId: Long): Flow<List<Song>> {
+        return songDao.getSongsByAlbumId(albumId).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
-    override fun getSongsByArtist(artist: String): Flow<List<Song>> {
-        return songDao.getSongsByArtist(artist).map { entities ->
+    override fun getSongsByArtistId(artistId: Long): Flow<List<Song>> {
+        return songDao.getSongsByArtistId(artistId).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
-    override fun getAlbumsByArtist(artist: String): Flow<List<com.schwanitz.domain.model.Album>> {
-        return songDao.getAlbumsByArtist(artist).map { projections ->
-            projections.map { com.schwanitz.domain.model.Album(it.album, it.albumArtUri) }
+    override fun getAlbumsByArtistId(artistId: Long): Flow<List<Album>> {
+        return songDao.getAlbumsByArtistId(artistId).map { projections ->
+            projections.map { Album(id = it.albumId, name = it.albumName, albumArtist = it.albumArtist ?: "", albumArtUri = it.albumArtUri) }
         }
     }
 
@@ -81,9 +88,9 @@ class MusicRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getAlbumsByYear(year: Int): Flow<List<com.schwanitz.domain.model.Album>> {
+    override fun getAlbumsByYear(year: Int): Flow<List<Album>> {
         return songDao.getAlbumsByYear(year).map { projections ->
-            projections.map { com.schwanitz.domain.model.Album(it.album, it.albumArtUri) }
+            projections.map { Album(id = it.albumId, name = it.albumName, albumArtist = it.albumArtist ?: "", albumArtUri = it.albumArtUri) }
         }
     }
 
@@ -93,9 +100,9 @@ class MusicRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getAlbumsByGenre(genre: String): Flow<List<com.schwanitz.domain.model.Album>> {
+    override fun getAlbumsByGenre(genre: String): Flow<List<Album>> {
         return songDao.getAlbumsByGenre(genre).map { projections ->
-            projections.map { com.schwanitz.domain.model.Album(it.album, it.albumArtUri) }
+            projections.map { Album(id = it.albumId, name = it.albumName, albumArtist = it.albumArtist ?: "", albumArtUri = it.albumArtUri) }
         }
     }
 
@@ -103,13 +110,13 @@ class MusicRepositoryImpl @Inject constructor(
         return songDao.getArtistsByGenre(genre)
     }
 
-    override fun getAllArtists(): Flow<List<String>> {
-        return songDao.getAllArtistsFlow()
+    override fun getAllArtistNames(): Flow<List<String>> {
+        return songDao.getAllArtistNamesFlow()
     }
 
     override fun getAllAlbums(): Flow<List<Album>> {
         return songDao.getAllAlbums().map { projections ->
-            projections.map { Album(it.album, it.albumArtUri) }
+            projections.map { Album(id = it.albumId, name = it.albumName, albumArtist = it.albumArtist ?: "", albumArtUri = it.albumArtUri) }
         }
     }
 
@@ -125,8 +132,8 @@ class MusicRepositoryImpl @Inject constructor(
         return songDao.getSongById(songId)?.toDomain()
     }
 
-    override suspend fun getSongArtworks(songId: String): List<SongArtwork> {
-        return songArtworkDao.getForSong(songId).map { it.toDomain() }
+    override suspend fun getAlbumArtworks(albumId: Long): List<AlbumArtwork> {
+        return albumArtworkDao.getForAlbum(albumId).map { it.toDomain() }
     }
 
     override suspend fun toggleFavorite(songId: String) {
@@ -142,16 +149,15 @@ class MusicRepositoryImpl @Inject constructor(
         for (config in enabledSources) {
             val source = sourceRegistry.get(config.type) ?: continue
             songLyricsDao.deleteBySource(config.id)
-            songArtworkDao.deleteBySource(config.id)
             songDao.deleteBySource(config.id)
+            albumDao.deleteOrphaned()
             val result = source.loadSongs(config) { scanned, total ->
                 onProgress(config.name, scanned, total)
             }
-            songDao.upsertAll(result.songs.map { it.toEntity().copy(isActive = true) })
-            songArtworkDao.upsertAll(result.artworks.map { it.toEntity() })
+            processScanResult(result)
         }
         cleanupOrphanedArtworkFiles()
-        cleanupOrphanedArtistImages()
+        cleanupOrphanedArtists()
         refreshAlbumSeries()
     }
 
@@ -161,8 +167,8 @@ class MusicRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getSeriesForAlbum(albumName: String): Flow<AlbumSeries?> {
-        return albumSeriesDao.getSeriesByAlbumName(albumName).map { entity ->
+    override fun getSeriesForAlbum(albumId: Long): Flow<AlbumSeries?> {
+        return albumSeriesDao.getSeriesByAlbumId(albumId).map { entity ->
             entity?.let { AlbumSeries(it.id, it.name) }
         }
     }
@@ -179,8 +185,16 @@ class MusicRepositoryImpl @Inject constructor(
 
     override fun getAlbumsInSeries(seriesId: Long): Flow<List<Album>> {
         return songDao.getAlbumsInSeries(seriesId).map { projections ->
-            projections.map { Album(it.album, it.albumArtUri) }
+            projections.map { Album(id = it.albumId, name = it.albumName, albumArtist = it.albumArtist ?: "", albumArtUri = it.albumArtUri) }
         }
+    }
+
+    override suspend fun getTrackTotal(albumId: Long, discNumber: Int): Int {
+        return albumSongDao.getTrackTotal(albumId, discNumber)
+    }
+
+    override suspend fun getDiscTotal(albumId: Long): Int {
+        return albumSongDao.getDiscTotal(albumId)
     }
 
     override suspend fun refreshSource(sourceId: String, onProgress: (Int, Int) -> Unit) {
@@ -195,54 +209,117 @@ class MusicRepositoryImpl @Inject constructor(
         }
         android.util.Log.d("MusicRepository", "Deleting old data for $sourceId")
         songLyricsDao.deleteBySource(sourceId)
-        songArtworkDao.deleteBySource(sourceId)
         songDao.deleteBySource(sourceId)
+        albumDao.deleteOrphaned()
         android.util.Log.d("MusicRepository", "Loading songs from source...")
         try {
             val result = source.loadSongs(config, onProgress)
-            android.util.Log.d("MusicRepository", "Found ${result.songs.size} songs. Upserting...")
-            songDao.upsertAll(result.songs.map { it.toEntity().copy(isActive = true) })
-            songArtworkDao.upsertAll(result.artworks.map { it.toEntity() })
+            android.util.Log.d("MusicRepository", "Found ${result.songs.size} songs, ${result.albums.size} albums. Upserting...")
+            processScanResult(result)
             android.util.Log.d("MusicRepository", "refreshSource finished for $sourceId")
         } catch (e: Exception) {
             android.util.Log.e("MusicRepository", "Error during refreshSource for $sourceId", e)
         }
         cleanupOrphanedArtworkFiles()
-        cleanupOrphanedArtistImages()
+        cleanupOrphanedArtists()
         refreshAlbumSeries()
     }
 
     override suspend fun deleteBySource(sourceId: String) {
         songLyricsDao.deleteBySource(sourceId)
-        songArtworkDao.deleteBySource(sourceId)
         songDao.deleteBySource(sourceId)
+        albumDao.deleteOrphaned()
         cleanupOrphanedArtworkFiles()
-        cleanupOrphanedArtistImages()
+        cleanupOrphanedArtists()
         refreshAlbumSeries()
     }
 
-    private suspend fun refreshAlbumSeries() {
-        val albumNames = songDao.getAllActiveAlbumNames().toSet()
-        val detected = SeriesDetector.detectSeries(albumNames)
-        albumSeriesDao.replaceAllSeries(detected)
-    }
+    private suspend fun processScanResult(result: com.schwanitz.domain.source.LoadSongsResult) {
+        val artistNameToId = mutableMapOf<String, Long>()
 
-    private suspend fun cleanupOrphanedArtistImages() {
-        val activeArtists = songDao.getAllArtists().toSet() +
-            songDao.getAllAlbumArtists().toSet()
-        val allEntries = artistImageDao.getAll()
-        for (entry in allEntries) {
-            if (entry.artistName !in activeArtists) {
-                artistImageDao.delete(entry.artistName)
-                artistProfileDao.delete(entry.artistName)
+        suspend fun resolveArtistId(name: String): Long? {
+            if (name.isBlank()) return null
+            return artistNameToId.getOrPut(name) {
+                val existing = artistDao.findByName(name)
+                existing?.id ?: artistDao.upsert(ArtistEntity(name = name))
             }
         }
-        val remainingUris = artistImageDao.getAll().mapNotNull { it.localUri }.toSet()
-        ArtistImageCache.deleteUris(context, remainingUris)
+
+        val albumEntities = result.albums.map { it.toEntity() }
+        val upsertedAlbums = mutableListOf<Pair<String, Long>>()
+        val artworkKeyId = mutableMapOf<String, Long>()
+        for (albumEntity in albumEntities) {
+            val existing = albumDao.findByNameAndAlbumArtist(albumEntity.name, albumEntity.albumArtist)
+            val albumId = if (existing != null) {
+                albumDao.upsert(albumEntity.copy(id = existing.id))
+                existing.id
+            } else {
+                albumDao.upsert(albumEntity)
+            }
+            upsertedAlbums.add("${albumEntity.name}|${albumEntity.albumArtist}" to albumId)
+            artworkKeyId["${albumEntity.albumArtist}|${albumEntity.name}|${albumEntity.year}"] = albumId
+        }
+
+        val songEntities = mutableListOf<com.schwanitz.data.local.entity.SongEntity>()
+        val mappingEntities = mutableListOf<com.schwanitz.data.local.entity.AlbumSongMappingEntity>()
+        for (song in result.songs) {
+            val artistId = resolveArtistId(song.artistName)
+            val albumKey = "${song.albumName}|${song.albumArtistName}"
+            val albumId = upsertedAlbums.firstOrNull { it.first == albumKey }?.second
+            songEntities.add(
+                song.toEntity().copy(
+                    isActive = true,
+                    artistId = artistId
+                )
+            )
+            if (albumId != null) {
+                mappingEntities.add(song.toMappingEntity(albumId))
+            }
+        }
+        songDao.upsertAll(songEntities)
+        albumSongDao.upsertAll(mappingEntities)
+
+        val technicalInfoEntities = result.songs.map { it.toTechnicalInfoEntity() }
+        songTechnicalInfoDao.upsertAll(technicalInfoEntities)
+
+        val artworkEntities = result.artworks.flatMap { (albumKey, artworks) ->
+            val realAlbumId = artworkKeyId[albumKey] ?: return@flatMap emptyList()
+            artworks.map { it.copy(albumId = realAlbumId).toEntity() }
+        }
+        albumArtworkDao.upsertAll(artworkEntities)
+    }
+
+    private suspend fun refreshAlbumSeries() {
+        val activeAlbums = songDao.getAllActiveAlbums()
+        val albumNameToId = activeAlbums.associate { it.albumName to it.albumId }
+        val albumNames = activeAlbums.map { it.albumName }.toSet()
+        val detected = SeriesDetector.detectSeries(albumNames)
+        albumSeriesDao.replaceAllSeries(detected.map { result ->
+            com.schwanitz.data.local.dao.SeriesInput(
+                seriesName = result.seriesName,
+                volumes = result.volumes.map { vol ->
+                    com.schwanitz.data.local.dao.SeriesVolume(
+                        albumId = albumNameToId[vol.albumName] ?: 0L,
+                        volumeNumber = vol.volumeNumber
+                    )
+                }
+            )
+        })
+    }
+
+    private suspend fun cleanupOrphanedArtists() {
+        artistDao.deleteOrphaned()
+        val usedSmallUris = artistPicDao.getAllSmallUris().toSet()
+        val usedLargeUris = artistPicDao.getAllLargeUris().toSet()
+        val usedUris = usedSmallUris + usedLargeUris
+        ArtistImageCache.deleteUris(context, usedUris)
     }
 
     private suspend fun cleanupOrphanedArtworkFiles() {
-        val usedUris = (songDao.getAllAlbumArtUris() + songArtworkDao.getAllUris()).toSet()
+        val usedUris = (
+            albumArtworkDao.getAllLargeUris() +
+            albumArtworkDao.getAllSmallUris()
+        ).toSet()
         com.schwanitz.data.source.ArtworkCache.deleteUnused(context, usedUris)
     }
 }

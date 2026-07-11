@@ -37,8 +37,8 @@ class HomeViewModel @Inject constructor(
         val filtered = when {
             query.isNotBlank() -> songs.filter {
                 it.title.contains(query, ignoreCase = true) ||
-                        it.artist.contains(query, ignoreCase = true) ||
-                        it.album.contains(query, ignoreCase = true)
+                        it.artistName.contains(query, ignoreCase = true) ||
+                        it.albumName.contains(query, ignoreCase = true)
             }
             favoritesOnly -> songs.filter { it.isFavorite }
             else -> songs

@@ -8,8 +8,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -91,7 +91,7 @@ fun SeriesDetailScreen(
                             AlbumListItem(
                                 albumName = album.name,
                                 albumArtUri = album.albumArtUri,
-                                onClick = { onAlbumClick(album.name, "") }
+                                onClick = { onAlbumClick(album.name, album.albumArtist) }
                             )
                         }
                     }
@@ -160,7 +160,7 @@ private fun AlbumListItem(albumName: String, albumArtUri: String?, onClick: () -
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                    imageVector = Icons.Filled.ViewCarousel,
+                    imageVector = Icons.Filled.Album,
                             contentDescription = null,
                             modifier = Modifier.size(24.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
