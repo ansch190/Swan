@@ -53,6 +53,10 @@ class SongInfoViewModel @Inject constructor(
                             _series.value = it
                         }
                     }
+                    launch {
+                        _trackTotal.value = musicRepository.getTrackTotal(s.albumId, s.discNumber)
+                        _discTotal.value = musicRepository.getDiscTotal(s.albumId)
+                    }
                 }
                 val config = sourceManager.getSourceById(s.sourceId)
                 _sourceName.value = config?.name ?: s.sourceId
@@ -62,13 +66,6 @@ class SongInfoViewModel @Inject constructor(
                     emptyList()
                 }
                 _lyrics.value = lyricsProvider.getLyrics(songId, s.title, s.artistName)
-                if (s.albumId != null) {
-                    _trackTotal.value = musicRepository.getTrackTotal(s.albumId, s.discNumber)
-                    _discTotal.value = musicRepository.getDiscTotal(s.albumId)
-                } else {
-                    _trackTotal.value = 0
-                    _discTotal.value = 0
-                }
             }
         }
     }
