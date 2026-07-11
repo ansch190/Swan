@@ -52,8 +52,14 @@ fun AlbumDetailScreen(
     val playlists by viewModel.playlists.collectAsState()
     var showPlaylistPicker by remember { mutableStateOf(false) }
 
-    val songsByCd = remember(songs) {
-        songs.groupBy { it.discNumber.coerceAtLeast(1) }.toSortedMap()
+    val songsByCd = remember(songs, albumName) {
+        if (albumName.isBlank()) {
+            songs.groupBy { it.discNumber.coerceAtLeast(1) }
+                .mapValues { (_, v) -> v.sortedBy { it.title.lowercase() } }
+                .toSortedMap()
+        } else {
+            songs.groupBy { it.discNumber.coerceAtLeast(1) }.toSortedMap()
+        }
     }
     val cdList = songsByCd.keys.toList()
     val pagerState = rememberPagerState(pageCount = { cdList.size.coerceAtLeast(1) })

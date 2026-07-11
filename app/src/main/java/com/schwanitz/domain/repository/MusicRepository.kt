@@ -39,4 +39,7 @@ interface MusicRepository {
     suspend fun getTrackTotal(albumId: Long, discNumber: Int): Int
     suspend fun getDiscTotal(albumId: Long): Int
     suspend fun getAlbumIdByNameAndArtist(albumName: String, albumArtist: String): Long?
+    fun getSongsWithNoArtist(): Flow<List<Song>>
+    fun getAlbumsWithNoArtist(): Flow<List<Album>>
+    fun hasSongsWithNoArtist(): Flow<Boolean>
 }

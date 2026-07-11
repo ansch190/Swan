@@ -201,6 +201,22 @@ class MusicRepositoryImpl @Inject constructor(
         return albumDao.findByNameAndAlbumArtist(albumName, albumArtist)?.id
     }
 
+    override fun getSongsWithNoArtist(): Flow<List<Song>> {
+        return songDao.getSongsWithNoArtist().map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getAlbumsWithNoArtist(): Flow<List<Album>> {
+        return songDao.getAlbumsWithNoArtist().map { projections ->
+            projections.map { Album(id = it.albumId, name = it.albumName, albumArtist = it.albumArtist ?: "", albumArtUri = it.albumArtUri) }
+        }
+    }
+
+    override fun hasSongsWithNoArtist(): Flow<Boolean> {
+        return songDao.hasSongsWithNoArtist()
+    }
+
     override suspend fun refreshSource(sourceId: String, onProgress: (Int, Int) -> Unit) {
         android.util.Log.d("MusicRepository", "refreshSource started for $sourceId")
         val config = sourceManager.getSourceById(sourceId) ?: run {

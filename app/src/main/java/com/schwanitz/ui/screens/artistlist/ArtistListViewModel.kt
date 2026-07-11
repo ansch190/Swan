@@ -7,6 +7,7 @@ import com.schwanitz.domain.repository.MusicRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,7 +26,12 @@ class ArtistListViewModel @Inject constructor(
 
     fun loadArtists() {
         viewModelScope.launch {
-            musicRepository.getAllArtistNames().collect {
+            combine(
+                musicRepository.getAllArtistNames(),
+                musicRepository.hasSongsWithNoArtist()
+            ) { artists, hasNoArtist ->
+                if (hasNoArtist) listOf("") + artists else artists
+            }.collect {
                 _allArtists.value = it
                 loadArtistImages(it)
             }

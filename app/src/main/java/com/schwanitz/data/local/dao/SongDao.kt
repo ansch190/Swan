@@ -360,4 +360,41 @@ interface SongDao {
 
     @Query("SELECT songId FROM album_song_mapping WHERE albumId = :albumId")
     suspend fun getSongIdsByAlbumId(albumId: Long): List<String>
+
+    @Query("""
+        SELECT s.id, s.title, s.artistId, asm.albumId,
+            s.durationMs, s.sourceId, s.isFavorite, s.isActive,
+            asm.discNumber, asm.trackNumber,
+            al.year, s.genre, s.tagVersion,
+            sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
+            a.name as artistName,
+            al.name as albumName,
+            aw.uriSmall as albumArtUri,
+            aw.uriLarge as albumArtUriLarge,
+            al.albumArtist as albumArtistName
+        FROM songs s
+        INNER JOIN album_song_mapping asm ON s.id = asm.songId
+        LEFT JOIN artists a ON s.artistId = a.id
+        LEFT JOIN albums al ON asm.albumId = al.id
+        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
+        LEFT JOIN song_technical_info sti ON s.id = sti.songId
+        WHERE s.artistId IS NULL AND s.isActive = 1
+        ORDER BY asm.albumId ASC, asm.discNumber ASC, asm.trackNumber ASC
+    """)
+    fun getSongsWithNoArtist(): Flow<List<SongWithNames>>
+
+    @Query("""
+        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri
+        FROM songs s
+        INNER JOIN album_song_mapping asm ON s.id = asm.songId
+        LEFT JOIN albums al ON asm.albumId = al.id
+        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
+        WHERE s.artistId IS NULL AND s.isActive = 1
+        GROUP BY asm.albumId
+        ORDER BY al.name ASC
+    """)
+    fun getAlbumsWithNoArtist(): Flow<List<AlbumProjection>>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM songs WHERE artistId IS NULL AND isActive = 1)")
+    fun hasSongsWithNoArtist(): Flow<Boolean>
 }

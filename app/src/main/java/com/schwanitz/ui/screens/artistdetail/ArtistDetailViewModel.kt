@@ -38,8 +38,21 @@ class ArtistDetailViewModel @Inject constructor(
 
     fun loadArtistByName(artistName: String) {
         viewModelScope.launch {
-            val artist = artistRepository.getArtistByName(artistName) ?: return@launch
-            loadArtist(artist.id, artist.name)
+            if (artistName.isBlank()) {
+                launch {
+                    musicRepository.getSongsWithNoArtist().collect {
+                        _songs.value = it
+                    }
+                }
+                launch {
+                    musicRepository.getAlbumsWithNoArtist().collect {
+                        _albums.value = it
+                    }
+                }
+            } else {
+                val artist = artistRepository.getArtistByName(artistName) ?: return@launch
+                loadArtist(artist.id, artist.name)
+            }
         }
     }
 
