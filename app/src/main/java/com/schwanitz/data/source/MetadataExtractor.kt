@@ -144,7 +144,7 @@ object MetadataExtractor {
                 durationMs = durationMs,
                 sourceId = sourceId,
                 albumArtistName = textFields.albumArtist.trim(),
-                discNumber = textFields.discRaw.trim().substringBefore('/').filter { it.isDigit() }.toIntOrNull() ?: 1,
+                discNumber = textFields.discRaw.trim().substringBefore('/').filter { it.isDigit() }.toIntOrNull() ?: 0,
                 trackNumber = textFields.trackRaw.trim().substringBefore('/').filter { it.isDigit() }.toIntOrNull() ?: 0,
                 year = textFields.year,
                 genre = textFields.genre,
