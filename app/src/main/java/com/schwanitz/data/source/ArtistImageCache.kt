@@ -12,9 +12,6 @@ data class ArtistPicResult(
 
 object ArtistImageCache {
 
-    private const val SMALL_MAX_DIMENSION = 256
-    private const val LARGE_MAX_DIMENSION = 840
-
     fun cacheDir(context: Context): File {
         val dir = File(context.cacheDir, "artist_images")
         dir.mkdirs()

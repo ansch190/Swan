@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class DiscogsApiService @Inject constructor(
@@ -63,7 +64,7 @@ class DiscogsApiService @Inject constructor(
     suspend fun downloadImage(imageUrl: String): ByteArray? {
         rateLimiter.acquire()
         Log.e("DiscogsAPI", "downloadImage: $imageUrl")
-        return withTimeout(30_000) {
+        return withTimeout(30_000.milliseconds) {
             withContext(Dispatchers.IO) {
                 try {
                     val request = Request.Builder().url(imageUrl).build()
@@ -84,7 +85,7 @@ class DiscogsApiService @Inject constructor(
     private suspend inline fun <reified T> get(url: String, tag: String = ""): T? {
         rateLimiter.acquire()
         Log.e("DiscogsAPI", "GET $tag: $url")
-        return withTimeout(30_000) {
+        return withTimeout(30_000.milliseconds) {
             withContext(Dispatchers.IO) {
                 try {
                     val request = Request.Builder()

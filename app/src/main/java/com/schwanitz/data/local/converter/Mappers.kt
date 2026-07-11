@@ -57,13 +57,6 @@ fun Song.toTechnicalInfoEntity(): SongTechnicalInfoEntity = SongTechnicalInfoEnt
     mimeType = mimeType
 )
 
-fun AlbumEntity.toDomain(): Album = Album(
-    id = id,
-    name = name,
-    albumArtist = albumArtist,
-    year = year
-)
-
 fun Album.toEntity(): AlbumEntity = AlbumEntity(
     id = id,
     name = name,
@@ -83,63 +76,6 @@ fun AlbumArtwork.toEntity(): AlbumArtworkEntity = AlbumArtworkEntity(
     sortOrder = sortOrder,
     uriLarge = uriLarge,
     uriSmall = uriSmall
-)
-
-fun PlaylistWithSongs.toDomain(): Playlist = Playlist(
-    id = playlist.id,
-    name = playlist.name,
-    songs = songs.map {
-        Song(
-            id = it.id,
-            title = it.title,
-            artistId = it.artistId,
-            durationMs = it.durationMs,
-            albumArtUri = null,
-            sourceId = it.sourceId,
-            isFavorite = it.isFavorite,
-            isActive = it.isActive,
-            genre = it.genre,
-            tagVersion = it.tagVersion
-        )
-    }
-)
-
-fun PlaylistEntity.toDomain(songs: List<SongEntity> = emptyList()): Playlist = Playlist(
-    id = id,
-    name = name,
-    songs = songs.map {
-        Song(
-            id = it.id,
-            title = it.title,
-            artistId = it.artistId,
-            durationMs = it.durationMs,
-            albumArtUri = null,
-            sourceId = it.sourceId,
-            isFavorite = it.isFavorite,
-            isActive = it.isActive,
-            genre = it.genre,
-            tagVersion = it.tagVersion
-        )
-    }
-)
-
-fun Playlist.toEntity(): PlaylistEntity = PlaylistEntity(
-    id = id,
-    name = name
-)
-
-fun ArtistEntity.toDomain(): Artist = Artist(
-    id = id,
-    name = name,
-    biography = biography,
-    biographyLastUpdated = biographyLastUpdated
-)
-
-fun Artist.toEntity(): ArtistEntity = ArtistEntity(
-    id = id,
-    name = name,
-    biography = biography,
-    biographyLastUpdated = biographyLastUpdated
 )
 
 fun PlaylistDao.PlaylistSongWithNames.toSongDomain(): Song = Song(

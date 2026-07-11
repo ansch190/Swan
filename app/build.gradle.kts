@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
@@ -11,7 +10,7 @@ plugins {
 
 android {
     namespace = "com.schwanitz"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.schwanitz"
@@ -99,7 +98,7 @@ dependencies {
     implementation("com.github.ansch190:Tagix:android-SNAPSHOT")
     implementation("org.slf4j:slf4j-android:1.7.36")
     implementation(libs.jsoup)
-    implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("androidx.documentfile:documentfile:1.1.0")
     implementation(libs.androidx.datastore.preferences)
 
     testImplementation(libs.junit)

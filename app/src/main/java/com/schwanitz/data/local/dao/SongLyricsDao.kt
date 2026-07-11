@@ -16,10 +16,4 @@ interface SongLyricsDao {
 
     @Query("DELETE FROM song_lyrics WHERE songId IN (SELECT id FROM songs WHERE sourceId = :sourceId)")
     suspend fun deleteBySource(sourceId: String)
-
-    @Query("DELETE FROM song_lyrics WHERE songId NOT IN (SELECT id FROM songs)")
-    suspend fun deleteOrphaned()
-
-    @Query("DELETE FROM song_lyrics")
-    suspend fun clearAll()
 }

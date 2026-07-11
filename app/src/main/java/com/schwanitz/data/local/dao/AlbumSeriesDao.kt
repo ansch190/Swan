@@ -25,9 +25,6 @@ interface AlbumSeriesDao {
     @Query("SELECT * FROM album_series ORDER BY name ASC")
     fun getAllSeries(): Flow<List<AlbumSeriesEntity>>
 
-    @Query("SELECT * FROM album_series WHERE id = :seriesId")
-    fun getSeriesById(seriesId: Long): Flow<AlbumSeriesEntity?>
-
     @Query("SELECT * FROM album_series WHERE name = :name LIMIT 1")
     suspend fun getSeriesByName(name: String): AlbumSeriesEntity?
 
@@ -37,9 +34,6 @@ interface AlbumSeriesDao {
         WHERE asm.albumId = :albumId LIMIT 1
     """)
     fun getSeriesByAlbumId(albumId: Long): Flow<AlbumSeriesEntity?>
-
-    @Query("SELECT * FROM album_series_mapping WHERE seriesId = :seriesId ORDER BY volumeNumber ASC")
-    fun getMappingsForSeries(seriesId: Long): Flow<List<AlbumSeriesMappingEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSeries(series: AlbumSeriesEntity): Long

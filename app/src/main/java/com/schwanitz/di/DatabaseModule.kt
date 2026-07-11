@@ -2,6 +2,7 @@
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import com.schwanitz.data.local.AppDatabase
 import com.schwanitz.data.local.dao.AlbumArtworkDao
 import com.schwanitz.data.local.dao.AlbumDao
@@ -32,7 +33,9 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "music_player_db"
-        ).fallbackToDestructiveMigration().build()
+        ).fallbackToDestructiveMigration()
+            .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            .build()
     }
 
     @Provides

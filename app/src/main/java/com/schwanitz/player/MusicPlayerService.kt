@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+import android.graphics.drawable.Icon
 import android.os.IBinder
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -29,7 +30,6 @@ class MusicPlayerService : Service() {
         const val ACTION_SKIP_PREVIOUS = "com.schwanitz.action.SKIP_PREVIOUS"
         const val ACTION_SHUFFLE = "com.schwanitz.action.SHUFFLE"
         const val ACTION_REPEAT = "com.schwanitz.action.REPEAT"
-        const val ACTION_STOP = "com.schwanitz.action.STOP"
 
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "media_playback"
@@ -109,11 +109,6 @@ class MusicPlayerService : Service() {
                     else -> Player.REPEAT_MODE_OFF
                 }
                 updateNotification()
-            }
-            ACTION_STOP -> {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                isInForeground = false
-                stopSelf()
             }
         }
         return START_STICKY
@@ -213,11 +208,11 @@ class MusicPlayerService : Service() {
             .setContentIntent(contentIntent)
             .setOngoing(true)
             .setStyle(style)
-            .addAction(R.drawable.ic_notification_shuffle, "Shuffle", shuffleIntent)
-            .addAction(R.drawable.ic_notification_skip_prev, "Previous", prevIntent)
-            .addAction(playPauseIcon, "Play/Pause", playPauseIntent)
-            .addAction(R.drawable.ic_notification_skip_next, "Next", nextIntent)
-            .addAction(repeatIcon, "Repeat", repeatIntent)
+            .addAction(Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notification_shuffle), "Shuffle", shuffleIntent).build())
+            .addAction(Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notification_skip_prev), "Previous", prevIntent).build())
+            .addAction(Notification.Action.Builder(Icon.createWithResource(this, playPauseIcon), "Play/Pause", playPauseIntent).build())
+            .addAction(Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notification_skip_next), "Next", nextIntent).build())
+            .addAction(Notification.Action.Builder(Icon.createWithResource(this, repeatIcon), "Repeat", repeatIntent).build())
             .build()
     }
 

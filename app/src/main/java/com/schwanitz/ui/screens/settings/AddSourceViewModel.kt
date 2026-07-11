@@ -43,8 +43,8 @@ enum class Step { SELECT_TYPE, CONFIGURE }
 sealed class ConnectionTestState {
     data object Idle : ConnectionTestState()
     data object Testing : ConnectionTestState()
-    data class Success(val message: String) : ConnectionTestState()
-    data class Failure(val error: String) : ConnectionTestState()
+    data object Success : ConnectionTestState()
+    data object Failure : ConnectionTestState()
 }
 
 @HiltViewModel
@@ -149,8 +149,8 @@ class AddSourceViewModel @Inject constructor(
             )
             _uiState.value = _uiState.value.copy(
                 connectionTestState = result.fold(
-                    onSuccess = { ConnectionTestState.Success(it) },
-                    onFailure = { ConnectionTestState.Failure(it.message ?: context.getString(R.string.add_source_unknown_error)) }
+                    onSuccess = { ConnectionTestState.Success },
+                    onFailure = { ConnectionTestState.Failure }
                 )
             )
         }

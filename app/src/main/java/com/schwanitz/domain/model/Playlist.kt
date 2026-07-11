@@ -2,6 +2,5 @@
 
 data class Playlist(
     val id: Long = 0,
-    val name: String,
-    val songs: List<Song> = emptyList()
+    val name: String
 )

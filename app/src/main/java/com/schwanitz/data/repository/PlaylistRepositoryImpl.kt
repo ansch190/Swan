@@ -3,9 +3,7 @@
 import com.schwanitz.data.local.dao.PlaylistDao
 import com.schwanitz.data.local.entity.PlaylistEntity
 import com.schwanitz.data.local.entity.PlaylistSongMapping
-import com.schwanitz.data.local.converter.toDomain
 import com.schwanitz.data.local.converter.toSongDomain
-import com.schwanitz.data.local.entity.PlaylistWithCount
 import com.schwanitz.domain.model.Playlist
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.PlaylistRepository
@@ -21,7 +19,7 @@ class PlaylistRepositoryImpl @Inject constructor(
 
     override fun getAllPlaylists(): Flow<List<Playlist>> {
         return playlistDao.getAllPlaylistsWithCount().map { list ->
-            list.map { it.playlist.toDomain() }
+            list.map { Playlist(id = it.playlist.id, name = it.playlist.name) }
         }
     }
 
@@ -31,8 +29,8 @@ class PlaylistRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getPlaylist(playlistId: Long): Flow<Playlist?> {
-        return playlistDao.getPlaylistWithSongs(playlistId).map { it?.toDomain() }
+    override fun getPlaylistName(playlistId: Long): Flow<String?> {
+        return playlistDao.getPlaylistName(playlistId)
     }
 
     override fun getPlaylistSongs(playlistId: Long): Flow<List<Song>> {

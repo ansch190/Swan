@@ -11,9 +11,6 @@ interface AlbumArtworkDao {
     @Query("SELECT * FROM album_artwork WHERE albumId = :albumId ORDER BY sortOrder")
     suspend fun getForAlbum(albumId: Long): List<AlbumArtworkEntity>
 
-    @Query("SELECT * FROM album_artwork WHERE albumId = :albumId ORDER BY sortOrder")
-    fun observeForAlbum(albumId: Long): kotlinx.coroutines.flow.Flow<List<AlbumArtworkEntity>>
-
     @Upsert
     suspend fun upsertAll(artworks: List<AlbumArtworkEntity>)
 

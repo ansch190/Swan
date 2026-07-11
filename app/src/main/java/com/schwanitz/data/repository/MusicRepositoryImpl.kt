@@ -1,7 +1,6 @@
 ﻿package com.schwanitz.data.repository
 
 import android.content.Context
-import android.net.Uri
 import com.schwanitz.data.local.dao.AlbumArtworkDao
 import com.schwanitz.data.local.dao.AlbumDao
 import com.schwanitz.data.local.dao.AlbumSeriesDao
@@ -54,12 +53,6 @@ class MusicRepositoryImpl @Inject constructor(
 
     override fun getFavoriteSongs(): Flow<List<Song>> {
         return songDao.getFavoriteSongs().map { entities ->
-            entities.map { it.toDomain() }
-        }
-    }
-
-    override fun searchSongs(query: String): Flow<List<Song>> {
-        return songDao.searchSongs(query).map { entities ->
             entities.map { it.toDomain() }
         }
     }
@@ -144,6 +137,7 @@ class MusicRepositoryImpl @Inject constructor(
         songDao.setActiveBySource(sourceId, active)
     }
 
+    @androidx.room.Transaction
     override suspend fun reloadEnabled(onProgress: (sourceName: String, scanned: Int, total: Int) -> Unit) {
         val enabledSources = sourceManager.getEnabledSources()
         for (config in enabledSources) {
@@ -197,10 +191,6 @@ class MusicRepositoryImpl @Inject constructor(
         return albumSongDao.getDiscTotal(albumId)
     }
 
-    override suspend fun getAlbumIdByNameAndArtist(albumName: String, albumArtist: String): Long? {
-        return albumDao.findByNameAndAlbumArtist(albumName, albumArtist)?.id
-    }
-
     override fun getSongsWithNoArtist(): Flow<List<Song>> {
         return songDao.getSongsWithNoArtist().map { entities ->
             entities.map { it.toDomain() }
@@ -217,6 +207,7 @@ class MusicRepositoryImpl @Inject constructor(
         return songDao.hasSongsWithNoArtist()
     }
 
+    @androidx.room.Transaction
     override suspend fun refreshSource(sourceId: String, onProgress: (Int, Int) -> Unit) {
         android.util.Log.d("MusicRepository", "refreshSource started for $sourceId")
         val config = sourceManager.getSourceById(sourceId) ?: run {
@@ -245,6 +236,7 @@ class MusicRepositoryImpl @Inject constructor(
         refreshAlbumSeries()
     }
 
+    @androidx.room.Transaction
     override suspend fun deleteBySource(sourceId: String) {
         songLyricsDao.deleteBySource(sourceId)
         songDao.deleteBySource(sourceId)
@@ -254,6 +246,7 @@ class MusicRepositoryImpl @Inject constructor(
         refreshAlbumSeries()
     }
 
+    @androidx.room.Transaction
     private suspend fun processScanResult(result: com.schwanitz.domain.source.LoadSongsResult) {
         val artistNameToId = mutableMapOf<String, Long>()
 

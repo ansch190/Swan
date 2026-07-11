@@ -12,9 +12,6 @@ interface SourceConfigDao {
     @Query("SELECT * FROM source_configs ORDER BY type ASC, name ASC")
     fun getAll(): Flow<List<SourceConfigEntity>>
 
-    @Query("SELECT * FROM source_configs ORDER BY type ASC, name ASC")
-    suspend fun getAllOnce(): List<SourceConfigEntity>
-
     @Query("SELECT * FROM source_configs WHERE id = :id")
     suspend fun getById(id: String): SourceConfigEntity?
 

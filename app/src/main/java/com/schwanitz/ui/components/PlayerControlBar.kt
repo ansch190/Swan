@@ -48,9 +48,7 @@ fun PlayerControlBar(
                     modifier = Modifier.padding(end = 8.dp)
                 )
                 Slider(
-                    value = if (playerState.duration > 0)
-                        playerState.currentPosition.toFloat() / playerState.duration.toFloat()
-                    else 0f,
+                    value = playerState.currentPosition.toFloat() / playerState.duration.toFloat(),
                     onValueChange = { fraction ->
                         onSeek((fraction * playerState.duration).toLong())
                     },

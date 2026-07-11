@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun MarqueeText(
@@ -41,11 +42,11 @@ fun MarqueeText(
 
     LaunchedEffect(didOverflow, textLineWidth, containerWidth, text) {
         if (didOverflow) {
-            val target = -(textLineWidth - containerWidth).toFloat()
+            val target = -(textLineWidth - containerWidth)
             animatable.snapTo(0f)
             if (target < 0f) {
                 while (isActive) {
-                    kotlinx.coroutines.delay(2000)
+                    kotlinx.coroutines.delay(2000.milliseconds)
                     animatable.animateTo(
                         targetValue = target,
                         animationSpec = tween(
@@ -53,7 +54,7 @@ fun MarqueeText(
                             easing = LinearEasing
                         )
                     )
-                    kotlinx.coroutines.delay(2000)
+                    kotlinx.coroutines.delay(2000.milliseconds)
                     animatable.animateTo(
                         targetValue = 0f,
                         animationSpec = tween(

@@ -10,12 +10,14 @@ import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val FAVORITES_PLAYLIST_ID = -1L
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class PlaylistDetailViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
@@ -36,7 +38,7 @@ class PlaylistDetailViewModel @Inject constructor(
             if (id == FAVORITES_PLAYLIST_ID) {
                 flowOf(context.getString(R.string.playlist_favorites_name))
             } else {
-                playlistRepository.getPlaylist(id).map { it?.name ?: context.getString(R.string.playlist_default_name) }
+                playlistRepository.getPlaylistName(id).map { it ?: context.getString(R.string.playlist_default_name) }
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), context.getString(R.string.playlist_default_name))
@@ -73,15 +75,6 @@ class PlaylistDetailViewModel @Inject constructor(
     fun toggleFavorite(song: Song) {
         viewModelScope.launch {
             musicRepository.toggleFavorite(song.id)
-        }
-    }
-
-    fun moveSong(songIds: List<String>) {
-        viewModelScope.launch {
-            val pid = _playlistId.value ?: return@launch
-            if (pid != FAVORITES_PLAYLIST_ID) {
-                playlistRepository.reorderSongs(pid, songIds)
-            }
         }
     }
 

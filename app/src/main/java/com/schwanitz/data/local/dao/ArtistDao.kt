@@ -9,29 +9,17 @@ import com.schwanitz.data.local.entity.ArtistEntity
 @Dao
 interface ArtistDao {
 
-    @Query("SELECT * FROM artists WHERE name = :name COLLATE NOCASE LIMIT 1")
+    @Query("SELECT * FROM artists WHERE name LIKE :name LIMIT 1")
     suspend fun findByName(name: String): ArtistEntity?
 
     @Query("SELECT * FROM artists WHERE id = :id")
     suspend fun getById(id: Long): ArtistEntity?
 
-    @Query("SELECT * FROM artists WHERE id = :id")
-    fun observeById(id: Long): kotlinx.coroutines.flow.Flow<ArtistEntity?>
-
     @Query("SELECT * FROM artists ORDER BY name ASC")
     suspend fun getAll(): List<ArtistEntity>
 
-    @Query("SELECT * FROM artists ORDER BY name ASC")
-    fun getAllFlow(): kotlinx.coroutines.flow.Flow<List<ArtistEntity>>
-
-    @Query("SELECT * FROM artists WHERE id IN (:ids)")
-    suspend fun getByIds(ids: List<Long>): List<ArtistEntity>
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(artist: ArtistEntity): Long
-
-    @Query("DELETE FROM artists WHERE id = :id")
-    suspend fun deleteById(id: Long)
 
     @Query("""
         DELETE FROM artists WHERE id NOT IN (

@@ -19,7 +19,4 @@ interface ArtistPicDao {
 
     @Upsert
     suspend fun upsert(pic: ArtistPicEntity)
-
-    @Query("DELETE FROM artist_pics WHERE artistId = :artistId")
-    suspend fun deleteByArtistId(artistId: Long)
 }

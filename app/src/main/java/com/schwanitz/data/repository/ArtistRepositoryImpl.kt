@@ -1,8 +1,6 @@
 package com.schwanitz.data.repository
 
 import android.content.Context
-import android.net.Uri
-import android.util.Log
 import com.schwanitz.BuildConfig
 import com.schwanitz.data.discogs.DiscogsApiService
 import com.schwanitz.data.lastfm.LastFmApiService
@@ -26,16 +24,8 @@ class ArtistRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ArtistRepository {
 
-    override suspend fun getArtist(artistId: Long): Artist? {
-        return artistDao.getById(artistId)?.toDomain()
-    }
-
     override suspend fun getArtistByName(name: String): Artist? {
         return artistDao.findByName(name)?.toDomain()
-    }
-
-    override suspend fun getAllArtists(): List<Artist> {
-        return artistDao.getAll().map { it.toDomain() }
     }
 
     override suspend fun getArtistImageSmall(artistId: Long): String? {

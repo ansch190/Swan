@@ -1,6 +1,5 @@
 ﻿package com.schwanitz.ui.screens.songinfo
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,8 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -77,14 +76,14 @@ fun SongInfoScreen(
             title = { Text(stringResource(R.string.songinfo_title)) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             },
             actions = {
                 if (lyrics != null) {
                     IconButton(onClick = { showLyricsDialog = true }) {
                         Icon(
-                            Icons.Filled.Article,
+                            Icons.AutoMirrored.Filled.Article,
                             contentDescription = stringResource(R.string.cd_lyrics)
                         )
                     }
@@ -323,9 +322,9 @@ private fun MetadataTab(
         if (series != null) {
             InfoRow(
                 label = stringResource(R.string.songinfo_field_series),
-                value = series!!.name,
+                value = series.name,
                 onLabelClick = onAllSeriesClick,
-                onValueClick = { onSeriesClick(series!!.name) }
+                onValueClick = { onSeriesClick(series.name) }
             )
         }
         InfoRow(stringResource(R.string.songinfo_field_album_artist), song.albumArtistName.ifBlank { "-" })
@@ -419,13 +418,6 @@ private fun InfoRow(
                 .then(if (onValueClick != null) Modifier.clickable(onClick = onValueClick) else Modifier)
         )
     }
-}
-
-private fun formatDuration(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return "%d:%02d".format(minutes, seconds)
 }
 
 private fun openFolder(context: Context, fileUri: String) {

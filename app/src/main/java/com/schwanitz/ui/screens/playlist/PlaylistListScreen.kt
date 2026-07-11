@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -190,7 +192,7 @@ private fun PlaylistListItem(
         modifier = Modifier.clickable(onClick = onClick),
         leadingContent = {
             Icon(
-                imageVector = if (playlist.isFavorite) Icons.Filled.Favorite else Icons.Filled.QueueMusic,
+                imageVector = if (playlist.isFavorite) Icons.Filled.Favorite else Icons.AutoMirrored.Filled.QueueMusic,
                 contentDescription = null,
                 modifier = Modifier.size(40.dp),
                 tint = if (playlist.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary
@@ -240,7 +242,7 @@ private fun ExportFormatSelectionContent(
             title = { Text(stringResource(R.string.export_choose_format)) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                 }
             }
         )

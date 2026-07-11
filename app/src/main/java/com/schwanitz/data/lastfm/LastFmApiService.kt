@@ -11,6 +11,7 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class LastFmApiService @Inject constructor() {
@@ -39,7 +40,7 @@ class LastFmApiService @Inject constructor() {
         }
 
         Log.e("LastFmAPI", "GET artist.getInfo: $artistName")
-        return withTimeout(30_000) {
+        return withTimeout(30_000.milliseconds) {
             withContext(Dispatchers.IO) {
                 try {
                     val request = Request.Builder()

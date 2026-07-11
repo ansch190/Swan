@@ -100,31 +100,6 @@ interface SongDao {
         LEFT JOIN albums al ON asm.albumId = al.id
         LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
         LEFT JOIN song_technical_info sti ON s.id = sti.songId
-        WHERE s.isActive = 1 AND (
-            s.title LIKE '%' || :query || '%'
-            OR a.name LIKE '%' || :query || '%'
-            OR al.name LIKE '%' || :query || '%'
-        )
-    """)
-    fun searchSongs(query: String): Flow<List<SongWithNames>>
-
-    @Query("""
-        SELECT s.id, s.title, s.artistId, asm.albumId,
-            s.durationMs, s.sourceId, s.isFavorite, s.isActive,
-            asm.discNumber, asm.trackNumber,
-            al.year, s.genre, s.tagVersion,
-            sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
-            a.name as artistName,
-            al.name as albumName,
-            aw.uriSmall as albumArtUri,
-            aw.uriLarge as albumArtUriLarge,
-            al.albumArtist as albumArtistName
-        FROM songs s
-        INNER JOIN album_song_mapping asm ON s.id = asm.songId
-        LEFT JOIN artists a ON s.artistId = a.id
-        LEFT JOIN albums al ON asm.albumId = al.id
-        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
-        LEFT JOIN song_technical_info sti ON s.id = sti.songId
         WHERE asm.albumId = :albumId AND s.isActive = 1
         ORDER BY asm.discNumber ASC, asm.trackNumber ASC
     """)
@@ -241,19 +216,7 @@ interface SongDao {
     fun getArtistsByGenre(genre: String): Flow<List<String>>
 
     @Query("SELECT name FROM artists ORDER BY name ASC")
-    suspend fun getAllArtistNames(): List<String>
-
-    @Query("SELECT name FROM artists ORDER BY name ASC")
     fun getAllArtistNamesFlow(): Flow<List<String>>
-
-    @Query("""
-        SELECT DISTINCT al.albumArtist FROM albums al
-        INNER JOIN album_song_mapping asm ON al.id = asm.albumId
-        INNER JOIN songs s ON s.id = asm.songId
-        WHERE s.isActive = 1 AND al.albumArtist IS NOT NULL AND al.albumArtist != ''
-        ORDER BY al.albumArtist ASC
-    """)
-    suspend fun getAllAlbumArtistNames(): List<String>
 
     @Query("""
         SELECT s.id, s.title, s.artistId, asm.albumId,
@@ -357,9 +320,6 @@ interface SongDao {
         WHERE s.isActive = 1
     """)
     suspend fun getAllActiveAlbums(): List<AlbumProjection>
-
-    @Query("SELECT songId FROM album_song_mapping WHERE albumId = :albumId")
-    suspend fun getSongIdsByAlbumId(albumId: Long): List<String>
 
     @Query("""
         SELECT s.id, s.title, s.artistId, asm.albumId,

@@ -12,7 +12,6 @@ import com.schwanitz.ui.theme.MusicPlayerTheme
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        android.util.Log.e("MainActivity", "onCreate called ${BuildConfig.VERSION_NAME}")
         enableEdgeToEdge()
         setContent {
             MusicPlayerTheme {

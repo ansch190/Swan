@@ -35,7 +35,6 @@
     <string name="cd_show_album_art">Show album art</string>
     <string name="cd_show_queue">Show queue</string>
     <string name="cd_create_playlist">Create playlist</string>
-    <string name="cd_delete_playlist">Delete playlist</string>
     <string name="cd_add_songs">Add songs</string>
     <string name="cd_edit_done">Done</string>
     <string name="cd_add_source">Add source</string>
@@ -49,9 +48,6 @@
     <string name="cd_genre_icon">Genre Icon</string>
     <string name="cd_year_photo">Year Photo</string>
     <string name="cd_series_icon">Show series</string>
-
-    <!-- Player controls -->
-    <string name="player_time_format">%1$d:%2$02d</string>
 
     <!-- Home screen -->
     <string name="home_title">Songs</string>
@@ -115,10 +111,6 @@
     <string name="songinfo_field_tag_version">Tag-Version</string>
     <string name="songinfo_field_series">Series</string>
     <string name="songinfo_label_format">%s:</string>
-    <string name="songinfo_size_gb">%.1f GB</string>
-    <string name="songinfo_size_mb">%.1f MB</string>
-    <string name="songinfo_size_kb">%.1f KB</string>
-    <string name="songinfo_size_b">%s B</string>
     <string name="songinfo_sample_rate_hz">%s Hz</string>
     <string name="songinfo_bitrate_bps">%s bps</string>
 
@@ -126,7 +118,6 @@
     <string name="settings_title">Settings</string>
     <string name="settings_general">General</string>
     <string name="settings_language">Language</string>
-    <string name="settings_language_desc">App display language</string>
     <string name="settings_music_sources">Sources</string>
     <string name="settings_music_sources_desc">Manage local folders and network sources</string>
     <string name="settings_about">About</string>
@@ -160,7 +151,6 @@
     <string name="add_source_provider_custom">Custom</string>
     <string name="add_source_provider_label">Provider</string>
     <string name="add_source_server_url_label">Server URL</string>
-    <string name="add_source_username_label">Username</string>
     <string name="add_source_password_label">Password</string>
     <string name="add_source_path_label">Path (optional)</string>
     <string name="add_source_path_placeholder">/Music</string>
@@ -168,7 +158,6 @@
     <string name="add_source_connected">Connected</string>
     <string name="add_source_test_connection">Test Connection</string>
     <string name="add_source_smb_coming_soon">SMB support coming soon</string>
-    <string name="add_source_unknown_error">Unknown error</string>
     <string name="add_source_untitled">Untitled</string>
     <string name="add_source_duplicate_local">This source already exists</string>
     <string name="add_source_url_required">URL required</string>
@@ -210,7 +199,6 @@
     <string name="year_title">Year Detail</string>
 
     <!-- Language selection -->
-    <string name="language_title">App Language</string>
     <string name="language_system">Follow system</string>
     <string name="language_german">Deutsch</string>
     <string name="language_english">English</string>

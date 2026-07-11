@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.Flow
 interface MusicRepository {
     fun getAllSongs(): Flow<List<Song>>
     fun getFavoriteSongs(): Flow<List<Song>>
-    fun searchSongs(query: String): Flow<List<Song>>
     fun getSongsByAlbumId(albumId: Long): Flow<List<Song>>
     fun getSongsByArtistId(artistId: Long): Flow<List<Song>>
     fun getAlbumsByArtistId(artistId: Long): Flow<List<Album>>
@@ -38,7 +37,6 @@ interface MusicRepository {
     fun getAlbumsInSeries(seriesId: Long): Flow<List<Album>>
     suspend fun getTrackTotal(albumId: Long, discNumber: Int): Int
     suspend fun getDiscTotal(albumId: Long): Int
-    suspend fun getAlbumIdByNameAndArtist(albumName: String, albumArtist: String): Long?
     fun getSongsWithNoArtist(): Flow<List<Song>>
     fun getAlbumsWithNoArtist(): Flow<List<Album>>
     fun hasSongsWithNoArtist(): Flow<Boolean>

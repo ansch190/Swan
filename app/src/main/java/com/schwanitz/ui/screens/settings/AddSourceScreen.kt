@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
 import com.schwanitz.domain.source.SourceType
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +78,7 @@ fun AddSourceScreen(
                         onNavigateBack()
                     }
                 }) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             },
             actions = {
@@ -272,7 +274,7 @@ private fun ConfigureSourceContent(
     ) {
         LaunchedEffect(selectedProvider) {
             if (selectedProvider != null) {
-                delay(100)
+                delay(100.milliseconds)
                 usernameFocusRequester.requestFocus()
             }
         }

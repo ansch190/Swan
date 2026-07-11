@@ -15,16 +15,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 data class PlayerState(
     val currentSong: Song? = null,
@@ -34,8 +33,7 @@ data class PlayerState(
     val duration: Long = 0,
     val shuffleMode: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
-    val queue: List<Song> = emptyList(),
-    val error: String? = null
+    val queue: List<Song> = emptyList()
 )
 
 @Singleton
@@ -85,7 +83,6 @@ class MusicPlayerManager @Inject constructor(
             }
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                _playerState.value = _playerState.value.copy(error = error.message)
             }
         })
     }
@@ -116,8 +113,7 @@ class MusicPlayerManager @Inject constructor(
             currentIndex = playIndex,
             queue = queue,
             shuffleMode = false,
-            repeatMode = Player.REPEAT_MODE_OFF,
-            error = null
+            repeatMode = Player.REPEAT_MODE_OFF
         )
     }
 
@@ -221,7 +217,7 @@ class MusicPlayerManager @Inject constructor(
                 _playerState.value = _playerState.value.copy(
                     currentPosition = player.currentPosition.coerceAtLeast(0)
                 )
-                delay(100)
+                delay(100.milliseconds)
             }
         }
     }
@@ -229,10 +225,5 @@ class MusicPlayerManager @Inject constructor(
     private fun stopPositionUpdates() {
         positionJob?.cancel()
         positionJob = null
-    }
-
-    fun release() {
-        scope.cancel()
-        player.release()
     }
 }

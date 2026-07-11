@@ -35,7 +35,6 @@
     <string name="cd_show_album_art">Album Bild anzeigen</string>
     <string name="cd_show_queue">Warteschlange anzeigen</string>
     <string name="cd_create_playlist">Liste erstellen</string>
-    <string name="cd_delete_playlist">Liste löschen</string>
     <string name="cd_add_songs">Titel hinzufügen</string>
     <string name="cd_edit_done">Fertig</string>
     <string name="cd_add_source">Quelle hinzufügen</string>
@@ -49,9 +48,6 @@
     <string name="cd_genre_icon">Genre-Symbol</string>
     <string name="cd_year_photo">Jahres-Symbol</string>
     <string name="cd_series_icon">Serie anzeigen</string>
-
-    <!-- Player controls -->
-    <string name="player_time_format">%1$d:%2$02d</string>
 
     <!-- Home screen -->
     <string name="home_title">Lieder</string>
@@ -115,10 +111,6 @@
     <string name="songinfo_field_tag_version">Tag-Version</string>
     <string name="songinfo_field_series">Serie</string>
     <string name="songinfo_label_format">%s:</string>
-    <string name="songinfo_size_gb">%.1f GB</string>
-    <string name="songinfo_size_mb">%.1f MB</string>
-    <string name="songinfo_size_kb">%.1f KB</string>
-    <string name="songinfo_size_b">%s B</string>
     <string name="songinfo_sample_rate_hz">%s Hz</string>
     <string name="songinfo_bitrate_bps">%s bps</string>
 
@@ -126,7 +118,6 @@
     <string name="settings_title">Einstellungen</string>
     <string name="settings_general">Allgemein</string>
     <string name="settings_language">Sprache</string>
-    <string name="settings_language_desc">Anzeigesprache der App</string>
     <string name="settings_music_sources">Quellen</string>
     <string name="settings_music_sources_desc">Lokale Ordner und Netzwerkquellen verwalten</string>
     <string name="settings_about">Über</string>
@@ -160,7 +151,6 @@
     <string name="add_source_provider_custom">Benutzerdefiniert</string>
     <string name="add_source_provider_label">Anbieter</string>
     <string name="add_source_server_url_label">Server-URL</string>
-    <string name="add_source_username_label">Benutzername</string>
     <string name="add_source_password_label">Passwort</string>
     <string name="add_source_path_label">Pfad (optional)</string>
     <string name="add_source_path_placeholder">/Music</string>
@@ -168,7 +158,6 @@
     <string name="add_source_connected">Verbunden</string>
     <string name="add_source_test_connection">Verbindung testen</string>
     <string name="add_source_smb_coming_soon">SMB-Unterstützung kommt bald</string>
-    <string name="add_source_unknown_error">Unbekannter Fehler</string>
     <string name="add_source_untitled">Unbenannt</string>
     <string name="add_source_duplicate_local">Diese Quelle existiert bereits</string>
     <string name="add_source_url_required">URL erforderlich</string>
@@ -210,7 +199,6 @@
     <string name="year_title">Jahres-Detail</string>
 
     <!-- Language selection -->
-    <string name="language_title">App-Sprache</string>
     <string name="language_system">System folgen</string>
     <string name="language_german">Deutsch</string>
     <string name="language_english">English</string>

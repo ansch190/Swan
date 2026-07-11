@@ -32,20 +32,20 @@ Play music from your device and from network sources (WebDAV). Manage playlists,
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| UI | Jetpack Compose + Material 3 |
-| Navigation | Compose Navigation (NavHost) |
-| DI | Hilt + KSP |
-| Database | Room |
-| Player | Media3 ExoPlayer + MediaSession |
-| Images | Coil |
-| HTML Parsing | JSoup |
-| Serialization | kotlinx-serialization |
-| Preferences | DataStore Preferences |
-| HTTP | OkHttp (with digest auth for WebDAV) |
-| Drag-and-drop | reorderable |
-| APIs | Discogs (OAuth 1.0a), Last.fm (API key), Genius (Client Token) |
+| Layer         | Technology                                                     |
+|---------------|----------------------------------------------------------------|
+| UI            | Jetpack Compose + Material 3                                   |
+| Navigation    | Compose Navigation (NavHost)                                   |
+| DI            | Hilt + KSP                                                     |
+| Database      | Room                                                           |
+| Player        | Media3 ExoPlayer + MediaSession                                |
+| Images        | Coil                                                           |
+| HTML Parsing  | JSoup                                                          |
+| Serialization | kotlinx-serialization                                          |
+| Preferences   | DataStore Preferences                                          |
+| HTTP          | OkHttp (with digest auth for WebDAV)                           |
+| Drag-and-drop | reorderable                                                    |
+| APIs          | Discogs (OAuth 1.0a), Last.fm (API key), Genius (Client Token) |
 
 ## Build & Run
 

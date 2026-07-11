@@ -4,6 +4,7 @@ import android.util.Log
 import kotlinx.coroutines.delay
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class DiscogsRateLimiter @Inject constructor() {
@@ -16,7 +17,7 @@ class DiscogsRateLimiter @Inject constructor() {
             val waitMs = tryAcquireSlot()
             if (waitMs == 0L) return
             Log.e("DiscogsRatelimit", "Rate limited, waiting ${waitMs}ms")
-            delay(waitMs.coerceIn(1_000, 10_000))
+            delay(waitMs.coerceIn(1_000, 10_000).milliseconds)
         }
     }
 

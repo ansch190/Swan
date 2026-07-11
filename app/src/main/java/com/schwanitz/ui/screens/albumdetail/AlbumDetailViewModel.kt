@@ -38,7 +38,6 @@ class AlbumDetailViewModel @Inject constructor(
             val album = albumDao.findByNameAndAlbumArtist(albumName, albumArtistName) ?: return@launch
             launch {
                 musicRepository.getSongsByAlbumId(album.id).collect { albumSongs ->
-                    android.util.Log.d("AlbumDetailVM", "Loaded ${albumSongs.size} songs for album: $albumName")
                     _songs.value = albumSongs
                     if (albumSongs.isNotEmpty()) {
                         val albumId = albumSongs.first().albumId
@@ -75,7 +74,6 @@ class AlbumDetailViewModel @Inject constructor(
     val selectedSongIds: StateFlow<Set<String>> = selection.selectedSongIds
     val playlists: StateFlow<List<com.schwanitz.domain.model.Playlist>> = selection.playlists
     fun enterSelection(song: Song) = selection.enterSelection(song)
-    fun exitSelection() = selection.exitSelection()
     fun toggleSelection(songId: String) = selection.toggleSelection(songId)
     fun playSelection() = selection.playSelection()
     fun addSelectionToQueue() = selection.addSelectionToQueue()

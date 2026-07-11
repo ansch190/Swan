@@ -7,7 +7,8 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "albums",
     indices = [
-        Index("name", "albumArtist", "year")
+        Index("name", "albumArtist", "year"),
+        Index("albumArtist")
     ]
 )
 data class AlbumEntity(

@@ -112,12 +112,12 @@ class PlaylistListViewModel @Inject constructor(
     ): String {
         val converted = songs.map { it.copy(id = uriToPlaylistPath(it.id)) }
         return when (format) {
-            PlaylistExportFormat.M3U -> buildM3u(name, converted)
-            PlaylistExportFormat.PLS -> buildPls(name, converted)
+            PlaylistExportFormat.M3U -> buildM3u(converted)
+            PlaylistExportFormat.PLS -> buildPls(converted)
             PlaylistExportFormat.XSPF -> buildXspf(name, converted)
             PlaylistExportFormat.WPL -> buildWpl(name, converted)
             PlaylistExportFormat.ASX -> buildAsx(name, converted)
-            PlaylistExportFormat.B4S -> buildB4s(name, converted)
+            PlaylistExportFormat.B4S -> buildB4s(converted)
         }
     }
 
@@ -138,7 +138,7 @@ class PlaylistListViewModel @Inject constructor(
         }
     }
 
-    private fun buildM3u(name: String, songs: List<Song>): String = buildString {
+    private fun buildM3u(songs: List<Song>): String = buildString {
         appendLine("#EXTM3U")
         for (song in songs) {
             val seconds = song.durationMs / 1000
@@ -148,7 +148,7 @@ class PlaylistListViewModel @Inject constructor(
         }
     }
 
-    private fun buildPls(name: String, songs: List<Song>): String = buildString {
+    private fun buildPls(songs: List<Song>): String = buildString {
         appendLine("[playlist]")
         appendLine("NumberOfEntries=${songs.size}")
         songs.forEachIndexed { i, song ->
@@ -207,7 +207,7 @@ class PlaylistListViewModel @Inject constructor(
         appendLine("</asx>")
     }
 
-    private fun buildB4s(name: String, songs: List<Song>): String = buildString {
+    private fun buildB4s(songs: List<Song>): String = buildString {
         appendLine("<playlist>")
         for (song in songs) {
             val path = escapeXml(song.id)

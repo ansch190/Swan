@@ -15,8 +15,7 @@ data class HomeUiState(
     val songs: List<Song> = emptyList(),
     val isLoading: Boolean = true,
     val searchQuery: String = "",
-    val showFavoritesOnly: Boolean = false,
-    val error: String? = null
+    val showFavoritesOnly: Boolean = false
 )
 
 @HiltViewModel

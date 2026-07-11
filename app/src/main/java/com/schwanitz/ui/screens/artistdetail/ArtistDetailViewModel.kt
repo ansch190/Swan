@@ -3,7 +3,6 @@ package com.schwanitz.ui.screens.artistdetail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.Album
-import com.schwanitz.domain.model.Artist
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.ArtistRepository
 import com.schwanitz.domain.repository.MusicRepository
@@ -51,12 +50,12 @@ class ArtistDetailViewModel @Inject constructor(
                 }
             } else {
                 val artist = artistRepository.getArtistByName(artistName) ?: return@launch
-                loadArtist(artist.id, artist.name)
+                loadArtist(artist.id)
             }
         }
     }
 
-    fun loadArtist(artistId: Long, artistName: String) {
+    private fun loadArtist(artistId: Long) {
         viewModelScope.launch {
             musicRepository.getSongsByArtistId(artistId).collect {
                 _songs.value = it
@@ -88,7 +87,6 @@ class ArtistDetailViewModel @Inject constructor(
     val selectedSongIds: StateFlow<Set<String>> = selection.selectedSongIds
     val playlists: StateFlow<List<com.schwanitz.domain.model.Playlist>> = selection.playlists
     fun enterSelection(song: Song) = selection.enterSelection(song)
-    fun exitSelection() = selection.exitSelection()
     fun toggleSelection(songId: String) = selection.toggleSelection(songId)
     fun playSelection() = selection.playSelection()
     fun addSelectionToQueue() = selection.addSelectionToQueue()

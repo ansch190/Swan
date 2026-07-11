@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 interface PlaylistRepository {
     fun getAllPlaylists(): Flow<List<Playlist>>
     fun getAllPlaylistSongCounts(): Flow<Map<Long, Int>>
-    fun getPlaylist(playlistId: Long): Flow<Playlist?>
+    fun getPlaylistName(playlistId: Long): Flow<String?>
     fun getPlaylistSongs(playlistId: Long): Flow<List<Song>>
     suspend fun createPlaylist(name: String): Long
     suspend fun deletePlaylist(playlistId: Long)

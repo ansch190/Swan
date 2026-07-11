@@ -1,7 +1,6 @@
 ﻿package com.schwanitz.data.local.entity
 
 import androidx.room.Entity
-import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -9,7 +8,10 @@ import androidx.room.PrimaryKey
     tableName = "songs",
     indices = [
         Index("sourceId"),
-        Index("artistId")
+        Index("artistId"),
+        Index("isActive"),
+        Index("genre"),
+        Index("isFavorite")
     ]
 )
 data class SongEntity(

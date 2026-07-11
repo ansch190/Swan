@@ -4,7 +4,6 @@ import androidx.room.*
 import com.schwanitz.data.local.entity.PlaylistEntity
 import com.schwanitz.data.local.entity.PlaylistSongMapping
 import com.schwanitz.data.local.entity.PlaylistWithCount
-import com.schwanitz.data.local.entity.PlaylistWithSongs
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -39,15 +38,11 @@ interface PlaylistDao {
     @Query("SELECT p.*, (SELECT COUNT(*) FROM playlist_song_mapping WHERE playlistId = p.id) AS song_count FROM playlists p ORDER BY p.name ASC")
     fun getAllPlaylistsWithCount(): Flow<List<PlaylistWithCount>>
 
-    @Transaction
-    @Query("SELECT * FROM playlists WHERE id = :playlistId")
-    fun getPlaylistWithSongs(playlistId: Long): Flow<PlaylistWithSongs?>
+    @Query("SELECT name FROM playlists WHERE id = :playlistId")
+    fun getPlaylistName(playlistId: Long): Flow<String?>
 
     @Insert
     suspend fun createPlaylist(playlist: PlaylistEntity): Long
-
-    @Update
-    suspend fun updatePlaylist(playlist: PlaylistEntity)
 
     @Delete
     suspend fun deletePlaylist(playlist: PlaylistEntity)

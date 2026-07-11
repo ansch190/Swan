@@ -3,7 +3,7 @@
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.PlayCircleFilled
-import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.schwanitz.R
 
@@ -21,7 +21,7 @@ sealed class BottomNavItem(
     data object Playlists : BottomNavItem(
         route = "playlists",
         titleRes = R.string.bottom_playlists,
-        icon = Icons.Filled.QueueMusic
+        icon = Icons.AutoMirrored.Filled.QueueMusic
     )
 
     data object NowPlaying : BottomNavItem(

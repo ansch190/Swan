@@ -12,6 +12,7 @@ import org.jsoup.Jsoup
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class GeniusApiService @Inject constructor() {
@@ -50,7 +51,7 @@ class GeniusApiService @Inject constructor() {
 
     private suspend fun searchForSongOrNull(rawQuery: String, checkTitle: String): String? {
         val encoded = java.net.URLEncoder.encode(rawQuery, "UTF-8")
-        return withTimeout(30_000) {
+        return withTimeout(30_000.milliseconds) {
             withContext(Dispatchers.IO) {
                 try {
                     val request = Request.Builder()
@@ -90,7 +91,7 @@ class GeniusApiService @Inject constructor() {
     }
 
     private suspend fun fetchLyricsFromPage(pageUrl: String): String? {
-        return withTimeout(30_000) {
+        return withTimeout(30_000.milliseconds) {
             withContext(Dispatchers.IO) {
                 try {
                     val request = Request.Builder()
