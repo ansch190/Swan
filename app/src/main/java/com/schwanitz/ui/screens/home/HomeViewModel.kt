@@ -60,7 +60,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun playSong(song: Song) {
-        playerManager.play(song, uiState.value.songs)
+        playerManager.play(song, listOf(song))
     }
 
     fun toggleFavorite(song: Song) {

@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.media3.common.Player
 import com.schwanitz.R
 import com.schwanitz.player.PlayerState
 
@@ -70,14 +71,19 @@ fun PlayerControlBar(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onShuffle) {
+            val shuffleDisabled = playerState.repeatMode == Player.REPEAT_MODE_ONE
+            IconButton(
+                onClick = onShuffle,
+                enabled = !shuffleDisabled
+            ) {
                 Icon(
                     imageVector = Icons.Filled.Shuffle,
                     contentDescription = stringResource(R.string.cd_shuffle),
-                    tint = if (playerState.shuffleMode)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = when {
+                        shuffleDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        playerState.shuffleMode -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
 

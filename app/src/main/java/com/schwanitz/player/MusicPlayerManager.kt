@@ -117,6 +117,10 @@ class MusicPlayerManager @Inject constructor(
 
         val playIndex = queue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
         player.seekTo(playIndex, 0)
+
+        player.shuffleModeEnabled = false
+        player.repeatMode = Player.REPEAT_MODE_OFF
+
         player.prepare()
         player.play()
 
@@ -124,6 +128,8 @@ class MusicPlayerManager @Inject constructor(
             currentSong = song,
             currentIndex = playIndex,
             queue = queue,
+            shuffleMode = false,
+            repeatMode = Player.REPEAT_MODE_OFF,
             error = null
         )
     }
@@ -159,19 +165,32 @@ class MusicPlayerManager @Inject constructor(
     }
 
     fun toggleShuffle() {
+        if (player.repeatMode == Player.REPEAT_MODE_ONE) return
         player.shuffleModeEnabled = !player.shuffleModeEnabled
+        player.repeatMode = if (player.shuffleModeEnabled) {
+            Player.REPEAT_MODE_ALL
+        } else {
+            Player.REPEAT_MODE_OFF
+        }
         _playerState.value = _playerState.value.copy(
-            shuffleMode = player.shuffleModeEnabled
+            shuffleMode = player.shuffleModeEnabled,
+            repeatMode = player.repeatMode
         )
     }
 
     fun cycleRepeatMode() {
-        player.repeatMode = when (player.repeatMode) {
-            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
-            Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
+        player.repeatMode = when {
+            player.shuffleModeEnabled && player.repeatMode == Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            player.shuffleModeEnabled && player.repeatMode == Player.REPEAT_MODE_ALL -> {
+                player.shuffleModeEnabled = false
+                Player.REPEAT_MODE_OFF
+            }
+            player.repeatMode == Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
+            player.repeatMode == Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
             else -> Player.REPEAT_MODE_OFF
         }
         _playerState.value = _playerState.value.copy(
+            shuffleMode = player.shuffleModeEnabled,
             repeatMode = player.repeatMode
         )
     }

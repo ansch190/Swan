@@ -24,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
+import com.schwanitz.domain.model.Song
 import com.schwanitz.ui.components.MarqueeText
 import com.schwanitz.ui.components.SongListItem
 import kotlinx.coroutines.launch
@@ -85,12 +86,28 @@ fun GenreDetailScreen(
         ) { page ->
             when (page) {
                 0 -> {
+                    var contextMenuSong by remember { mutableStateOf<Song?>(null) }
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(sortedSongs) { song ->
-                            SongListItem(
-                                song = song,
-                                onClick = { viewModel.playSong(song, sortedSongs) }
-                            )
+                            Box {
+                                SongListItem(
+                                    song = song,
+                                    onClick = { viewModel.playSong(song) },
+                                    onLongClick = { contextMenuSong = song }
+                                )
+                                DropdownMenu(
+                                    expanded = contextMenuSong?.id == song.id,
+                                    onDismissRequest = { contextMenuSong = null }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.context_play_all)) },
+                                        onClick = {
+                                            contextMenuSong = null
+                                            viewModel.playAllFromSong(song)
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }

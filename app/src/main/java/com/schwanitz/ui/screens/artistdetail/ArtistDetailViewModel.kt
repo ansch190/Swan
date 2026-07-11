@@ -59,7 +59,11 @@ class ArtistDetailViewModel @Inject constructor(
         }
     }
 
-    fun playSong(song: Song, queue: List<Song>) {
-        playerManager.play(song, queue)
+    fun playSong(song: Song) {
+        playerManager.play(song, listOf(song))
+    }
+
+    fun playAllFromSong(song: Song) {
+        playerManager.play(song, songs.value)
     }
 }

@@ -59,6 +59,8 @@
     <string name="home_empty_search">No songs found</string>
     <string name="home_empty_no_source">No music found.\nAdd a source in Settings.</string>
     <string name="home_song_info">Info</string>
+    <string name="context_play_all">Play All</string>
+    <string name="context_play_entire_album">Play Entire Album</string>
 
     <!-- Now Playing screen -->
     <string name="nowplaying_title">Now Playing</string>

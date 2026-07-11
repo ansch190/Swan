@@ -23,6 +23,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.schwanitz.domain.model.AlbumArtwork
+import com.schwanitz.domain.model.Song
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
 import com.schwanitz.ui.components.MarqueeText
@@ -96,12 +97,35 @@ fun AlbumDetailScreen(
                 modifier = Modifier.weight(1f)
             ) { page ->
                 val cdSongs = songsByCd[cdList[page]] ?: emptyList()
+                var contextMenuSong by remember { mutableStateOf<Song?>(null) }
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(cdSongs) { song ->
-                        SongListItem(
-                            song = song,
-                            onClick = { viewModel.playSong(song, cdSongs) }
-                        )
+                        Box {
+                            SongListItem(
+                                song = song,
+                                onClick = { viewModel.playSong(song) },
+                                onLongClick = { contextMenuSong = song }
+                            )
+                            DropdownMenu(
+                                expanded = contextMenuSong?.id == song.id,
+                                onDismissRequest = { contextMenuSong = null }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.context_play_all)) },
+                                    onClick = {
+                                        contextMenuSong = null
+                                        viewModel.playAllFromSong(song, cdSongs)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.context_play_entire_album)) },
+                                    onClick = {
+                                        contextMenuSong = null
+                                        viewModel.playEntireAlbum(song)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }

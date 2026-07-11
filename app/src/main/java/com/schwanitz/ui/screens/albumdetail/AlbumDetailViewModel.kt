@@ -55,7 +55,15 @@ class AlbumDetailViewModel @Inject constructor(
         }
     }
 
-    fun playSong(song: Song, cdSongs: List<Song>) {
+    fun playSong(song: Song) {
+        playerManager.play(song, listOf(song))
+    }
+
+    fun playAllFromSong(song: Song, cdSongs: List<Song>) {
         playerManager.play(song, cdSongs)
+    }
+
+    fun playEntireAlbum(song: Song) {
+        playerManager.play(song, songs.value)
     }
 }

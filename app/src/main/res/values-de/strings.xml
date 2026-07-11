@@ -59,6 +59,8 @@
     <string name="home_empty_search">Kein Titel gefunden</string>
     <string name="home_empty_no_source">Keine Musik gefunden.\nFüge eine Quelle in den Einstellungen hinzu.</string>
     <string name="home_song_info">Info</string>
+    <string name="context_play_all">Alle Abspielen</string>
+    <string name="context_play_entire_album">Gesamtes Album Abspielen</string>
 
     <!-- Now Playing screen -->
     <string name="nowplaying_title">Spielt jetzt</string>

@@ -87,13 +87,25 @@ class MusicPlayerService : Service() {
                 player.seekToPreviousMediaItem()
             }
             ACTION_SHUFFLE -> {
-                player.shuffleModeEnabled = !player.shuffleModeEnabled
+                if (player.repeatMode != Player.REPEAT_MODE_ONE) {
+                    player.shuffleModeEnabled = !player.shuffleModeEnabled
+                    player.repeatMode = if (player.shuffleModeEnabled) {
+                        Player.REPEAT_MODE_ALL
+                    } else {
+                        Player.REPEAT_MODE_OFF
+                    }
+                }
                 updateNotification()
             }
             ACTION_REPEAT -> {
-                player.repeatMode = when (player.repeatMode) {
-                    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
-                    Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
+                player.repeatMode = when {
+                    player.shuffleModeEnabled && player.repeatMode == Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                    player.shuffleModeEnabled && player.repeatMode == Player.REPEAT_MODE_ALL -> {
+                        player.shuffleModeEnabled = false
+                        Player.REPEAT_MODE_OFF
+                    }
+                    player.repeatMode == Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
+                    player.repeatMode == Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
                     else -> Player.REPEAT_MODE_OFF
                 }
                 updateNotification()
