@@ -197,6 +197,10 @@ class MusicRepositoryImpl @Inject constructor(
         return albumSongDao.getDiscTotal(albumId)
     }
 
+    override suspend fun getAlbumIdByNameAndArtist(albumName: String, albumArtist: String): Long? {
+        return albumDao.findByNameAndAlbumArtist(albumName, albumArtist)?.id
+    }
+
     override suspend fun refreshSource(sourceId: String, onProgress: (Int, Int) -> Unit) {
         android.util.Log.d("MusicRepository", "refreshSource started for $sourceId")
         val config = sourceManager.getSourceById(sourceId) ?: run {

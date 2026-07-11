@@ -58,12 +58,17 @@ fun NavGraph(navController: NavHostController) {
                 onAllAlbumsClick = { navController.navigate("all_albums") },
                 onAllYearsClick = { navController.navigate("all_years") },
                 onAllGenresClick = { navController.navigate("all_genres") },
+                onAllSeriesClick = { navController.navigate("all_series") },
                 onYearClick = { year ->
                     navController.navigate("year_detail/$year")
                 },
                 onGenreClick = { genre ->
                     val encodedGenre = Uri.encode(genre)
                     navController.navigate("genre_detail/$encodedGenre")
+                },
+                onSeriesClick = { seriesName ->
+                    val encoded = Uri.encode(seriesName)
+                    navController.navigate("series_detail/$encoded")
                 }
             )
         }
@@ -156,6 +161,16 @@ fun NavGraph(navController: NavHostController) {
                 onGenreClick = { genre ->
                     val encoded = Uri.encode(genre)
                     navController.navigate("genre_detail/$encoded")
+                }
+            )
+        }
+
+        composable("all_series") {
+            com.schwanitz.ui.screens.serieslist.SeriesListScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onSeriesClick = { seriesName ->
+                    val encoded = Uri.encode(seriesName)
+                    navController.navigate("series_detail/$encoded")
                 }
             )
         }

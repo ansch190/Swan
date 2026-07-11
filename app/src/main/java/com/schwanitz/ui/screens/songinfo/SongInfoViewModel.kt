@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.data.genius.GeniusLyricsProvider
 import com.schwanitz.domain.model.AlbumArtwork
+import com.schwanitz.domain.model.AlbumSeries
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.domain.repository.SourceManager
@@ -38,11 +39,21 @@ class SongInfoViewModel @Inject constructor(
     private val _discTotal = MutableStateFlow(0)
     val discTotal: StateFlow<Int> = _discTotal
 
+    private val _series = MutableStateFlow<AlbumSeries?>(null)
+    val series: StateFlow<AlbumSeries?> = _series
+
     fun loadSong(songId: String) {
         viewModelScope.launch {
             val s = musicRepository.getSongById(songId)
             _song.value = s
             if (s != null) {
+                if (s.albumId != null) {
+                    launch {
+                        musicRepository.getSeriesForAlbum(s.albumId).collect {
+                            _series.value = it
+                        }
+                    }
+                }
                 val config = sourceManager.getSourceById(s.sourceId)
                 _sourceName.value = config?.name ?: s.sourceId
                 _artworks.value = if (s.albumId != null) {

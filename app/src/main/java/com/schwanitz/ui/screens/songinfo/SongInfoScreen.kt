@@ -51,8 +51,10 @@ fun SongInfoScreen(
     onAllAlbumsClick: () -> Unit,
     onAllYearsClick: () -> Unit,
     onAllGenresClick: () -> Unit,
+    onAllSeriesClick: () -> Unit,
     onYearClick: (Int) -> Unit,
     onGenreClick: (String) -> Unit,
+    onSeriesClick: (String) -> Unit,
     viewModel: SongInfoViewModel = hiltViewModel()
 ) {
     LaunchedEffect(songId) {
@@ -65,6 +67,7 @@ fun SongInfoScreen(
     val lyrics by viewModel.lyrics.collectAsState()
     val trackTotal by viewModel.trackTotal.collectAsState()
     val discTotal by viewModel.discTotal.collectAsState()
+    val series by viewModel.series.collectAsState()
     var showLyricsDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
@@ -121,14 +124,17 @@ fun SongInfoScreen(
                         song = song!!,
                         trackTotal = trackTotal,
                         discTotal = discTotal,
+                        series = series,
                         onAlbumClick = onAlbumClick,
                         onArtistClick = onArtistClick,
                         onAllArtistsClick = onAllArtistsClick,
                         onAllAlbumsClick = onAllAlbumsClick,
                         onAllYearsClick = onAllYearsClick,
                         onAllGenresClick = onAllGenresClick,
+                        onAllSeriesClick = onAllSeriesClick,
                         onYearClick = onYearClick,
-                        onGenreClick = onGenreClick
+                        onGenreClick = onGenreClick,
+                        onSeriesClick = onSeriesClick
                     )
                     1 -> TechnicalTab(song = song!!, sourceName = sourceName)
                 }
@@ -279,14 +285,17 @@ private fun MetadataTab(
     song: Song,
     trackTotal: Int,
     discTotal: Int,
+    series: com.schwanitz.domain.model.AlbumSeries?,
     onAlbumClick: (String, String) -> Unit,
     onArtistClick: (String) -> Unit,
     onAllArtistsClick: () -> Unit,
     onAllAlbumsClick: () -> Unit,
     onAllYearsClick: () -> Unit,
     onAllGenresClick: () -> Unit,
+    onAllSeriesClick: () -> Unit,
     onYearClick: (Int) -> Unit,
-    onGenreClick: (String) -> Unit
+    onGenreClick: (String) -> Unit,
+    onSeriesClick: (String) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -311,6 +320,14 @@ private fun MetadataTab(
                 onAlbumClick(song.albumName, song.albumArtistName)
             }
         )
+        if (series != null) {
+            InfoRow(
+                label = stringResource(R.string.songinfo_field_series),
+                value = series!!.name,
+                onLabelClick = onAllSeriesClick,
+                onValueClick = { onSeriesClick(series!!.name) }
+            )
+        }
         InfoRow(stringResource(R.string.songinfo_field_album_artist), song.albumArtistName.ifBlank { "-" })
         InfoRow(
             stringResource(R.string.songinfo_field_track),

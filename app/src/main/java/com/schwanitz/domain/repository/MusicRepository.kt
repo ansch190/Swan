@@ -38,4 +38,5 @@ interface MusicRepository {
     fun getAlbumsInSeries(seriesId: Long): Flow<List<Album>>
     suspend fun getTrackTotal(albumId: Long, discNumber: Int): Int
     suspend fun getDiscTotal(albumId: Long): Int
+    suspend fun getAlbumIdByNameAndArtist(albumName: String, albumArtist: String): Long?
 }

@@ -113,6 +113,7 @@
     <string name="songinfo_field_sample_rate">Abtastrate</string>
     <string name="songinfo_field_bitrate">Bitrate</string>
     <string name="songinfo_field_tag_version">Tag-Version</string>
+    <string name="songinfo_field_series">Serie</string>
     <string name="songinfo_label_format">%s:</string>
     <string name="songinfo_size_gb">%.1f GB</string>
     <string name="songinfo_size_mb">%.1f MB</string>
@@ -230,6 +231,7 @@
     <string name="section_artists">Künstler</string>
     <string name="section_years">Jahre</string>
     <string name="section_genres">Genres</string>
+    <string name="section_series">Serie(n)</string>
     <string name="path_copied">Pfad kopiert</string>
     <string name="export">Exportieren</string>
     <string name="export_choose_format">Format wählen</string>
