@@ -17,10 +17,11 @@ Play music from your device and from network sources (WebDAV). Manage playlists,
 - **Lyrics** — Automatic lyrics fetching from Genius, cached in local database; viewable from Song Info and Now Playing screens
 - **Artist images** — Artist photos fetched from Discogs API, cached to local storage
 - **Artist biographies** — Artist bios fetched from Last.fm API, cached with 6-month TTL
-- **Album detail** — Multi-CD support with songs grouped by disc, artwork pager
-- **Artist detail** — Photo, biography popup, and Songs/Albums tabs
-- **Genre detail** — Three tabs: Songs / Artists / Albums
-- **Year detail** — Two tabs: Songs / Albums
+- **Album list & detail** — Browse all albums; detail view with multi-CD support, songs grouped by disc, artwork pager
+- **Artist list & detail** — Browse all artists; detail view with photo, biography popup, and Songs/Albums tabs
+- **Genre list & detail** — Browse genres; detail view with Songs / Artists / Albums tabs
+- **Year list & detail** — Browse years; detail view with Songs / Albums tabs
+- **Series** — Browse album series (e.g. compilations); detail view with ordered albums
 - **Multiple album artworks** — Swipeable artwork carousel with dot indicators
 - **Multi-language UI** — Switch between System / Deutsch / English in Settings
 - **Background playback** — Foreground service with media notification & lock screen controls
@@ -37,7 +38,7 @@ Play music from your device and from network sources (WebDAV). Manage playlists,
 | UI            | Jetpack Compose + Material 3                                   |
 | Navigation    | Compose Navigation (NavHost)                                   |
 | DI            | Hilt + KSP                                                     |
-| Database      | Room                                                           |
+| Database      | Room + Migrations + Schema Export                              |
 | Player        | Media3 ExoPlayer + MediaSession                                |
 | Images        | Coil                                                           |
 | HTML Parsing  | JSoup                                                          |
@@ -63,7 +64,7 @@ Play music from your device and from network sources (WebDAV). Manage playlists,
 ./gradlew connectedDebugAndroidTest
 ```
 
-- Requires Java 17
+- Requires Java 17 · minSdk 31 (Android 12)
 - Use the Gradle wrapper (`./gradlew`), not a system installation
 - API keys must be set in `local.properties`: `discogsKey`, `discogsSecret`, `lastfmKey`, `geniusAccessToken`
 
@@ -71,14 +72,15 @@ Play music from your device and from network sources (WebDAV). Manage playlists,
 
 ```
 app/src/main/java/com/schwanitz/
-├── data/            # Room DB, DAOs, entities, repository implementations, music sources,
-│                    # external API clients (Discogs, Last.fm, Genius)
-├── domain/          # Models (Song, Playlist, SongArtwork, Album, ArtistImage, ArtistProfile),
+├── data/            # Room DB, DAOs, entities, migrations, repository implementations,
+│                    # music sources, external API clients (Discogs, Last.fm, Genius)
+├── domain/          # Models (Song, Playlist, Album, AlbumArtwork, Artist, AlbumSeries),
 │                    # repository interfaces, MusicSource interface
 ├── di/              # Hilt modules (AppModule, DatabaseModule, PlayerModule, RepositoryModule)
 ├── player/          # MusicPlayerManager (singleton), MusicPlayerService (foreground)
-└── ui/              # Compose screens (Songs, Playlists, Now Playing, Settings, About,
-                     # Song Info, Album Detail, Artist Detail, Genre Detail, Year Detail)
+└── ui/              # Compose screens (Home, Playlists, Now Playing, Settings, About,
+                     # Song Info, Album List/Detail, Artist List/Detail, Genre List/Detail,
+                     # Year List/Detail, Series List/Detail)
 ```
 
 - **ViewModels** use `@HiltViewModel` and expose state via `StateFlow`
