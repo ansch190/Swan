@@ -3,13 +3,13 @@
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.util.Log
 import com.schwanitz.domain.model.Song
 import com.schwanitz.api.MetadataManager
 import com.schwanitz.interfaces.Metadata
 import com.schwanitz.io.SeekableDataSource
 import com.schwanitz.metadata.PictureData
 import com.schwanitz.tagging.ScanConfiguration
+import timber.log.Timber
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -53,7 +53,7 @@ object MetadataExtractor {
         return try {
             val metadataList: List<Metadata>
             try {
-                Log.e("MetadataExtractor", "Tagix scan start: $songId")
+                Timber.d("Tagix scan start: %s", songId)
                 val t0 = System.currentTimeMillis()
                 val future = tagixExecutor.submit(Callable {
                     metadataManager.readFromSource(source, ScanConfiguration.comfortScan())
@@ -62,15 +62,15 @@ object MetadataExtractor {
                     future.get(15, TimeUnit.SECONDS)
                 } catch (e: TimeoutException) {
                     future.cancel(true)
-                    Log.e("MetadataExtractor", "Tagix scan timed out for $songId")
+                    Timber.w("Tagix scan timed out for %s", songId)
                     emptyList()
                 }
                 val dt = System.currentTimeMillis() - t0
                 if (metadataList.isNotEmpty()) {
-                    Log.e("MetadataExtractor", "Tagix scan done: ${metadataList.size} metadata(s) in ${dt}ms for $songId")
+                    Timber.d("Tagix scan done: %d metadata(s) in %dms for %s", metadataList.size, dt, songId)
                 }
             } catch (e: Exception) {
-                Log.e("MetadataExtractor", "Tagix scan failed for $songId", e)
+                Timber.e(e, "Tagix scan failed for %s", songId)
                 return BuildSongResult(null, emptyList())
             }
 
@@ -78,10 +78,10 @@ object MetadataExtractor {
                 ?: metadataList.firstOrNull()
 
             val textFields = if (bestMetadata != null) {
-                Log.e("MetadataExtractor", "Tag format=${bestMetadata.tagFormat}, fields=${bestMetadata.fields.size}, pictures=${bestMetadata.pictures.size}")
+                Timber.d("Tag format=%s, fields=%d, pictures=%d", bestMetadata.tagFormat, bestMetadata.fields.size, bestMetadata.pictures.size)
                 extractTextFields(bestMetadata)
             } else {
-                Log.w("MetadataExtractor", "No tag metadata found for $songId, using defaults")
+                Timber.w("No tag metadata found for %s, using defaults", songId)
                 TextFields()
             }
 
@@ -95,7 +95,7 @@ object MetadataExtractor {
             }
 
             val finalTitle = textFields.title.ifBlank { fileName }
-            Log.e("MetadataExtractor", "Extracted for $songId: title=${textFields.title} artist=${textFields.artist} album=${textFields.album} albumArtist=${textFields.albumArtist} disc=${textFields.discRaw} track=${textFields.trackRaw} year=${textFields.year} genre=${textFields.genre} tag=${textFields.tagVersion}")
+            Timber.d("Extracted for %s: title=%s artist=%s album=%s albumArtist=%s disc=%s track=%s year=%d genre=%s tag=%s", songId, textFields.title, textFields.artist, textFields.album, textFields.albumArtist, textFields.discRaw, textFields.trackRaw, textFields.year, textFields.genre, textFields.tagVersion)
 
             val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
             val durationMs = durationStr?.toLongOrNull() ?: 0L
@@ -112,7 +112,7 @@ object MetadataExtractor {
             if (albumKey.isNotEmpty() && albumKey in albumArtworkCache) {
                 allUris = albumArtworkCache[albumKey]!!
                 allArtworks = emptyList()
-                Log.e("MetadataExtractor", "Artwork cache HIT for album key: $albumKey (${allUris.size} URIs)")
+                Timber.d("Artwork cache HIT for album key: %s (%d URIs)", albumKey, allUris.size)
             } else {
                 val mmrUris = mutableListOf<String>()
                 val artworkResults = mutableListOf<ArtworkResult>()
@@ -132,7 +132,7 @@ object MetadataExtractor {
 
                 if (albumKey.isNotEmpty() && allUris.isNotEmpty()) {
                     albumArtworkCache[albumKey] = allUris
-                    Log.e("MetadataExtractor", "Artwork cache STORE for album key: $albumKey (${allUris.size} URIs)")
+                    Timber.d("Artwork cache STORE for album key: %s (%d URIs)", albumKey, allUris.size)
                 }
             }
 
@@ -157,7 +157,7 @@ object MetadataExtractor {
 
             BuildSongResult(song, allUris, allArtworks)
         } catch (e: Exception) {
-            Log.e("MetadataExtractor", "buildSong failed for $songId", e)
+            Timber.e(e, "buildSong failed for %s", songId)
             BuildSongResult(null, emptyList())
         }
     }
@@ -177,7 +177,7 @@ object MetadataExtractor {
             val value = field.value?.toString()?.trim() ?: continue
 
             val key = field.key.uppercase()
-            Log.e("MetadataExtractor", "  field: ${field.key} -> $value")
+            Timber.d("  field: %s -> %s", field.key, value)
             when (key) {
                 "TITLE", "TIT2", "\u00a9NAM" -> if (title.isEmpty()) title = value
                 "ARTIST", "TPE1", "\u00a9ART" -> if (artist.isEmpty()) artist = value
@@ -191,7 +191,7 @@ object MetadataExtractor {
                 "GENRE", "TCON", "\u00a9GEN" -> genre = value
             }
         }
-        Log.e("MetadataExtractor", "  extracted: title=$title artist=$artist album=$album albumArtist=$albumArtist disc=$discRaw track=$trackRaw year=$year genre=$genre")
+        Timber.d("  extracted: title=%s artist=%s album=%s albumArtist=%s disc=%s track=%s year=%d genre=%s", title, artist, album, albumArtist, discRaw, trackRaw, year, genre)
 
         return TextFields(
             title = title,
@@ -208,7 +208,7 @@ object MetadataExtractor {
 
     private fun saveArtwork(metadata: Metadata, context: Context): List<ArtworkResult> {
         return metadata.pictures.mapIndexed { index, picture ->
-            Log.e("MetadataExtractor", "  picture[$index]: ${picture.data.size} bytes, mime=${picture.mimeType}")
+            Timber.d("  picture[%d]: %d bytes, mime=%s", index, picture.data.size, picture.mimeType)
             ArtworkCache.saveScaled(picture.data, context, index)
         }
     }

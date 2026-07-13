@@ -12,6 +12,7 @@ import com.schwanitz.data.source.ArtistImageCache
 import com.schwanitz.domain.model.Artist
 import com.schwanitz.domain.repository.ArtistRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -38,10 +39,15 @@ class ArtistRepositoryImpl @Inject constructor(
 
     private suspend fun getOrCreatePic(artistId: Long): ArtistPicEntity? {
         val existing = artistPicDao.getByArtistId(artistId)
-        if (existing != null) return existing
+        if (existing != null) {
+            Timber.d("Artist image cache HIT for artistId=%d", artistId)
+            return existing
+        }
 
         val artist = artistDao.getById(artistId) ?: return null
         if (BuildConfig.DISCOGS_CONSUMER_KEY.isBlank()) return null
+
+        Timber.d("Fetching artist image from Discogs for '%s'", artist.name)
 
         val searchResult = discogsApiService.searchArtist(artist.name) ?: return null
         val discogsId = searchResult.results.firstOrNull()?.id ?: return null
@@ -70,8 +76,11 @@ class ArtistRepositoryImpl @Inject constructor(
         val artist = artistDao.getById(artistId) ?: return null
 
         if (artist.biography != null && !isBiographyExpired(artist)) {
+            Timber.d("Artist biography cache HIT for '%s'", artist.name)
             return artist.biography
         }
+
+        Timber.d("Fetching artist biography from Last.fm for '%s'", artist.name)
 
         val artistInfo = lastFmApiService.getArtistInfo(artist.name) ?: return null
         val bio = artistInfo.bio

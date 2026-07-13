@@ -1,7 +1,7 @@
 package com.schwanitz.data.discogs
 
-import android.util.Log
 import kotlinx.coroutines.delay
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.milliseconds
@@ -16,7 +16,7 @@ class DiscogsRateLimiter @Inject constructor() {
         while (true) {
             val waitMs = tryAcquireSlot()
             if (waitMs == 0L) return
-            Log.e("DiscogsRatelimit", "Rate limited, waiting ${waitMs}ms")
+            Timber.w("Rate limited, waiting %dms", waitMs)
             delay(waitMs.coerceIn(1_000, 10_000).milliseconds)
         }
     }

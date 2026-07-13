@@ -1,6 +1,5 @@
 package com.schwanitz.data.discogs
 
-import android.util.Log
 import com.schwanitz.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -9,6 +8,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import timber.log.Timber
 import java.net.UnknownHostException
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -63,19 +63,19 @@ class DiscogsApiService @Inject constructor(
 
     suspend fun downloadImage(imageUrl: String): ByteArray? {
         rateLimiter.acquire()
-        Log.e("DiscogsAPI", "downloadImage: $imageUrl")
+        Timber.d("downloadImage: %s", imageUrl)
         return withTimeout(30_000.milliseconds) {
             withContext(Dispatchers.IO) {
                 try {
                     val request = Request.Builder().url(imageUrl).build()
-                    Log.e("DiscogsAPI", "execute() enter: downloadImage")
+                    Timber.d("execute() enter: downloadImage")
                     val response = client.newCall(request).execute()
-                    Log.e("DiscogsAPI", "execute() exit: downloadImage, code=${response.code}")
+                    Timber.d("execute() exit: downloadImage, code=%d", response.code)
                     val bytes = response.body?.bytes()
-                    Log.e("DiscogsAPI", "downloadImage response: code=${response.code}, bytes=${bytes?.size}")
+                    Timber.d("downloadImage response: code=%d, bytes=%d", response.code, bytes?.size)
                     bytes
                 } catch (e: Exception) {
-                    Log.e("DiscogsAPI", "downloadImage failed", e)
+                    Timber.e(e, "downloadImage failed")
                     null
                 }
             }
@@ -84,7 +84,7 @@ class DiscogsApiService @Inject constructor(
 
     private suspend inline fun <reified T> get(url: String, tag: String = ""): T? {
         rateLimiter.acquire()
-        Log.e("DiscogsAPI", "GET $tag: $url")
+        Timber.d("GET %s: %s", tag, url)
         return withTimeout(30_000.milliseconds) {
             withContext(Dispatchers.IO) {
                 try {
@@ -92,22 +92,22 @@ class DiscogsApiService @Inject constructor(
                         .url(url)
                         .header("User-Agent", "SwanMusicPlayer/1.0")
                         .build()
-                    Log.e("DiscogsAPI", "execute() enter: $tag")
+                    Timber.d("execute() enter: %s", tag)
                     val response = client.newCall(request).execute()
-                    Log.e("DiscogsAPI", "execute() exit: $tag, code=${response.code}")
+                    Timber.d("execute() exit: %s, code=%d", tag, response.code)
                     val body = response.body?.string()
-                    Log.e("DiscogsAPI", "Response $tag: code=${response.code}, body=${body?.take(200)}")
+                    Timber.d("Response %s: code=%d, body=%s", tag, response.code, body?.take(200))
                     if (body == null) {
-                        Log.e("DiscogsAPI", "Response body was null for $tag")
+                        Timber.e("Response body was null for %s", tag)
                         return@withContext null
                     }
                     if (!response.isSuccessful) {
-                        Log.e("DiscogsAPI", "HTTP ${response.code} for $tag: $body")
+                        Timber.e("HTTP %d for %s: %s", response.code, tag, body)
                         return@withContext null
                     }
                     json.decodeFromString<T>(body)
                 } catch (e: Exception) {
-                    Log.e("DiscogsAPI", "Request failed for $tag", e)
+                    Timber.e(e, "Request failed for %s", tag)
                     null
                 }
             }

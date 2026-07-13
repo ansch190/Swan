@@ -2,7 +2,6 @@
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
-import android.util.Log
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.Song
@@ -22,6 +21,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
+import timber.log.Timber
 import java.io.IOException
 import java.io.StringReader
 import java.util.UUID
@@ -64,21 +64,21 @@ class WebDavMusicSource @Inject constructor(
         val audioEntries = mutableListOf<Pair<String, Long>>()
         collectAudioFiles(baseUrl, username, password, startUrl, audioEntries)
         val total = audioEntries.size
-        Log.d("WebDavMusicSource", "Finished collecting. Found $total audio files.")
+        Timber.d("Finished collecting. Found %d audio files.", total)
 
         val songs = mutableListOf<Song>()
         val albumMap = mutableMapOf<String, Album>()
         val albumArtworkMap = mutableMapOf<String, MutableList<AlbumArtwork>>()
         val albumArtworkCache = mutableMapOf<String, List<String>>()
 
-        Log.e("WebDavMusicSource", "Starting metadata extraction for $total files")
+        Timber.d("Starting metadata extraction for %d files", total)
         audioEntries.forEachIndexed { index, (url, fileSize) ->
             val t0 = System.currentTimeMillis()
             onProgress(index + 1, total)
             val result = extractMetadata(url, config.id, username, password, fileSize, albumArtworkCache)
             val dt = System.currentTimeMillis() - t0
             if (result.song != null) {
-                Log.e("WebDavMusicSource", "[${index + 1}/$total] '${result.song.title}' OK (${dt}ms)")
+                Timber.d("[%d/%d] '%s' OK (%dms)", index + 1, total, result.song.title, dt)
 
                 val albumKey = "${result.song.albumArtistName}|${result.song.albumName}|${result.song.year}"
                 if (albumKey !in albumMap) {
@@ -108,7 +108,7 @@ class WebDavMusicSource @Inject constructor(
                     }
                 }
             } else {
-                Log.w("WebDavMusicSource", "[${index + 1}/$total] ${url.substringAfterLast('/')} -> FAILED (${dt}ms)")
+                Timber.w("[%d/%d] %s -> FAILED (%dms)", index + 1, total, url.substringAfterLast('/'), dt)
             }
         }
 
@@ -176,20 +176,20 @@ class WebDavMusicSource @Inject constructor(
         return try {
             client.newCall(requestBuilder.build()).execute().use { response ->
                 if (response.code == 401) {
-                    Log.e("WebDavMusicSource", "Unauthorized for $url")
+                    Timber.e("Unauthorized for %s", url)
                     return emptyList()
                 }
 
                 val responseBody = response.body?.string()
                 if (!response.isSuccessful || responseBody == null) {
-                    Log.w("WebDavMusicSource", "PROPFIND failed: ${response.code} for $url")
+                    Timber.w("PROPFIND failed: %d for %s", response.code, url)
                     return emptyList()
                 }
 
                 parsePropfindResponse(responseBody, url)
             }
         } catch (e: Exception) {
-            Log.e("WebDavMusicSource", "PROPFIND error for $url", e)
+            Timber.e(e, "PROPFIND error for %s", url)
             emptyList()
         }
     }
@@ -244,7 +244,7 @@ class WebDavMusicSource @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Log.e("WebDavMusicSource", "Parse error", e)
+            Timber.e(e, "Parse error")
         }
 
         return entries
@@ -262,10 +262,10 @@ class WebDavMusicSource @Inject constructor(
             val t0 = System.currentTimeMillis()
             val file = downloadPartial(audioUrl, username, password)
             val dlDt = System.currentTimeMillis() - t0
-            Log.e("WebDavMusicSource", "Partial download OK: ${file.length()} bytes in ${dlDt}ms for $audioUrl")
+            Timber.d("Partial download OK: %d bytes in %dms for %s", file.length(), dlDt, audioUrl)
             file
         } catch (e: Exception) {
-            Log.e("WebDavMusicSource", "Partial download failed for $audioUrl", e)
+            Timber.e(e, "Partial download failed for %s", audioUrl)
             return BuildSongResult(null, emptyList())
         }
 
@@ -273,7 +273,7 @@ class WebDavMusicSource @Inject constructor(
             val source = SeekableDataSources.forPath(partialFile.toPath())
             val retriever = MediaMetadataRetriever()
             try {
-                Log.e("WebDavMusicSource", "Extracting metadata from partial file: ${partialFile.absolutePath}")
+                Timber.d("Extracting metadata from partial file: %s", partialFile.absolutePath)
                 retriever.setDataSource(partialFile.absolutePath)
                 return MetadataExtractor.buildSong(
                     source, retriever, audioUrl, sourceId, context, fileSize,
@@ -284,7 +284,7 @@ class WebDavMusicSource @Inject constructor(
                 try { source.close() } catch (_: Exception) {}
             }
         } catch (e: Exception) {
-            Log.e("WebDavMusicSource", "Metadata extraction failed for $audioUrl", e)
+            Timber.e(e, "Metadata extraction failed for %s", audioUrl)
             return BuildSongResult(null, emptyList())
         } finally {
             if (partialFile.exists()) partialFile.delete()
@@ -309,7 +309,7 @@ class WebDavMusicSource @Inject constructor(
         client.newCall(requestBuilder.build()).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Unexpected code $response for $url")
             val contentLength = response.body?.contentLength() ?: -1L
-            Log.e("WebDavMusicSource", "downloadPartial $url -> ${response.code}, content-length=$contentLength")
+            Timber.d("downloadPartial %s -> %d, content-length=%d", url, response.code, contentLength)
             response.body?.byteStream()?.use { input ->
                 tempFile.outputStream().use { output ->
                     input.copyTo(output)

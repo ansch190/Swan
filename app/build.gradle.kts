@@ -101,6 +101,7 @@ dependencies {
     implementation("com.github.ansch190:Tagix:android-SNAPSHOT")
     implementation("org.slf4j:slf4j-android:1.7.36")
     implementation(libs.jsoup)
+    implementation(libs.timber)
     implementation("androidx.documentfile:documentfile:1.1.0")
     implementation(libs.androidx.datastore.preferences)
 

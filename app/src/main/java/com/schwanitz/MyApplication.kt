@@ -6,6 +6,7 @@ import androidx.core.os.LocaleListCompat
 import com.schwanitz.data.local.LanguagePreferences
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.runBlocking
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -16,6 +17,9 @@ class MyApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
         applySavedLanguage()
     }
 

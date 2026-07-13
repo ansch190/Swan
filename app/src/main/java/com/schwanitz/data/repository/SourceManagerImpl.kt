@@ -7,6 +7,7 @@ import com.schwanitz.domain.repository.SourceManager
 import com.schwanitz.domain.source.SourceConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,19 +22,23 @@ class SourceManagerImpl @Inject constructor(
         }
 
     override suspend fun addSource(config: SourceConfig) {
+        Timber.i("Adding source: %s (%s)", config.name, config.type)
         sourceConfigDao.upsert(config.toEntity())
     }
 
     override suspend fun updateSource(config: SourceConfig) {
+        Timber.i("Updating source: %s (%s)", config.name, config.type)
         sourceConfigDao.upsert(config.toEntity())
     }
 
     override suspend fun removeSource(sourceId: String) {
         val entity = sourceConfigDao.getById(sourceId) ?: return
+        Timber.i("Removing source: %s", entity.name)
         sourceConfigDao.delete(entity)
     }
 
     override suspend fun setSourceEnabled(sourceId: String, enabled: Boolean) {
+        Timber.i("Source %s %s", sourceId, if (enabled) "enabled" else "disabled")
         sourceConfigDao.setEnabled(sourceId, enabled)
     }
 

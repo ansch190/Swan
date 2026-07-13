@@ -17,6 +17,7 @@ import androidx.media3.session.MediaSession
 import com.schwanitz.MainActivity
 import com.schwanitz.R
 import dagger.hilt.android.AndroidEntryPoint
+import timber.log.Timber
 import javax.inject.Inject
 
 @UnstableApi
@@ -51,6 +52,7 @@ class MusicPlayerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        Timber.d("Service created")
         createNotificationChannel()
 
         player.addListener(playerListener)
@@ -69,6 +71,7 @@ class MusicPlayerService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Timber.d("onStartCommand: action=%s", intent?.action)
         when (intent?.action) {
             ACTION_PLAY -> {
                 if (!isInForeground) {
@@ -123,6 +126,7 @@ class MusicPlayerService : Service() {
     }
 
     override fun onDestroy() {
+        Timber.d("Service destroyed")
         mediaSession?.run {
             release()
             mediaSession = null

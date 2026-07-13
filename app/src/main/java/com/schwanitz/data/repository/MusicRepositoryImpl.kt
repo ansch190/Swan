@@ -26,6 +26,7 @@ import com.schwanitz.domain.repository.SourceManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -140,8 +141,10 @@ class MusicRepositoryImpl @Inject constructor(
     @androidx.room.Transaction
     override suspend fun reloadEnabled(onProgress: (sourceName: String, scanned: Int, total: Int) -> Unit) {
         val enabledSources = sourceManager.getEnabledSources()
+        Timber.i("Reloading %d enabled sources", enabledSources.size)
         for (config in enabledSources) {
             val source = sourceRegistry.get(config.type) ?: continue
+            Timber.d("Reloading source: %s (%s)", config.name, config.type)
             songLyricsDao.deleteBySource(config.id)
             songDao.deleteBySource(config.id)
             albumDao.deleteOrphaned()
@@ -209,27 +212,27 @@ class MusicRepositoryImpl @Inject constructor(
 
     @androidx.room.Transaction
     override suspend fun refreshSource(sourceId: String, onProgress: (Int, Int) -> Unit) {
-        android.util.Log.d("MusicRepository", "refreshSource started for $sourceId")
+        Timber.d("refreshSource started for %s", sourceId)
         val config = sourceManager.getSourceById(sourceId) ?: run {
-            android.util.Log.e("MusicRepository", "Config not found for $sourceId")
+            Timber.e("Config not found for %s", sourceId)
             return
         }
         val source = sourceRegistry.get(config.type) ?: run {
-            android.util.Log.e("MusicRepository", "Source registry returned null for ${config.type}")
+            Timber.e("Source registry returned null for %s", config.type)
             return
         }
-        android.util.Log.d("MusicRepository", "Deleting old data for $sourceId")
+        Timber.d("Deleting old data for %s", sourceId)
         songLyricsDao.deleteBySource(sourceId)
         songDao.deleteBySource(sourceId)
         albumDao.deleteOrphaned()
-        android.util.Log.d("MusicRepository", "Loading songs from source...")
+        Timber.d("Loading songs from source...")
         try {
             val result = source.loadSongs(config, onProgress)
-            android.util.Log.d("MusicRepository", "Found ${result.songs.size} songs, ${result.albums.size} albums. Upserting...")
+            Timber.d("Found %d songs, %d albums. Upserting...", result.songs.size, result.albums.size)
             processScanResult(result)
-            android.util.Log.d("MusicRepository", "refreshSource finished for $sourceId")
+            Timber.i("refreshSource finished for %s: %d songs, %d albums", sourceId, result.songs.size, result.albums.size)
         } catch (e: Exception) {
-            android.util.Log.e("MusicRepository", "Error during refreshSource for $sourceId", e)
+            Timber.e(e, "Error during refreshSource for %s", sourceId)
         }
         cleanupOrphanedArtworkFiles()
         cleanupOrphanedArtists()
@@ -238,6 +241,7 @@ class MusicRepositoryImpl @Inject constructor(
 
     @androidx.room.Transaction
     override suspend fun deleteBySource(sourceId: String) {
+        Timber.d("Deleting all data for source %s", sourceId)
         songLyricsDao.deleteBySource(sourceId)
         songDao.deleteBySource(sourceId)
         albumDao.deleteOrphaned()

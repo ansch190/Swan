@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -47,6 +48,7 @@ class SongInfoViewModel @Inject constructor(
             val s = musicRepository.getSongById(songId)
             _song.value = s
             if (s != null) {
+                Timber.d("Loaded song: '%s' by %s", s.title, s.artistName)
                 if (s.albumId != null) {
                     launch {
                         musicRepository.getSeriesForAlbum(s.albumId).collect {

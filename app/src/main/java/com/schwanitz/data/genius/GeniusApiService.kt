@@ -1,6 +1,5 @@
 package com.schwanitz.data.genius
 
-import android.util.Log
 import com.schwanitz.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -9,6 +8,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,24 +28,24 @@ class GeniusApiService @Inject constructor() {
 
     suspend fun searchLyrics(title: String, artist: String): String? {
         if (BuildConfig.GENIUS_ACCESS_TOKEN.isBlank()) {
-            Log.e("GeniusAPI", "GENIUS_ACCESS_TOKEN is empty")
+            Timber.e("GENIUS_ACCESS_TOKEN is empty")
             return null
         }
 
         val query1 = "$title - $artist"
-        Log.e("GeniusAPI", "Search attempt 1: \"$query1\"")
+        Timber.d("Search attempt 1: \"$query1\"")
         val url1 = searchForSongOrNull(query1, title)
         if (url1 != null) return fetchLyricsFromPage(url1)
 
         val cleanTitle = title.replace(Regex("""\s*\([^)]*\)"""), "").trim()
         if (cleanTitle != title) {
             val query2 = "$cleanTitle - $artist"
-            Log.e("GeniusAPI", "Search attempt 2: \"$query2\"")
+            Timber.d("Search attempt 2: \"$query2\"")
             val url2 = searchForSongOrNull(query2, cleanTitle)
             if (url2 != null) return fetchLyricsFromPage(url2)
         }
 
-        Log.e("GeniusAPI", "No matching song found for \"$title\" - $artist")
+        Timber.d("No matching song found for \"$title\" - $artist")
         return null
     }
 
@@ -62,14 +62,14 @@ class GeniusApiService @Inject constructor() {
                     val response = client.newCall(request).execute()
                     val body = response.body?.string()
                     if (body == null || !response.isSuccessful) {
-                        Log.e("GeniusAPI", "Search HTTP ${response.code}: ${body?.take(200)}")
+                        Timber.e("Search HTTP %d: %s", response.code, body?.take(200))
                         return@withContext null
                     }
                     val searchResponse = json.decodeFromString<GeniusSearchResponse>(body)
-                    Log.e("GeniusAPI", "Got ${searchResponse.response.hits.size} hits total")
+                    Timber.d("Got %d hits total", searchResponse.response.hits.size)
                     searchResponse.response.hits.take(10).forEachIndexed { i, hit ->
                         val r = hit.result
-                        Log.e("GeniusAPI", "  Hit $i: \"${r.title}\" — ${r.artistNames} (id=${r.id})")
+                        Timber.d("  Hit %d: \"%s\" — %s (id=%d)", i, r.title, r.artistNames, r.id)
                     }
                     val match = searchResponse.response.hits.take(3).firstOrNull { hit ->
                         val t = hit.result.title
@@ -77,13 +77,13 @@ class GeniusApiService @Inject constructor() {
                         t.normalizeForMatch().contains(checkTitle.normalizeForMatch())
                     }?.result
                     if (match == null) {
-                        Log.e("GeniusAPI", "No hit in top 3 matched \"$checkTitle\"")
+                        Timber.d("No hit in top 3 matched \"$checkTitle\"")
                         return@withContext null
                     }
-                    Log.e("GeniusAPI", "Selected: \"${match.title}\" — ${match.artistNames} (${match.url})")
+                    Timber.d("Selected: \"%s\" — %s (%s)", match.title, match.artistNames, match.url)
                     match.url
                 } catch (e: Exception) {
-                    Log.e("GeniusAPI", "Search failed for query=\"$rawQuery\"", e)
+                    Timber.e(e, "Search failed for query=\"%s\"", rawQuery)
                     null
                 }
             }
@@ -100,10 +100,10 @@ class GeniusApiService @Inject constructor() {
                         .build()
                     val response = client.newCall(request).execute()
                     val html = response.body?.string() ?: return@withContext null
-                    Log.e("GeniusAPI", "HTML length: ${html.length}")
+                    Timber.d("HTML length: %d", html.length)
                     parseLyricsFromHtml(html)
                 } catch (e: Exception) {
-                    Log.e("GeniusAPI", "Failed to fetch lyrics page", e)
+                    Timber.e(e, "Failed to fetch lyrics page")
                     null
                 }
             }
@@ -115,9 +115,9 @@ class GeniusApiService @Inject constructor() {
         val containers = doc.select("div[data-lyrics-container=true]")
         containers.forEach { it.select("[data-exclude-from-selection=true]").remove() }
 
-        Log.e("GeniusAPI", "Found ${containers.size} lyrics containers")
+        Timber.d("Found %d lyrics containers", containers.size)
         containers.forEachIndexed { i, el ->
-            Log.e("GeniusAPI", "Container $i: ${el.html().take(500)}")
+            Timber.d("Container %d: %s", i, el.html().take(500))
         }
 
         if (containers.isEmpty()) return null
@@ -147,7 +147,7 @@ class GeniusApiService @Inject constructor() {
             .replace(Regex("\n{3,}"), "\n\n")
             .trim()
 
-        Log.e("GeniusAPI", "Cleaned lyrics (${cleaned.length} chars): ${cleaned.take(500)}")
+        Timber.d("Cleaned lyrics (%d chars): %s", cleaned.length, cleaned.take(500))
         return cleaned
     }
 

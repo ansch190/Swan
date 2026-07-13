@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 data class ScanProgress(
@@ -43,6 +44,7 @@ class SettingsViewModel @Inject constructor(
                 val newIds = currentIds - knownIds
                 for (newId in newIds) {
                     val newConfig = configs.first { it.id == newId }
+                    Timber.i("New source detected: '%s', starting scan", newConfig.name)
                     _scanProgress.value = ScanProgress(sourceName = newConfig.name, isScanning = true)
                     musicRepository.refreshSource(newId) { scanned, total ->
                         _scanProgress.value = ScanProgress(sourceName = newConfig.name, scanned = scanned, total = total, isScanning = true)
@@ -55,6 +57,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun toggleSource(sourceId: String, enabled: Boolean) {
+        Timber.d("Toggling source %s: %s", sourceId, if (enabled) "enabled" else "disabled")
         viewModelScope.launch {
             sourceManager.setSourceEnabled(sourceId, enabled)
             musicRepository.setSourceActive(sourceId, enabled)
@@ -62,6 +65,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun deleteSource(sourceId: String) {
+        Timber.i("Deleting source %s", sourceId)
         viewModelScope.launch {
             musicRepository.deleteBySource(sourceId)
             sourceManager.removeSource(sourceId)
@@ -69,6 +73,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun reloadAll() {
+        Timber.i("Reloading all enabled sources")
         viewModelScope.launch {
             musicRepository.reloadEnabled { sourceName, scanned, total ->
                 _scanProgress.value = ScanProgress(sourceName, scanned, total, isScanning = true)

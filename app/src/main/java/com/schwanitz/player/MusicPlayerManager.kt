@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.milliseconds
@@ -83,11 +84,13 @@ class MusicPlayerManager @Inject constructor(
             }
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                Timber.e(error, "Playback error: %s", error.message)
             }
         })
     }
 
     fun play(song: Song, queue: List<Song> = listOf(song)) {
+        Timber.i("Playing: '%s' by %s (queue: %d songs)", song.title, song.artistName, queue.size)
         appContext.startService(
             Intent(appContext, MusicPlayerService::class.java).apply {
                 action = MusicPlayerService.ACTION_PLAY
@@ -119,6 +122,7 @@ class MusicPlayerManager @Inject constructor(
 
     fun addToQueue(songs: List<Song>) {
         if (songs.isEmpty()) return
+        Timber.d("Adding %d songs to queue", songs.size)
         appContext.startService(
             Intent(appContext, MusicPlayerService::class.java).apply {
                 action = MusicPlayerService.ACTION_PLAY

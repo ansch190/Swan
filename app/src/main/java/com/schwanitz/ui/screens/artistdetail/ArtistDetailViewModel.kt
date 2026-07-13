@@ -13,6 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -38,6 +39,7 @@ class ArtistDetailViewModel @Inject constructor(
     fun loadArtistByName(artistName: String) {
         viewModelScope.launch {
             if (artistName.isBlank()) {
+                Timber.d("Loading songs with no artist")
                 launch {
                     musicRepository.getSongsWithNoArtist().collect {
                         _songs.value = it
@@ -49,7 +51,11 @@ class ArtistDetailViewModel @Inject constructor(
                     }
                 }
             } else {
-                val artist = artistRepository.getArtistByName(artistName) ?: return@launch
+                val artist = artistRepository.getArtistByName(artistName) ?: run {
+                    Timber.w("Artist not found: '%s'", artistName)
+                    return@launch
+                }
+                Timber.d("Loading artist: '%s' (id=%d)", artist.name, artist.id)
                 loadArtist(artist.id)
             }
         }

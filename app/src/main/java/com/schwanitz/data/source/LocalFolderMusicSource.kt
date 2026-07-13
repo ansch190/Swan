@@ -3,7 +3,6 @@
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.AlbumArtwork
@@ -15,6 +14,7 @@ import com.schwanitz.domain.source.SourceType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,7 +41,7 @@ class LocalFolderMusicSource @Inject constructor(
         val albumArtworkMap = mutableMapOf<String, MutableList<AlbumArtwork>>()
         val albumArtworkCache = mutableMapOf<String, List<String>>()
 
-        Log.e("LocalFolderMusicSource", "Starting scan: $total files")
+        Timber.d("Starting scan: %d files", total)
         audioUris.forEachIndexed { index, uri ->
             val t0 = System.currentTimeMillis()
             onProgress(index + 1, total)
@@ -49,7 +49,7 @@ class LocalFolderMusicSource @Inject constructor(
             try {
                 val afd = context.contentResolver.openAssetFileDescriptor(uri, "r")
                     ?: run {
-                        Log.w("LocalFolderMusicSource", "[${index + 1}/$total] Cannot open $uri")
+                        Timber.w("[%d/%d] Cannot open %s", index + 1, total, uri)
                         return@forEachIndexed
                     }
                 try {
@@ -69,7 +69,7 @@ class LocalFolderMusicSource @Inject constructor(
                         )
                         val totalMs = System.currentTimeMillis() - t0
                         if (result.song != null) {
-                            Log.e("LocalFolderMusicSource", "[${index + 1}/$total] '${result.song.title}' OK (${totalMs}ms)")
+                            Timber.d("[%d/%d] '%s' OK (%dms)", index + 1, total, result.song.title, totalMs)
 
                             val albumKey = "${result.song.albumArtistName}|${result.song.albumName}|${result.song.year}"
                             if (albumKey !in albumMap) {
@@ -100,7 +100,7 @@ class LocalFolderMusicSource @Inject constructor(
                                 }
                             }
                         } else {
-                            Log.w("LocalFolderMusicSource", "[${index + 1}/$total] ${uri.lastPathSegment} -> FAILED (${totalMs}ms)")
+                            Timber.w("[%d/%d] %s -> FAILED (%dms)", index + 1, total, uri.lastPathSegment, totalMs)
                         }
                     } finally {
                         try { retriever.release() } catch (_: Exception) {}
@@ -109,13 +109,13 @@ class LocalFolderMusicSource @Inject constructor(
                     try { afd.close() } catch (_: Exception) {}
                 }
             } catch (e: Exception) {
-                Log.w("LocalFolderMusicSource", "[${index + 1}/$total] ${uri.lastPathSegment} -> ERROR: ${e.message}")
+                Timber.w(e, "[%d/%d] %s -> ERROR", index + 1, total, uri.lastPathSegment)
             }
         }
 
         val albums = albumMap.values.toList()
         val allArtworks = albumArtworkMap.toMap()
-        Log.e("LocalFolderMusicSource", "Scan complete: ${songs.size}/$total songs, ${albums.size} albums, ${allArtworks.values.sumOf { it.size }} artworks")
+        Timber.d("Scan complete: %d/%d songs, %d albums, %d artworks", songs.size, total, albums.size, allArtworks.values.sumOf { it.size })
 
         LoadSongsResult(songs, albums, allArtworks)
     }

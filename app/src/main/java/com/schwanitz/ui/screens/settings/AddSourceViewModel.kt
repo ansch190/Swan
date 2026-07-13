@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 
@@ -139,6 +140,7 @@ class AddSourceViewModel @Inject constructor(
 
     fun testConnection() {
         val state = _uiState.value
+        Timber.d("Testing connection to %s", state.url)
         viewModelScope.launch {
             _uiState.value = state.copy(connectionTestState = ConnectionTestState.Testing)
             val result = webDavMusicSource.testConnection(
@@ -207,8 +209,10 @@ class AddSourceViewModel @Inject constructor(
             )
 
             if (state.isEditing) {
+                Timber.i("Updating source: '%s' (%s)", name, type)
                 sourceManager.updateSource(config)
             } else {
+                Timber.i("Adding source: '%s' (%s)", name, type)
                 sourceManager.addSource(config)
             }
 
