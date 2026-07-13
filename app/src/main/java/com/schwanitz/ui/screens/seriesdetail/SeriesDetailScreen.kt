@@ -22,6 +22,8 @@ import com.schwanitz.ui.components.AlbumListItem
 import com.schwanitz.ui.components.MarqueeText
 import com.schwanitz.ui.components.PlaylistPickerDialog
 import com.schwanitz.ui.components.SelectableSongItem
+import com.schwanitz.ui.common.CollectSnackbarErrors
+import com.schwanitz.ui.navigation.LocalSnackbarHostState
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,6 +34,9 @@ fun SeriesDetailScreen(
     onAlbumClick: (String, String) -> Unit,
     viewModel: SeriesDetailViewModel = hiltViewModel()
 ) {
+    val snackbarHostState = LocalSnackbarHostState.current
+    CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
+
     LaunchedEffect(seriesName) {
         viewModel.loadSeries(seriesName)
     }

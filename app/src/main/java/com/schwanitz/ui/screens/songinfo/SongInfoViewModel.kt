@@ -8,6 +8,7 @@ import com.schwanitz.domain.model.AlbumSeries
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.domain.repository.SourceManager
+import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,32 +44,40 @@ class SongInfoViewModel @Inject constructor(
     private val _series = MutableStateFlow<AlbumSeries?>(null)
     val series: StateFlow<AlbumSeries?> = _series
 
+    val errorHolder = ErrorHolder()
+
     fun loadSong(songId: String) {
         viewModelScope.launch {
-            val s = musicRepository.getSongById(songId)
-            _song.value = s
-            if (s != null) {
-                Timber.d("Loaded song: '%s' by %s", s.title, s.artistName)
-                if (s.albumId != null) {
-                    launch {
-                        musicRepository.getSeriesForAlbum(s.albumId).collect {
-                            _series.value = it
+            runCatching {
+                val s = musicRepository.getSongById(songId)
+                _song.value = s
+                if (s != null) {
+                    Timber.d("Loaded song: '%s' by %s", s.title, s.artistName)
+                    if (s.albumId != null) {
+                        launch {
+                            runCatching {
+                                musicRepository.getSeriesForAlbum(s.albumId).collect {
+                                    _series.value = it
+                                }
+                            }.exceptionOrNull()?.let { errorHolder.emit(it) }
+                        }
+                        launch {
+                            runCatching {
+                                _trackTotal.value = musicRepository.getTrackTotal(s.albumId, s.discNumber)
+                                _discTotal.value = musicRepository.getDiscTotal(s.albumId)
+                            }.exceptionOrNull()?.let { errorHolder.emit(it) }
                         }
                     }
-                    launch {
-                        _trackTotal.value = musicRepository.getTrackTotal(s.albumId, s.discNumber)
-                        _discTotal.value = musicRepository.getDiscTotal(s.albumId)
+                    val config = sourceManager.getSourceById(s.sourceId)
+                    _sourceName.value = config?.name ?: s.sourceId
+                    _artworks.value = if (s.albumId != null) {
+                        musicRepository.getAlbumArtworks(s.albumId)
+                    } else {
+                        emptyList()
                     }
+                    _lyrics.value = lyricsProvider.getLyrics(songId, s.title, s.artistName)
                 }
-                val config = sourceManager.getSourceById(s.sourceId)
-                _sourceName.value = config?.name ?: s.sourceId
-                _artworks.value = if (s.albumId != null) {
-                    musicRepository.getAlbumArtworks(s.albumId)
-                } else {
-                    emptyList()
-                }
-                _lyrics.value = lyricsProvider.getLyrics(songId, s.title, s.artistName)
-            }
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 }

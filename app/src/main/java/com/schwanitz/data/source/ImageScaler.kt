@@ -3,6 +3,7 @@ package com.schwanitz.data.source
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import java.io.ByteArrayOutputStream
+import timber.log.Timber
 
 object ImageScaler {
 
@@ -32,34 +33,42 @@ object ImageScaler {
             return bytes
         }
 
-        val sampleSize = calculateSampleSize(origWidth, origHeight, maxDimension)
-        val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
-            ?: return bytes
+        return try {
+            val sampleSize = calculateSampleSize(origWidth, origHeight, maxDimension)
+            val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
+                ?: return bytes
 
-        val scaledWidth: Int
-        val scaledHeight: Int
-        if (bitmap.width > maxDimension || bitmap.height > maxDimension) {
-            val scale = maxDimension.toFloat() / maxOf(bitmap.width, bitmap.height)
-            scaledWidth = (bitmap.width * scale).toInt()
-            scaledHeight = (bitmap.height * scale).toInt()
-        } else {
-            scaledWidth = bitmap.width
-            scaledHeight = bitmap.height
-        }
-
-        val scaled = if (scaledWidth != bitmap.width || scaledHeight != bitmap.height) {
-            Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true).also {
-                if (it !== bitmap) bitmap.recycle()
+            val scaledWidth: Int
+            val scaledHeight: Int
+            if (bitmap.width > maxDimension || bitmap.height > maxDimension) {
+                val scale = maxDimension.toFloat() / maxOf(bitmap.width, bitmap.height)
+                scaledWidth = (bitmap.width * scale).toInt()
+                scaledHeight = (bitmap.height * scale).toInt()
+            } else {
+                scaledWidth = bitmap.width
+                scaledHeight = bitmap.height
             }
-        } else {
-            bitmap
-        }
 
-        val output = ByteArrayOutputStream()
-        scaled.compress(Bitmap.CompressFormat.JPEG, 85, output)
-        scaled.recycle()
-        return output.toByteArray()
+            val scaled = if (scaledWidth != bitmap.width || scaledHeight != bitmap.height) {
+                Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true).also {
+                    if (it !== bitmap) bitmap.recycle()
+                }
+            } else {
+                bitmap
+            }
+
+            val output = ByteArrayOutputStream()
+            scaled.compress(Bitmap.CompressFormat.JPEG, 85, output)
+            scaled.recycle()
+            output.toByteArray()
+        } catch (e: OutOfMemoryError) {
+            Timber.e(e, "OOM while scaling image")
+            bytes
+        } catch (e: Exception) {
+            Timber.e(e, "Error scaling image")
+            bytes
+        }
     }
 
     private fun calculateSampleSize(width: Int, height: Int, maxDimension: Int): Int {

@@ -8,6 +8,7 @@ import com.schwanitz.domain.repository.ArtistRepository
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
+import com.schwanitz.ui.common.ErrorHolder
 import com.schwanitz.ui.components.SelectionDelegate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,47 +37,51 @@ class ArtistDetailViewModel @Inject constructor(
     private val _artistBiography = MutableStateFlow<String?>(null)
     val artistBiography: StateFlow<String?> = _artistBiography
 
+    val errorHolder = ErrorHolder()
+
     fun loadArtistByName(artistName: String) {
         viewModelScope.launch {
-            if (artistName.isBlank()) {
-                Timber.d("Loading songs with no artist")
-                launch {
-                    musicRepository.getSongsWithNoArtist().collect {
-                        _songs.value = it
+            runCatching {
+                if (artistName.isBlank()) {
+                    Timber.d("Loading songs with no artist")
+                    launch {
+                        musicRepository.getSongsWithNoArtist().collect {
+                            _songs.value = it
+                        }
                     }
-                }
-                launch {
-                    musicRepository.getAlbumsWithNoArtist().collect {
-                        _albums.value = it
+                    launch {
+                        musicRepository.getAlbumsWithNoArtist().collect {
+                            _albums.value = it
+                        }
                     }
+                } else {
+                    val artist = artistRepository.getArtistByName(artistName) ?: run {
+                        Timber.w("Artist not found: '%s'", artistName)
+                        return@launch
+                    }
+                    Timber.d("Loading artist: '%s' (id=%d)", artist.name, artist.id)
+                    loadArtist(artist.id)
                 }
-            } else {
-                val artist = artistRepository.getArtistByName(artistName) ?: run {
-                    Timber.w("Artist not found: '%s'", artistName)
-                    return@launch
-                }
-                Timber.d("Loading artist: '%s' (id=%d)", artist.name, artist.id)
-                loadArtist(artist.id)
-            }
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 
     private fun loadArtist(artistId: Long) {
         viewModelScope.launch {
-            musicRepository.getSongsByArtistId(artistId).collect {
-                _songs.value = it
-            }
-        }
-        viewModelScope.launch {
-            musicRepository.getAlbumsByArtistId(artistId).collect {
-                _albums.value = it
-            }
-        }
-        viewModelScope.launch {
-            _artistImageUri.value = artistRepository.getArtistImageLarge(artistId)
-        }
-        viewModelScope.launch {
-            _artistBiography.value = artistRepository.getArtistBiography(artistId)
+            runCatching {
+                launch {
+                    musicRepository.getSongsByArtistId(artistId).collect { _songs.value = it }
+                }
+                launch {
+                    musicRepository.getAlbumsByArtistId(artistId).collect { _albums.value = it }
+                }
+                launch {
+                    _artistImageUri.value = artistRepository.getArtistImageLarge(artistId)
+                }
+                launch {
+                    _artistBiography.value = artistRepository.getArtistBiography(artistId)
+                }
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 
@@ -88,7 +93,7 @@ class ArtistDetailViewModel @Inject constructor(
         playerManager.play(song, songs.value)
     }
 
-    private val selection = SelectionDelegate(playerManager, playlistRepository, viewModelScope) { songs.value }
+    private val selection = SelectionDelegate(playerManager, playlistRepository, viewModelScope, { songs.value }, errorHolder)
     val isSelecting: StateFlow<Boolean> = selection.isSelecting
     val selectedSongIds: StateFlow<Set<String>> = selection.selectedSongIds
     val playlists: StateFlow<List<com.schwanitz.domain.model.Playlist>> = selection.playlists

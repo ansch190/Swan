@@ -54,67 +54,72 @@ class WebDavMusicSource @Inject constructor(
         config: SourceConfig,
         onProgress: (Int, Int) -> Unit
     ): LoadSongsResult = withContext(Dispatchers.IO) {
-        val baseUrl = config.url?.trimEnd('/') ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
-        val username = config.username
-        val password = config.password
+        try {
+            val baseUrl = config.url?.trimEnd('/') ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
+            val username = config.username
+            val password = config.password
 
-        val rawPath = config.path?.let { "/${it.trimStart('/')}" } ?: "/"
-        val startUrl = if (rawPath.startsWith("http")) rawPath else "$baseUrl$rawPath"
+            val rawPath = config.path?.let { "/${it.trimStart('/')}" } ?: "/"
+            val startUrl = if (rawPath.startsWith("http")) rawPath else "$baseUrl$rawPath"
 
-        val audioEntries = mutableListOf<Pair<String, Long>>()
-        collectAudioFiles(baseUrl, username, password, startUrl, audioEntries)
-        val total = audioEntries.size
-        Timber.d("Finished collecting. Found %d audio files.", total)
+            val audioEntries = mutableListOf<Pair<String, Long>>()
+            collectAudioFiles(baseUrl, username, password, startUrl, audioEntries)
+            val total = audioEntries.size
+            Timber.d("Finished collecting. Found %d audio files.", total)
 
-        val songs = mutableListOf<Song>()
-        val albumMap = mutableMapOf<String, Album>()
-        val albumArtworkMap = mutableMapOf<String, MutableList<AlbumArtwork>>()
-        val albumArtworkCache = mutableMapOf<String, List<String>>()
+            val songs = mutableListOf<Song>()
+            val albumMap = mutableMapOf<String, Album>()
+            val albumArtworkMap = mutableMapOf<String, MutableList<AlbumArtwork>>()
+            val albumArtworkCache = mutableMapOf<String, List<String>>()
 
-        Timber.d("Starting metadata extraction for %d files", total)
-        audioEntries.forEachIndexed { index, (url, fileSize) ->
-            val t0 = System.currentTimeMillis()
-            onProgress(index + 1, total)
-            val result = extractMetadata(url, config.id, username, password, fileSize, albumArtworkCache)
-            val dt = System.currentTimeMillis() - t0
-            if (result.song != null) {
-                Timber.d("[%d/%d] '%s' OK (%dms)", index + 1, total, result.song.title, dt)
+            Timber.d("Starting metadata extraction for %d files", total)
+            audioEntries.forEachIndexed { index, (url, fileSize) ->
+                val t0 = System.currentTimeMillis()
+                onProgress(index + 1, total)
+                val result = extractMetadata(url, config.id, username, password, fileSize, albumArtworkCache)
+                val dt = System.currentTimeMillis() - t0
+                if (result.song != null) {
+                    Timber.d("[%d/%d] '%s' OK (%dms)", index + 1, total, result.song.title, dt)
 
-                val albumKey = "${result.song.albumArtistName}|${result.song.albumName}|${result.song.year}"
-                if (albumKey !in albumMap) {
-                    val albumEntry = Album(
-                        name = result.song.albumName,
-                        albumArtist = result.song.albumArtistName,
-                        year = result.song.year
-                    )
-                    albumMap[albumKey] = albumEntry
-                }
-
-                val albumForSong = albumMap[albumKey]!!
-                val songWithAlbumId = result.song.copy(albumId = albumForSong.id)
-                songs.add(songWithAlbumId)
-
-                if (result.artworks.isNotEmpty()) {
-                    val artworkList = albumArtworkMap.getOrPut(albumKey) { mutableListOf() }
-                    for (artResult in result.artworks) {
-                        artworkList.add(
-                            AlbumArtwork(
-                                albumId = 0,
-                                sortOrder = artworkList.size,
-                                uriLarge = artResult.largeUri,
-                                uriSmall = artResult.smallUri
-                            )
+                    val albumKey = "${result.song.albumArtistName}|${result.song.albumName}|${result.song.year}"
+                    if (albumKey !in albumMap) {
+                        val albumEntry = Album(
+                            name = result.song.albumName,
+                            albumArtist = result.song.albumArtistName,
+                            year = result.song.year
                         )
+                        albumMap[albumKey] = albumEntry
                     }
-                }
-            } else {
-                Timber.w("[%d/%d] %s -> FAILED (%dms)", index + 1, total, url.substringAfterLast('/'), dt)
-            }
-        }
 
-        val albums = albumMap.values.toList()
-        val allArtworks = albumArtworkMap.toMap()
-        LoadSongsResult(songs, albums, allArtworks)
+                    val albumForSong = albumMap[albumKey]!!
+                    val songWithAlbumId = result.song.copy(albumId = albumForSong.id)
+                    songs.add(songWithAlbumId)
+
+                    if (result.artworks.isNotEmpty()) {
+                        val artworkList = albumArtworkMap.getOrPut(albumKey) { mutableListOf() }
+                        for (artResult in result.artworks) {
+                            artworkList.add(
+                                AlbumArtwork(
+                                    albumId = 0,
+                                    sortOrder = artworkList.size,
+                                    uriLarge = artResult.largeUri,
+                                    uriSmall = artResult.smallUri
+                                )
+                            )
+                        }
+                    }
+                } else {
+                    Timber.w("[%d/%d] %s -> FAILED (%dms)", index + 1, total, url.substringAfterLast('/'), dt)
+                }
+            }
+
+            val albums = albumMap.values.toList()
+            val allArtworks = albumArtworkMap.toMap()
+            LoadSongsResult(songs, albums, allArtworks)
+        } catch (e: Exception) {
+            Timber.e(e, "loadSongs failed for %s", config.url)
+            LoadSongsResult(emptyList(), emptyList(), emptyMap())
+        }
     }
 
     private fun collectAudioFiles(
@@ -122,8 +127,14 @@ class WebDavMusicSource @Inject constructor(
         username: String?,
         password: String?,
         path: String,
-        result: MutableList<Pair<String, Long>>
+        result: MutableList<Pair<String, Long>>,
+        depth: Int = 0
     ) {
+        if (depth > 10) {
+            Timber.w("Max recursion depth reached for %s", path)
+            return
+        }
+
         val entries = propfind(baseUrl, username, password, path)
         for (entry in entries) {
             val fullUrl = if (entry.href.startsWith("http")) {
@@ -141,7 +152,7 @@ class WebDavMusicSource @Inject constructor(
 
                 if (entryPath != currentPath && entryPath.isNotEmpty()) {
                     if (entryPath.startsWith(currentPath) || currentPath.isEmpty()) {
-                        collectAudioFiles(baseUrl, username, password, entry.href, result)
+                        collectAudioFiles(baseUrl, username, password, entry.href, result, depth + 1)
                     }
                 }
             } else if (isAudioFile(entry.href)) {
@@ -176,20 +187,20 @@ class WebDavMusicSource @Inject constructor(
         return try {
             client.newCall(requestBuilder.build()).execute().use { response ->
                 if (response.code == 401) {
-                    Timber.e("Unauthorized for %s", url)
+                    Timber.e("Authentication failed for %s", url)
                     return emptyList()
                 }
 
                 val responseBody = response.body?.string()
                 if (!response.isSuccessful || responseBody == null) {
-                    Timber.w("PROPFIND failed: %d for %s", response.code, url)
+                    Timber.w("HTTP %d from %s", response.code, url)
                     return emptyList()
                 }
 
                 parsePropfindResponse(responseBody, url)
             }
         } catch (e: Exception) {
-            Timber.e(e, "PROPFIND error for %s", url)
+            Timber.e(e, "Failed to parse PROPFIND response from %s", url)
             emptyList()
         }
     }
@@ -244,7 +255,7 @@ class WebDavMusicSource @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Parse error")
+            Timber.e(e, "Failed to parse PROPFIND response from %s", requestUrl)
         }
 
         return entries

@@ -8,8 +8,10 @@ import androidx.lifecycle.viewModelScope
 import com.schwanitz.R
 import com.schwanitz.data.source.WebDavMusicSource
 import com.schwanitz.domain.repository.SourceManager
+import com.schwanitz.domain.error.AppError
 import com.schwanitz.domain.source.SourceConfig
 import com.schwanitz.domain.source.SourceType
+import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,6 +62,7 @@ class AddSourceViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(AddSourceUiState())
     val uiState: StateFlow<AddSourceUiState> = _uiState.asStateFlow()
+    val errorHolder = ErrorHolder()
 
     init {
         if (editSourceId != null) {
@@ -208,12 +211,18 @@ class AddSourceViewModel @Inject constructor(
                 path = state.path.trim('/').takeIf { it.isNotBlank() }
             )
 
-            if (state.isEditing) {
-                Timber.i("Updating source: '%s' (%s)", name, type)
-                sourceManager.updateSource(config)
-            } else {
-                Timber.i("Adding source: '%s' (%s)", name, type)
-                sourceManager.addSource(config)
+            try {
+                if (state.isEditing) {
+                    Timber.i("Updating source: '%s' (%s)", name, type)
+                    sourceManager.updateSource(config)
+                } else {
+                    Timber.i("Adding source: '%s' (%s)", name, type)
+                    sourceManager.addSource(config)
+                }
+            } catch (e: Exception) {
+                errorHolder.emit(e)
+                _uiState.value = _uiState.value.copy(isSaving = false)
+                return@launch
             }
 
             _uiState.value = _uiState.value.copy(isSaving = false, isSaved = true)

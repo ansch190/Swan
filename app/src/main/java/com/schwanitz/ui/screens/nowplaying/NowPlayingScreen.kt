@@ -41,6 +41,8 @@ import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
 import com.schwanitz.ui.components.MarqueeText
 import com.schwanitz.ui.components.PlayerControlBar
+import com.schwanitz.ui.common.CollectSnackbarErrors
+import com.schwanitz.ui.navigation.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +52,8 @@ fun NowPlayingScreen(
 ) {
     val playerState by viewModel.playerState.collectAsState()
     val favoriteIds by viewModel.favoriteIds.collectAsState()
+    val snackbarHostState = LocalSnackbarHostState.current
+    CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
     var showQueue by rememberSaveable { mutableStateOf(true) }
 
     Column(modifier = Modifier.fillMaxSize()) {

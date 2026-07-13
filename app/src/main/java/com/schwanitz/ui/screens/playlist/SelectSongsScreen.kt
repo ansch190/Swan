@@ -13,6 +13,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.schwanitz.R
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.schwanitz.ui.common.CollectSnackbarErrors
+import com.schwanitz.ui.navigation.LocalSnackbarHostState
 import com.schwanitz.ui.components.SongListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -21,6 +23,8 @@ fun SelectSongsScreen(
     onNavigateBack: () -> Unit,
     viewModel: SelectSongsViewModel = hiltViewModel()
 ) {
+    val snackbarHostState = LocalSnackbarHostState.current
+    CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
     val uiState by viewModel.uiState.collectAsState()
     val selectedIds by viewModel.selectedSongIds.collectAsState()
 

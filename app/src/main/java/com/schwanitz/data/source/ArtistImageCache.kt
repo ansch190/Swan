@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import java.io.File
 import java.security.MessageDigest
+import timber.log.Timber
 
 data class ArtistPicResult(
     val smallUri: String?,
@@ -29,14 +30,19 @@ object ArtistImageCache {
     }
 
     private fun saveToDisk(bytes: ByteArray, context: Context, artistName: String, suffix: String): String {
-        val digest = MessageDigest.getInstance("MD5")
-        val hash = digest.digest(bytes)
-        val hex = hash.joinToString("") { "%02x".format(it) }
-        val file = File(cacheDir(context), "${hex}_${artistName}_$suffix.jpg")
-        if (!file.exists()) {
-            file.writeBytes(bytes)
+        return try {
+            val digest = MessageDigest.getInstance("MD5")
+            val hash = digest.digest(bytes)
+            val hex = hash.joinToString("") { "%02x".format(it) }
+            val file = File(cacheDir(context), "${hex}_${artistName}_$suffix.jpg")
+            if (!file.exists()) {
+                file.writeBytes(bytes)
+            }
+            Uri.fromFile(file).toString()
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to save artwork to disk")
+            ""
         }
-        return Uri.fromFile(file).toString()
     }
 
     fun deleteUris(context: Context, uris: Set<String>) {

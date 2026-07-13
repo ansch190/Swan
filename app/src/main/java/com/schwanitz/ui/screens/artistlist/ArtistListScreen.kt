@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.schwanitz.R
+import com.schwanitz.ui.common.CollectSnackbarErrors
+import com.schwanitz.ui.navigation.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,6 +29,9 @@ fun ArtistListScreen(
     onArtistClick: (String) -> Unit,
     viewModel: ArtistListViewModel = hiltViewModel()
 ) {
+    val snackbarHostState = LocalSnackbarHostState.current
+    CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
+
     LaunchedEffect(Unit) {
         viewModel.loadArtists()
     }

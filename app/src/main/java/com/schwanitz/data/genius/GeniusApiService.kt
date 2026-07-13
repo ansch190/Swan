@@ -59,29 +59,30 @@ class GeniusApiService @Inject constructor() {
                         .header("Authorization", "Bearer ${BuildConfig.GENIUS_ACCESS_TOKEN}")
                         .header("User-Agent", "SwanMusicPlayer/1.0")
                         .build()
-                    val response = client.newCall(request).execute()
-                    val body = response.body?.string()
-                    if (body == null || !response.isSuccessful) {
-                        Timber.e("Search HTTP %d: %s", response.code, body?.take(200))
-                        return@withContext null
+                    client.newCall(request).execute().use { response ->
+                        val body = response.body?.string()
+                        if (body == null || !response.isSuccessful) {
+                            Timber.e("Search HTTP %d: %s", response.code, body?.take(200))
+                            return@withContext null
+                        }
+                        val searchResponse = json.decodeFromString<GeniusSearchResponse>(body)
+                        Timber.d("Got %d hits total", searchResponse.response.hits.size)
+                        searchResponse.response.hits.take(10).forEachIndexed { i, hit ->
+                            val r = hit.result
+                            Timber.d("  Hit %d: \"%s\" — %s (id=%d)", i, r.title, r.artistNames, r.id)
+                        }
+                        val match = searchResponse.response.hits.take(3).firstOrNull { hit ->
+                            val t = hit.result.title
+                            t.contains(checkTitle, ignoreCase = true) ||
+                            t.normalizeForMatch().contains(checkTitle.normalizeForMatch())
+                        }?.result
+                        if (match == null) {
+                            Timber.d("No hit in top 3 matched \"$checkTitle\"")
+                            return@withContext null
+                        }
+                        Timber.d("Selected: \"%s\" — %s (%s)", match.title, match.artistNames, match.url)
+                        match.url
                     }
-                    val searchResponse = json.decodeFromString<GeniusSearchResponse>(body)
-                    Timber.d("Got %d hits total", searchResponse.response.hits.size)
-                    searchResponse.response.hits.take(10).forEachIndexed { i, hit ->
-                        val r = hit.result
-                        Timber.d("  Hit %d: \"%s\" — %s (id=%d)", i, r.title, r.artistNames, r.id)
-                    }
-                    val match = searchResponse.response.hits.take(3).firstOrNull { hit ->
-                        val t = hit.result.title
-                        t.contains(checkTitle, ignoreCase = true) ||
-                        t.normalizeForMatch().contains(checkTitle.normalizeForMatch())
-                    }?.result
-                    if (match == null) {
-                        Timber.d("No hit in top 3 matched \"$checkTitle\"")
-                        return@withContext null
-                    }
-                    Timber.d("Selected: \"%s\" — %s (%s)", match.title, match.artistNames, match.url)
-                    match.url
                 } catch (e: Exception) {
                     Timber.e(e, "Search failed for query=\"%s\"", rawQuery)
                     null
@@ -98,10 +99,11 @@ class GeniusApiService @Inject constructor() {
                         .url(pageUrl)
                         .header("User-Agent", "SwanMusicPlayer/1.0")
                         .build()
-                    val response = client.newCall(request).execute()
-                    val html = response.body?.string() ?: return@withContext null
-                    Timber.d("HTML length: %d", html.length)
-                    parseLyricsFromHtml(html)
+                    client.newCall(request).execute().use { response ->
+                        val html = response.body?.string() ?: return@withContext null
+                        Timber.d("HTML length: %d", html.length)
+                        parseLyricsFromHtml(html)
+                    }
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to fetch lyrics page")
                     null

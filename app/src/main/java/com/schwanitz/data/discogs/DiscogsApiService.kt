@@ -69,11 +69,12 @@ class DiscogsApiService @Inject constructor(
                 try {
                     val request = Request.Builder().url(imageUrl).build()
                     Timber.d("execute() enter: downloadImage")
-                    val response = client.newCall(request).execute()
-                    Timber.d("execute() exit: downloadImage, code=%d", response.code)
-                    val bytes = response.body?.bytes()
-                    Timber.d("downloadImage response: code=%d, bytes=%d", response.code, bytes?.size)
-                    bytes
+                    client.newCall(request).execute().use { response ->
+                        Timber.d("execute() exit: downloadImage, code=%d", response.code)
+                        val bytes = response.body?.bytes()
+                        Timber.d("downloadImage response: code=%d, bytes=%d", response.code, bytes?.size)
+                        bytes
+                    }
                 } catch (e: Exception) {
                     Timber.e(e, "downloadImage failed")
                     null
@@ -93,19 +94,20 @@ class DiscogsApiService @Inject constructor(
                         .header("User-Agent", "SwanMusicPlayer/1.0")
                         .build()
                     Timber.d("execute() enter: %s", tag)
-                    val response = client.newCall(request).execute()
-                    Timber.d("execute() exit: %s, code=%d", tag, response.code)
-                    val body = response.body?.string()
-                    Timber.d("Response %s: code=%d, body=%s", tag, response.code, body?.take(200))
-                    if (body == null) {
-                        Timber.e("Response body was null for %s", tag)
-                        return@withContext null
+                    client.newCall(request).execute().use { response ->
+                        Timber.d("execute() exit: %s, code=%d", tag, response.code)
+                        val body = response.body?.string()
+                        Timber.d("Response %s: code=%d, body=%s", tag, response.code, body?.take(200))
+                        if (body == null) {
+                            Timber.e("Response body was null for %s", tag)
+                            return@withContext null
+                        }
+                        if (!response.isSuccessful) {
+                            Timber.e("HTTP %d for %s: %s", response.code, tag, body)
+                            return@withContext null
+                        }
+                        json.decodeFromString<T>(body)
                     }
-                    if (!response.isSuccessful) {
-                        Timber.e("HTTP %d for %s: %s", response.code, tag, body)
-                        return@withContext null
-                    }
-                    json.decodeFromString<T>(body)
                 } catch (e: Exception) {
                     Timber.e(e, "Request failed for %s", tag)
                     null

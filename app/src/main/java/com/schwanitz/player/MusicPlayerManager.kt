@@ -8,6 +8,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.schwanitz.data.source.AuthHttpDataSourceFactory
+import com.schwanitz.domain.error.AppError
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.SourceManager
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -18,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -34,7 +36,8 @@ data class PlayerState(
     val duration: Long = 0,
     val shuffleMode: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
-    val queue: List<Song> = emptyList()
+    val queue: List<Song> = emptyList(),
+    val error: AppError? = null
 )
 
 @Singleton
@@ -85,17 +88,24 @@ class MusicPlayerManager @Inject constructor(
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 Timber.e(error, "Playback error: %s", error.message)
+                _playerState.update { it.copy(
+                    error = AppError.playback(cause = error, message = error.message ?: "Playback error")
+                ) }
             }
         })
     }
 
     fun play(song: Song, queue: List<Song> = listOf(song)) {
         Timber.i("Playing: '%s' by %s (queue: %d songs)", song.title, song.artistName, queue.size)
-        appContext.startService(
-            Intent(appContext, MusicPlayerService::class.java).apply {
-                action = MusicPlayerService.ACTION_PLAY
-            }
-        )
+        try {
+            appContext.startService(
+                Intent(appContext, MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY
+                }
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to start service")
+        }
         songQueue = queue
         player.stop()
         player.clearMediaItems()
@@ -123,11 +133,15 @@ class MusicPlayerManager @Inject constructor(
     fun addToQueue(songs: List<Song>) {
         if (songs.isEmpty()) return
         Timber.d("Adding %d songs to queue", songs.size)
-        appContext.startService(
-            Intent(appContext, MusicPlayerService::class.java).apply {
-                action = MusicPlayerService.ACTION_PLAY
-            }
-        )
+        try {
+            appContext.startService(
+                Intent(appContext, MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY
+                }
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to start service")
+        }
         val needsPrepare = player.playbackState == Player.STATE_IDLE
         songs.forEach { s -> player.addMediaItem(buildMediaItem(s)) }
         songQueue = songQueue + songs

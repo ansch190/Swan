@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.schwanitz.domain.model.Song
+import com.schwanitz.ui.common.ErrorHolder
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
@@ -37,6 +38,8 @@ class PlaylistListViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    val errorHolder = ErrorHolder()
 
     private val favoritesCount = musicRepository.getFavoriteSongs()
         .map { it.size }
@@ -68,13 +71,17 @@ class PlaylistListViewModel @Inject constructor(
 
     fun createPlaylist(name: String) {
         viewModelScope.launch {
-            playlistRepository.createPlaylist(name)
+            runCatching {
+                playlistRepository.createPlaylist(name)
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 
     fun deletePlaylist(playlistId: Long) {
         viewModelScope.launch {
-            playlistRepository.deletePlaylist(playlistId)
+            runCatching {
+                playlistRepository.deletePlaylist(playlistId)
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 

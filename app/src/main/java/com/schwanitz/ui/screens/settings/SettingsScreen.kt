@@ -17,6 +17,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
 import com.schwanitz.domain.source.SourceConfig
+import com.schwanitz.ui.common.CollectSnackbarErrors
+import com.schwanitz.ui.navigation.LocalSnackbarHostState
 import com.schwanitz.domain.source.SourceType
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,6 +29,8 @@ fun SettingsScreen(
     onEditSource: (sourceId: String) -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val snackbarHostState = LocalSnackbarHostState.current
+    CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
     val sources by viewModel.sources.collectAsState()
     val scanProgress by viewModel.scanProgress.collectAsState()
     var sourceToDelete by remember { mutableStateOf<SourceConfig?>(null) }

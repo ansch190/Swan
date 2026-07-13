@@ -9,6 +9,7 @@ import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
+import com.schwanitz.ui.common.ErrorHolder
 import com.schwanitz.ui.components.SelectionDelegate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,27 +34,35 @@ class AlbumDetailViewModel @Inject constructor(
     private val _series = MutableStateFlow<AlbumSeries?>(null)
     val series: StateFlow<AlbumSeries?> = _series
 
+    val errorHolder = ErrorHolder()
+
     fun loadAlbum(albumName: String, albumArtistName: String) {
         viewModelScope.launch {
-            val album = albumDao.findByNameAndAlbumArtist(albumName, albumArtistName) ?: return@launch
-            launch {
-                musicRepository.getSongsByAlbumId(album.id).collect { albumSongs ->
-                    _songs.value = albumSongs
-                    if (albumSongs.isNotEmpty()) {
-                        val albumId = albumSongs.first().albumId
-                        _artworks.value = if (albumId != null) {
-                            musicRepository.getAlbumArtworks(albumId)
-                        } else {
-                            emptyList()
+            runCatching {
+                val album = albumDao.findByNameAndAlbumArtist(albumName, albumArtistName) ?: return@launch
+                launch {
+                    runCatching {
+                        musicRepository.getSongsByAlbumId(album.id).collect { albumSongs ->
+                            _songs.value = albumSongs
+                            if (albumSongs.isNotEmpty()) {
+                                val albumId = albumSongs.first().albumId
+                                _artworks.value = if (albumId != null) {
+                                    musicRepository.getAlbumArtworks(albumId)
+                                } else {
+                                    emptyList()
+                                }
+                            }
                         }
-                    }
+                    }.exceptionOrNull()?.let { errorHolder.emit(it) }
                 }
-            }
-            launch {
-                musicRepository.getSeriesForAlbum(album.id).collect { s ->
-                    _series.value = s
+                launch {
+                    runCatching {
+                        musicRepository.getSeriesForAlbum(album.id).collect { s ->
+                            _series.value = s
+                        }
+                    }.exceptionOrNull()?.let { errorHolder.emit(it) }
                 }
-            }
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 
@@ -69,7 +78,7 @@ class AlbumDetailViewModel @Inject constructor(
         playerManager.play(song, songs.value)
     }
 
-    private val selection = SelectionDelegate(playerManager, playlistRepository, viewModelScope) { songs.value }
+    private val selection = SelectionDelegate(playerManager, playlistRepository, viewModelScope, { songs.value }, errorHolder)
     val isSelecting: StateFlow<Boolean> = selection.isSelecting
     val selectedSongIds: StateFlow<Set<String>> = selection.selectedSongIds
     val playlists: StateFlow<List<com.schwanitz.domain.model.Playlist>> = selection.playlists

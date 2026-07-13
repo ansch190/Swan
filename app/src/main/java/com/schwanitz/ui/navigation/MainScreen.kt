@@ -12,45 +12,53 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 
+val LocalSnackbarHostState = compositionLocalOf<SnackbarHostState> {
+    error("No SnackbarHostState provided")
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val bottomBarVisible = currentDestination?.route in BottomNavItem.items.map { it.route }
 
-    Scaffold(
-        bottomBar = {
-            if (bottomBarVisible) {
-                NavigationBar {
-                    BottomNavItem.items.forEach { item ->
-                        NavigationBarItem(
-                            icon = { Icon(item.icon, contentDescription = stringResource(item.titleRes)) },
-                            label = { Text(stringResource(item.titleRes)) },
-                            selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
-                            onClick = {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+    CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            bottomBar = {
+                if (bottomBarVisible) {
+                    NavigationBar {
+                        BottomNavItem.items.forEach { item ->
+                            NavigationBarItem(
+                                icon = { Icon(item.icon, contentDescription = stringResource(item.titleRes)) },
+                                label = { Text(stringResource(item.titleRes)) },
+                                selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
+                                onClick = {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
-        }
-    ) { innerPadding ->
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            Box(Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
-                NavGraph(navController = navController)
+        ) { innerPadding ->
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                Box(Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
+                    NavGraph(navController = navController)
+                }
             }
         }
     }

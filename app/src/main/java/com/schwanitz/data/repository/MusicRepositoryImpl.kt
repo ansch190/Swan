@@ -145,13 +145,17 @@ class MusicRepositoryImpl @Inject constructor(
         for (config in enabledSources) {
             val source = sourceRegistry.get(config.type) ?: continue
             Timber.d("Reloading source: %s (%s)", config.name, config.type)
-            songLyricsDao.deleteBySource(config.id)
-            songDao.deleteBySource(config.id)
-            albumDao.deleteOrphaned()
-            val result = source.loadSongs(config) { scanned, total ->
-                onProgress(config.name, scanned, total)
+            try {
+                songLyricsDao.deleteBySource(config.id)
+                songDao.deleteBySource(config.id)
+                albumDao.deleteOrphaned()
+                val result = source.loadSongs(config) { scanned, total ->
+                    onProgress(config.name, scanned, total)
+                }
+                processScanResult(result)
+            } catch (e: Exception) {
+                Timber.e(e, "Error reloading source %s, skipping", config.name)
             }
-            processScanResult(result)
         }
         cleanupOrphanedArtworkFiles()
         cleanupOrphanedArtists()
@@ -221,22 +225,22 @@ class MusicRepositoryImpl @Inject constructor(
             Timber.e("Source registry returned null for %s", config.type)
             return
         }
-        Timber.d("Deleting old data for %s", sourceId)
+        Timber.d("Loading songs from source...")
+        val result = try {
+            source.loadSongs(config, onProgress)
+        } catch (e: Exception) {
+            Timber.e(e, "Error loading songs for %s", sourceId)
+            throw e
+        }
+        Timber.d("Found %d songs, %d albums. Replacing old data...", result.songs.size, result.albums.size)
         songLyricsDao.deleteBySource(sourceId)
         songDao.deleteBySource(sourceId)
         albumDao.deleteOrphaned()
-        Timber.d("Loading songs from source...")
-        try {
-            val result = source.loadSongs(config, onProgress)
-            Timber.d("Found %d songs, %d albums. Upserting...", result.songs.size, result.albums.size)
-            processScanResult(result)
-            Timber.i("refreshSource finished for %s: %d songs, %d albums", sourceId, result.songs.size, result.albums.size)
-        } catch (e: Exception) {
-            Timber.e(e, "Error during refreshSource for %s", sourceId)
-        }
+        processScanResult(result)
         cleanupOrphanedArtworkFiles()
         cleanupOrphanedArtists()
         refreshAlbumSeries()
+        Timber.i("refreshSource finished for %s: %d songs, %d albums", sourceId, result.songs.size, result.albums.size)
     }
 
     @androidx.room.Transaction

@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import com.schwanitz.ui.common.ErrorHolder
 import javax.inject.Inject
 
 data class SelectSongsUiState(
@@ -25,6 +26,8 @@ class SelectSongsViewModel @Inject constructor(
     private val playlistRepository: PlaylistRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    val errorHolder = ErrorHolder()
 
     val playlistId: Long = savedStateHandle.get<String>("playlistId")?.toLongOrNull() ?: 0L
 
@@ -72,12 +75,14 @@ class SelectSongsViewModel @Inject constructor(
 
     fun confirmSelection(onComplete: () -> Unit) {
         viewModelScope.launch {
-            val songIds = selectedSongIds.value.toList()
-            val count = playlistRepository.getPlaylistSongCount(playlistId)
-            songIds.forEachIndexed { index, songId ->
-                playlistRepository.addSongToPlaylist(playlistId, songId, count + index)
-            }
-            onComplete()
+            runCatching {
+                val songIds = selectedSongIds.value.toList()
+                val count = playlistRepository.getPlaylistSongCount(playlistId)
+                songIds.forEachIndexed { index, songId ->
+                    playlistRepository.addSongToPlaylist(playlistId, songId, count + index)
+                }
+                onComplete()
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 }

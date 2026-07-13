@@ -7,6 +7,7 @@ import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
+import com.schwanitz.ui.common.ErrorHolder
 import com.schwanitz.ui.components.SelectionDelegate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,8 @@ class YearDetailViewModel @Inject constructor(
     private val playlistRepository: PlaylistRepository
 ) : ViewModel() {
 
+    val errorHolder = ErrorHolder()
+
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     val songs: StateFlow<List<Song>> = _songs
 
@@ -29,14 +32,18 @@ class YearDetailViewModel @Inject constructor(
 
     fun loadYear(year: Int) {
         viewModelScope.launch {
-            musicRepository.getSongsByYear(year).collect {
-                _songs.value = it
-            }
+            runCatching {
+                musicRepository.getSongsByYear(year).collect {
+                    _songs.value = it
+                }
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
         viewModelScope.launch {
-            musicRepository.getAlbumsByYear(year).collect {
-                _albums.value = it
-            }
+            runCatching {
+                musicRepository.getAlbumsByYear(year).collect {
+                    _albums.value = it
+                }
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 
@@ -48,7 +55,7 @@ class YearDetailViewModel @Inject constructor(
         playerManager.play(song, songs.value)
     }
 
-    private val selection = SelectionDelegate(playerManager, playlistRepository, viewModelScope) { songs.value }
+    private val selection = SelectionDelegate(playerManager, playlistRepository, viewModelScope, { songs.value }, errorHolder)
     val isSelecting: StateFlow<Boolean> = selection.isSelecting
     val selectedSongIds: StateFlow<Set<String>> = selection.selectedSongIds
     val playlists: StateFlow<List<com.schwanitz.domain.model.Playlist>> = selection.playlists

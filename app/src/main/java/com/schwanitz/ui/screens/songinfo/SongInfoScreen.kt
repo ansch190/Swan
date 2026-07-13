@@ -37,6 +37,8 @@ import com.schwanitz.domain.model.AlbumArtwork
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
 import com.schwanitz.ui.components.MarqueeText
+import com.schwanitz.ui.common.CollectSnackbarErrors
+import com.schwanitz.ui.navigation.LocalSnackbarHostState
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,6 +58,9 @@ fun SongInfoScreen(
     onSeriesClick: (String) -> Unit,
     viewModel: SongInfoViewModel = hiltViewModel()
 ) {
+    val snackbarHostState = LocalSnackbarHostState.current
+    CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
+
     LaunchedEffect(songId) {
         viewModel.loadSong(songId)
     }

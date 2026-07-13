@@ -6,6 +6,7 @@ import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.player.MusicPlayerManager
+import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,6 +21,8 @@ class NowPlayingViewModel @Inject constructor(
     val playerManager: MusicPlayerManager,
     private val musicRepository: MusicRepository
 ) : ViewModel() {
+
+    val errorHolder = ErrorHolder()
 
     val playerState: StateFlow<com.schwanitz.player.PlayerState> =
         playerManager.playerState
@@ -38,17 +41,20 @@ class NowPlayingViewModel @Inject constructor(
         if (albumId == currentAlbumId) return
         currentAlbumId = albumId
         viewModelScope.launch {
-            _artworks.value = if (albumId != null) {
-                musicRepository.getAlbumArtworks(albumId)
-            } else {
-                emptyList()
-            }
+            runCatching {
+                _artworks.value = if (albumId != null) {
+                    musicRepository.getAlbumArtworks(albumId)
+                } else {
+                    emptyList()
+                }
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 
     fun toggleFavorite(song: Song) {
         viewModelScope.launch {
-            musicRepository.toggleFavorite(song.id)
+            runCatching { musicRepository.toggleFavorite(song.id) }
+                .exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 }

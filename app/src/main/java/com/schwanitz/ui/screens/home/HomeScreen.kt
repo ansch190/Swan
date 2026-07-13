@@ -14,7 +14,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.schwanitz.R
 import com.schwanitz.domain.model.Song
+import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.components.SongListItem
+import com.schwanitz.ui.navigation.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,6 +26,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = LocalSnackbarHostState.current
+    CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
     var contextMenuSong by remember { mutableStateOf<Song?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {

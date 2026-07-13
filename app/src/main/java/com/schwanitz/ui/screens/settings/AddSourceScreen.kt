@@ -26,6 +26,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
 import com.schwanitz.domain.source.SourceType
+import com.schwanitz.ui.common.CollectSnackbarErrors
+import com.schwanitz.ui.navigation.LocalSnackbarHostState
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -37,6 +39,8 @@ fun AddSourceScreen(
     onSourceAdded: () -> Unit,
     viewModel: AddSourceViewModel = hiltViewModel()
 ) {
+    val snackbarHostState = LocalSnackbarHostState.current
+    CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 

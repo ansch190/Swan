@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.player.MusicPlayerManager
+import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -23,6 +24,8 @@ class HomeViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
     private val playerManager: MusicPlayerManager
 ) : ViewModel() {
+
+    val errorHolder = ErrorHolder()
 
     private val _searchQuery = MutableStateFlow("")
     private val _showFavoritesOnly = MutableStateFlow(false)
@@ -64,7 +67,8 @@ class HomeViewModel @Inject constructor(
 
     fun toggleFavorite(song: Song) {
         viewModelScope.launch {
-            musicRepository.toggleFavorite(song.id)
+            runCatching { musicRepository.toggleFavorite(song.id) }
+                .exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 }

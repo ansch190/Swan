@@ -13,6 +13,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import com.schwanitz.ui.common.ErrorHolder
 import javax.inject.Inject
 
 private const val FAVORITES_PLAYLIST_ID = -1L
@@ -25,6 +26,8 @@ class PlaylistDetailViewModel @Inject constructor(
     private val playerManager: MusicPlayerManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    val errorHolder = ErrorHolder()
 
     private val _playlistId = MutableStateFlow<Long?>(null)
 
@@ -60,11 +63,13 @@ class PlaylistDetailViewModel @Inject constructor(
 
     fun renamePlaylist(newName: String) {
         viewModelScope.launch {
-            _playlistId.value?.let { id ->
-                if (id != FAVORITES_PLAYLIST_ID) {
-                    playlistRepository.renamePlaylist(id, newName)
+            runCatching {
+                _playlistId.value?.let { id ->
+                    if (id != FAVORITES_PLAYLIST_ID) {
+                        playlistRepository.renamePlaylist(id, newName)
+                    }
                 }
-            }
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 
@@ -74,16 +79,20 @@ class PlaylistDetailViewModel @Inject constructor(
 
     fun toggleFavorite(song: Song) {
         viewModelScope.launch {
-            musicRepository.toggleFavorite(song.id)
+            runCatching {
+                musicRepository.toggleFavorite(song.id)
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 
     fun savePlaylistChanges(songIds: List<String>, deleteSongIds: List<String>) {
         viewModelScope.launch {
-            val pid = _playlistId.value ?: return@launch
-            if (pid == FAVORITES_PLAYLIST_ID) return@launch
-            deleteSongIds.forEach { playlistRepository.removeSongFromPlaylist(pid, it) }
-            playlistRepository.reorderSongs(pid, songIds)
+            runCatching {
+                val pid = _playlistId.value ?: return@launch
+                if (pid == FAVORITES_PLAYLIST_ID) return@launch
+                deleteSongIds.forEach { playlistRepository.removeSongFromPlaylist(pid, it) }
+                playlistRepository.reorderSongs(pid, songIds)
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 }

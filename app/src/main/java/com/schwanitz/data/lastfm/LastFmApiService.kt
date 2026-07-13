@@ -47,14 +47,15 @@ class LastFmApiService @Inject constructor() {
                         .url(url)
                         .header("User-Agent", "SwanMusicPlayer/1.0")
                         .build()
-                    val response = client.newCall(request).execute()
-                    val body = response.body?.string()
-                    if (body == null || !response.isSuccessful) {
-                        Timber.e("HTTP %d for %s: %s", response.code, artistName, body?.take(200))
-                        return@withContext null
+                    client.newCall(request).execute().use { response ->
+                        val body = response.body?.string()
+                        if (body == null || !response.isSuccessful) {
+                            Timber.e("HTTP %d for %s: %s", response.code, artistName, body?.take(200))
+                            return@withContext null
+                        }
+                        val envelope = json.decodeFromString<LastFmArtistResponse>(body)
+                        envelope.artist
                     }
-                    val envelope = json.decodeFromString<LastFmArtistResponse>(body)
-                    envelope.artist
                 } catch (e: Exception) {
                     Timber.e(e, "Request failed for %s", artistName)
                     null

@@ -236,4 +236,14 @@
     <string name="export_format_b4s">B4S</string>
     <string name="export_format_b4s_desc">Winamp XML playlist</string>
     <string name="export_success">Playlist exported</string>
+
+    <!-- Error messages -->
+    <string name="error_network">Network error</string>
+    <string name="error_database">Database error</string>
+    <string name="error_playback">Playback error</string>
+    <string name="error_source">Source error: %s</string>
+    <string name="error_io">Storage error</string>
+    <string name="error_unknown">An error occurred</string>
+    <string name="error_scan_failed">Scan failed for %s</string>
+    <string name="error_auth_failed">Authentication failed</string>
 </resources>

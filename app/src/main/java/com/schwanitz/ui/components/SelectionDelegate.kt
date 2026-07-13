@@ -4,6 +4,7 @@ import com.schwanitz.domain.model.Playlist
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
+import com.schwanitz.ui.common.ErrorHolder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,7 +16,8 @@ class SelectionDelegate(
     private val playerManager: MusicPlayerManager,
     private val playlistRepository: PlaylistRepository,
     private val scope: CoroutineScope,
-    private val songsProvider: () -> List<Song>
+    private val songsProvider: () -> List<Song>,
+    private val errorHolder: ErrorHolder = ErrorHolder()
 ) {
     private val _isSelecting = MutableStateFlow(false)
     val isSelecting: StateFlow<Boolean> = _isSelecting
@@ -65,10 +67,12 @@ class SelectionDelegate(
         val ids = _selectedSongIds.value
         val selected = songsProvider().filter { it.id in ids }
         scope.launch {
-            val count = playlistRepository.getPlaylistSongCount(playlistId)
-            selected.forEachIndexed { index, song ->
-                playlistRepository.addSongToPlaylist(playlistId, song.id, count + index)
-            }
+            runCatching {
+                val count = playlistRepository.getPlaylistSongCount(playlistId)
+                selected.forEachIndexed { index, song ->
+                    playlistRepository.addSongToPlaylist(playlistId, song.id, count + index)
+                }
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
             exitSelection()
         }
     }

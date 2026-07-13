@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.domain.repository.SourceManager
 import com.schwanitz.domain.source.SourceConfig
+import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,26 +33,34 @@ class SettingsViewModel @Inject constructor(
     private val _scanProgress = MutableStateFlow(ScanProgress())
     val scanProgress: StateFlow<ScanProgress> = _scanProgress.asStateFlow()
 
+    val errorHolder = ErrorHolder()
+
     val sources: StateFlow<List<SourceConfig>> =
         sourceManager.sources
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         viewModelScope.launch {
-            var knownIds = sourceManager.sources.first().map { it.id }.toSet()
-            sourceManager.sources.collect { configs ->
-                val currentIds = configs.map { it.id }.toSet()
-                val newIds = currentIds - knownIds
-                for (newId in newIds) {
-                    val newConfig = configs.first { it.id == newId }
-                    Timber.i("New source detected: '%s', starting scan", newConfig.name)
-                    _scanProgress.value = ScanProgress(sourceName = newConfig.name, isScanning = true)
-                    musicRepository.refreshSource(newId) { scanned, total ->
-                        _scanProgress.value = ScanProgress(sourceName = newConfig.name, scanned = scanned, total = total, isScanning = true)
+            try {
+                var knownIds = sourceManager.sources.first().map { it.id }.toSet()
+                sourceManager.sources.collect { configs ->
+                    val currentIds = configs.map { it.id }.toSet()
+                    val newIds = currentIds - knownIds
+                    for (newId in newIds) {
+                        val newConfig = configs.first { it.id == newId }
+                        Timber.i("New source detected: '%s', starting scan", newConfig.name)
+                        _scanProgress.value = ScanProgress(sourceName = newConfig.name, isScanning = true)
+                        musicRepository.refreshSource(newId) { scanned, total ->
+                            _scanProgress.value = ScanProgress(sourceName = newConfig.name, scanned = scanned, total = total, isScanning = true)
+                        }
                     }
+                    _scanProgress.value = ScanProgress(isScanning = false)
+                    knownIds = currentIds
                 }
-                _scanProgress.value = ScanProgress(isScanning = false)
-                knownIds = currentIds
+            } catch (e: Exception) {
+                errorHolder.emit(e)
+            } finally {
+                _scanProgress.value = ScanProgress()
             }
         }
     }
@@ -59,26 +68,35 @@ class SettingsViewModel @Inject constructor(
     fun toggleSource(sourceId: String, enabled: Boolean) {
         Timber.d("Toggling source %s: %s", sourceId, if (enabled) "enabled" else "disabled")
         viewModelScope.launch {
-            sourceManager.setSourceEnabled(sourceId, enabled)
-            musicRepository.setSourceActive(sourceId, enabled)
+            runCatching {
+                sourceManager.setSourceEnabled(sourceId, enabled)
+                musicRepository.setSourceActive(sourceId, enabled)
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 
     fun deleteSource(sourceId: String) {
         Timber.i("Deleting source %s", sourceId)
         viewModelScope.launch {
-            musicRepository.deleteBySource(sourceId)
-            sourceManager.removeSource(sourceId)
+            runCatching {
+                musicRepository.deleteBySource(sourceId)
+                sourceManager.removeSource(sourceId)
+            }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
 
     fun reloadAll() {
         Timber.i("Reloading all enabled sources")
         viewModelScope.launch {
-            musicRepository.reloadEnabled { sourceName, scanned, total ->
-                _scanProgress.value = ScanProgress(sourceName, scanned, total, isScanning = true)
+            try {
+                musicRepository.reloadEnabled { sourceName, scanned, total ->
+                    _scanProgress.value = ScanProgress(sourceName, scanned, total, isScanning = true)
+                }
+            } catch (e: Exception) {
+                errorHolder.emit(e)
+            } finally {
+                _scanProgress.value = ScanProgress()
             }
-            _scanProgress.value = ScanProgress(isScanning = false)
         }
     }
 }
