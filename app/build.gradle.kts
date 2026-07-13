@@ -14,7 +14,7 @@ android {
 
     defaultConfig {
         applicationId = "com.schwanitz"
-        minSdk = 35
+        minSdk = 31
         targetSdk = 35
         versionCode = 2
         versionName = "1.2"
