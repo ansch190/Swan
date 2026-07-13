@@ -105,3 +105,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
 }
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}

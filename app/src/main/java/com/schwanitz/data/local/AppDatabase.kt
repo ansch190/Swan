@@ -44,7 +44,7 @@ import com.schwanitz.data.local.entity.SourceConfigEntity
         AlbumSongMappingEntity::class
     ],
     version = 1,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
