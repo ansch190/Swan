@@ -1,8 +1,6 @@
 ﻿package com.schwanitz.ui.screens.playlist
 
 import android.content.Context
-import android.net.Uri
-import android.provider.DocumentsContract
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.R
@@ -117,123 +115,14 @@ class PlaylistListViewModel @Inject constructor(
         songs: List<Song>,
         format: PlaylistExportFormat
     ): String {
-        val converted = songs.map { it.copy(id = uriToPlaylistPath(it.id)) }
+        val converted = PlaylistExporter.prepareSongPaths(songs)
         return when (format) {
-            PlaylistExportFormat.M3U -> buildM3u(converted)
-            PlaylistExportFormat.PLS -> buildPls(converted)
-            PlaylistExportFormat.XSPF -> buildXspf(name, converted)
-            PlaylistExportFormat.WPL -> buildWpl(name, converted)
-            PlaylistExportFormat.ASX -> buildAsx(name, converted)
-            PlaylistExportFormat.B4S -> buildB4s(converted)
+            PlaylistExportFormat.M3U -> PlaylistExporter.buildM3u(converted)
+            PlaylistExportFormat.PLS -> PlaylistExporter.buildPls(converted)
+            PlaylistExportFormat.XSPF -> PlaylistExporter.buildXspf(name, converted)
+            PlaylistExportFormat.WPL -> PlaylistExporter.buildWpl(name, converted)
+            PlaylistExportFormat.ASX -> PlaylistExporter.buildAsx(name, converted)
+            PlaylistExportFormat.B4S -> PlaylistExporter.buildB4s(converted)
         }
     }
-
-    private fun uriToPlaylistPath(uriStr: String): String {
-        if (!uriStr.startsWith("content://")) return uriStr
-        val uri = Uri.parse(uriStr)
-        return try {
-            val docId = DocumentsContract.getDocumentId(uri)
-            val parts = docId.split(":", limit = 2)
-            val volume = parts[0]
-            val path = if (parts.size > 1) parts[1] else ""
-            when (volume) {
-                "primary" -> "/storage/emulated/0/$path"
-                else -> "/storage/$volume/$path"
-            }
-        } catch (_: Exception) {
-            uriStr
-        }
-    }
-
-    private fun buildM3u(songs: List<Song>): String = buildString {
-        appendLine("#EXTM3U")
-        for (song in songs) {
-            val seconds = song.durationMs / 1000
-            val display = if (song.artistName.isNotBlank()) "${song.artistName} - ${song.title}" else song.title
-            appendLine("#EXTINF:$seconds,$display")
-            appendLine(song.id)
-        }
-    }
-
-    private fun buildPls(songs: List<Song>): String = buildString {
-        appendLine("[playlist]")
-        appendLine("NumberOfEntries=${songs.size}")
-        songs.forEachIndexed { i, song ->
-            val n = i + 1
-            appendLine("File$n=${song.id}")
-            appendLine("Title$n=${song.title}")
-            appendLine("Length$n=${song.durationMs / 1000}")
-        }
-        appendLine("Version=2")
-    }
-
-    private fun buildXspf(name: String, songs: List<Song>): String = buildString {
-        appendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-        appendLine("<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\">")
-        appendLine("    <title>${escapeXml(name)}</title>")
-        appendLine("    <trackList>")
-        for (song in songs) {
-            appendLine("        <track>")
-            if (song.title.isNotBlank()) appendLine("            <title>${escapeXml(song.title)}</title>")
-            if (song.artistName.isNotBlank()) appendLine("            <creator>${escapeXml(song.artistName)}</creator>")
-            if (song.albumName.isNotBlank()) appendLine("            <album>${escapeXml(song.albumName)}</album>")
-            appendLine("            <duration>${song.durationMs}</duration>")
-            appendLine("            <location>${escapeXml(song.id)}</location>")
-            appendLine("        </track>")
-        }
-        appendLine("    </trackList>")
-        appendLine("</playlist>")
-    }
-
-    private fun buildWpl(name: String, songs: List<Song>): String = buildString {
-        appendLine("<?wpl version=\"1.0\"?>")
-        appendLine("<smil>")
-        appendLine("    <head>")
-        appendLine("        <title>${escapeXml(name)}</title>")
-        appendLine("    </head>")
-        appendLine("    <body>")
-        appendLine("        <seq>")
-        for (song in songs) {
-            appendLine("            <media src=\"${escapeXml(song.id)}\"/>")
-        }
-        appendLine("        </seq>")
-        appendLine("    </body>")
-        appendLine("</smil>")
-    }
-
-    private fun buildAsx(name: String, songs: List<Song>): String = buildString {
-        appendLine("<asx version=\"3.0\">")
-        appendLine("    <title>${escapeXml(name)}</title>")
-        for (song in songs) {
-            appendLine("    <entry>")
-            if (song.title.isNotBlank()) appendLine("        <title>${escapeXml(song.title)}</title>")
-            if (song.artistName.isNotBlank()) appendLine("        <author>${escapeXml(song.artistName)}</author>")
-            appendLine("        <ref href=\"${escapeXml(song.id)}\"/>")
-            appendLine("    </entry>")
-        }
-        appendLine("</asx>")
-    }
-
-    private fun buildB4s(songs: List<Song>): String = buildString {
-        appendLine("<playlist>")
-        for (song in songs) {
-            val path = escapeXml(song.id)
-            if (song.title.isNotBlank()) {
-                appendLine("<entry playstring=\"file:${path}\">")
-                appendLine("    <name>${escapeXml(song.title)}</name>")
-                appendLine("    <length>${song.durationMs / 1000}</length>")
-                appendLine("</entry>")
-            } else {
-                appendLine("<entry playstring=\"file:${path}\"/>")
-            }
-        }
-        appendLine("</playlist>")
-    }
-
-    private fun escapeXml(s: String): String = s
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;")
-        .replace("'", "&apos;")
 }
