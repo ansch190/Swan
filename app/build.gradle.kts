@@ -25,19 +25,22 @@ android {
             val f = project.rootProject.file("local.properties")
             if (f.exists()) load(f.inputStream())
         }
-        val discogsKey = localProps.getProperty("discogsKey") ?: ""
-        val discogsSecret = localProps.getProperty("discogsSecret") ?: ""
+        fun envOrLocal(envKey: String, localKey: String): String =
+            System.getenv(envKey) ?: localProps.getProperty(localKey) ?: ""
+        val discogsKey = envOrLocal("DISCOGS_CONSUMER_KEY", "discogsKey")
+        val discogsSecret = envOrLocal("DISCOGS_CONSUMER_SECRET", "discogsSecret")
         buildConfigField("String", "DISCOGS_CONSUMER_KEY", "\"$discogsKey\"")
         buildConfigField("String", "DISCOGS_CONSUMER_SECRET", "\"$discogsSecret\"")
-        val lastfmKey = localProps.getProperty("lastfmKey") ?: ""
+        val lastfmKey = envOrLocal("LASTFM_API_KEY", "lastfmKey")
         buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmKey\"")
-        val geniusAccessToken = localProps.getProperty("geniusAccessToken") ?: ""
+        val geniusAccessToken = envOrLocal("GENIUS_ACCESS_TOKEN", "geniusAccessToken")
         buildConfigField("String", "GENIUS_ACCESS_TOKEN", "\"$geniusAccessToken\"")
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
