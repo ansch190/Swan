@@ -27,7 +27,7 @@ fun PlaylistPickerDialog(
         title = { Text(stringResource(R.string.playlist_picker_title)) },
         text = {
             LazyColumn {
-                items(playlists) { playlist ->
+                items(playlists, key = { it.id }) { playlist ->
                     ListItem(
                         headlineContent = { Text(playlist.name) },
                         modifier = Modifier.clickable {

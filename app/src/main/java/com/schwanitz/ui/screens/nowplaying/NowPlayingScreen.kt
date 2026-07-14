@@ -39,6 +39,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
+import com.schwanitz.domain.model.AlbumArtwork
+import com.schwanitz.domain.model.Song
 import com.schwanitz.ui.components.MarqueeText
 import com.schwanitz.ui.components.PlayerControlBar
 import com.schwanitz.ui.common.CollectSnackbarErrors
@@ -51,7 +53,6 @@ fun NowPlayingScreen(
     viewModel: NowPlayingViewModel = hiltViewModel()
 ) {
     val playerState by viewModel.playerState.collectAsState()
-    val favoriteIds by viewModel.favoriteIds.collectAsState()
     val snackbarHostState = LocalSnackbarHostState.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
     var showQueue by rememberSaveable { mutableStateOf(true) }
@@ -79,11 +80,12 @@ fun NowPlayingScreen(
         )
 
         val currentSong = playerState.currentSong
-        val artworks by viewModel.artworks.collectAsState()
         if (currentSong != null) {
+            val artworks by viewModel.artworks.collectAsState()
             LaunchedEffect(currentSong.id) {
                 viewModel.loadArtworks(currentSong.albumId)
             }
+
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -97,106 +99,14 @@ fun NowPlayingScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     if (!showQueue) {
-                        if (artworks.isNotEmpty()) {
-                            val artPagerState = rememberPagerState(pageCount = { artworks.size })
-                            LaunchedEffect(currentSong.id) {
-                                artPagerState.scrollToPage(0)
-                            }
-                            HorizontalPager(
-                                state = artPagerState,
-                                modifier = Modifier.size(280.dp)
-                            ) { page ->
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                                ) {
-                                    AsyncImage(
-                                        model = artworks[page].uriLarge,
-                                        contentDescription = stringResource(R.string.cd_album_art),
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Fit
-                                    )
-                                }
-                            }
-                            if (artworks.size > 1) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(
-                                    horizontalArrangement = Arrangement.Center,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    repeat(artworks.size) { index ->
-                                        Box(
-                                            modifier = Modifier
-                                                .padding(horizontal = 3.dp)
-                                                .size(if (artPagerState.currentPage == index) 8.dp else 6.dp)
-                                                .clip(CircleShape)
-                                                .background(
-                                                    if (artPagerState.currentPage == index)
-                                                        MaterialTheme.colorScheme.onSurface
-                                                    else
-                                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                                                )
-                                        )
-                                    }
-                                }
-                            }
-                        } else if (currentSong.albumArtUriLarge != null) {
-                            AsyncImage(
-                                model = currentSong.albumArtUriLarge,
-                                contentDescription = stringResource(R.string.cd_album_art),
-                                modifier = Modifier
-                                    .size(280.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                                contentScale = ContentScale.Fit
-                            )
-                        } else {
-                            Surface(
-                                modifier = Modifier.size(280.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Filled.MusicNote,
-                                        contentDescription = stringResource(R.string.cd_album_art),
-                                        modifier = Modifier.size(96.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
+                        AlbumArtSection(
+                            currentSong = currentSong,
+                            artworks = artworks
+                        )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
 
-                    MarqueeText(
-                        text = currentSong.title,
-                        style = MaterialTheme.typography.headlineMedium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = currentSong.artistName,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    Text(
-                        text = currentSong.albumName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    SongInfoSection(song = currentSong)
                 }
             }
 
@@ -211,121 +121,258 @@ fun NowPlayingScreen(
                     onSeek = { viewModel.playerManager.seekTo(it) }
                 )
 
-                val queue = playerState.queue
-                val currentIdx = playerState.currentIndex
+                QueueSection(
+                    visible = showQueue,
+                    queue = playerState.queue,
+                    currentIdx = playerState.currentIndex,
+                    favoriteIds = viewModel.favoriteIds.collectAsState().value,
+                    onPlayFromIndex = { viewModel.playerManager.playFromIndex(it) },
+                    onToggleFavorite = { viewModel.toggleFavorite(it) }
+                )
+            }
+        } else {
+            EmptyNowPlayingState()
+        }
+    }
+}
 
-                AnimatedVisibility(
-                    visible = showQueue && queue.isNotEmpty(),
-                    enter = slideInVertically { it } + fadeIn(),
-                    exit = slideOutVertically { it } + fadeOut()
-                ) {
-                    Column {
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+@Composable
+private fun AlbumArtSection(
+    currentSong: Song,
+    artworks: List<AlbumArtwork>,
+    modifier: Modifier = Modifier
+) {
+    if (artworks.isNotEmpty()) {
+        val artPagerState = rememberPagerState(pageCount = { artworks.size })
+        LaunchedEffect(currentSong.id) {
+            artPagerState.scrollToPage(0)
+        }
+        HorizontalPager(
+            state = artPagerState,
+            modifier = modifier.size(280.dp)
+        ) { page ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            ) {
+                AsyncImage(
+                    model = artworks[page].uriLarge,
+                    contentDescription = stringResource(R.string.cd_album_art),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
+        if (artworks.size > 1) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                repeat(artworks.size) { index ->
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 3.dp)
+                            .size(if (artPagerState.currentPage == index) 8.dp else 6.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (artPagerState.currentPage == index)
+                                    MaterialTheme.colorScheme.onSurface
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            )
+                    )
+                }
+            }
+        }
+    } else if (currentSong.albumArtUriLarge != null) {
+        AsyncImage(
+            model = currentSong.albumArtUriLarge,
+            contentDescription = stringResource(R.string.cd_album_art),
+            modifier = modifier
+                .size(280.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentScale = ContentScale.Fit
+        )
+    } else {
+        Surface(
+            modifier = modifier.size(280.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Filled.MusicNote,
+                    contentDescription = stringResource(R.string.cd_album_art),
+                    modifier = Modifier.size(96.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
 
-                        Text(
-                            text = stringResource(R.string.nowplaying_queue_header),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+@Composable
+private fun SongInfoSection(
+    song: Song,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        MarqueeText(
+            text = song.title,
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
 
-                        val lazyListState = rememberLazyListState()
+        Spacer(modifier = Modifier.height(4.dp))
 
-                        LaunchedEffect(currentIdx) {
-                            if (currentIdx >= 0) lazyListState.animateScrollToItem(currentIdx)
-                        }
+        Text(
+            text = song.artistName,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
 
-                        LazyColumn(
-                            state = lazyListState,
-                            modifier = Modifier.heightIn(max = 340.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp)
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = song.albumName,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun QueueSection(
+    visible: Boolean,
+    queue: List<Song>,
+    currentIdx: Int,
+    favoriteIds: Set<String>,
+    onPlayFromIndex: (Int) -> Unit,
+    onToggleFavorite: (Song) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = visible && queue.isNotEmpty(),
+        enter = slideInVertically { it } + fadeIn(),
+        exit = slideOutVertically { it } + fadeOut(),
+        modifier = modifier
+    ) {
+        Column {
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+            Text(
+                text = stringResource(R.string.nowplaying_queue_header),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            val lazyListState = rememberLazyListState()
+
+            LaunchedEffect(currentIdx) {
+                if (currentIdx >= 0) lazyListState.animateScrollToItem(currentIdx)
+            }
+
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.heightIn(max = 340.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp)
+            ) {
+                itemsIndexed(queue, key = { _, song -> song.id }) { index, song ->
+                    val isCurrent = index == currentIdx
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onPlayFromIndex(index) }
+                            .padding(vertical = 6.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            color = if (isCurrent) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surface,
+                            shape = MaterialTheme.shapes.small,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            itemsIndexed(queue) { index, song ->
-                                val isCurrent = index == currentIdx
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { viewModel.playerManager.playFromIndex(index) }
-                                        .padding(vertical = 6.dp, horizontal = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Surface(
-                                        color = if (isCurrent) MaterialTheme.colorScheme.primaryContainer
-                                                else MaterialTheme.colorScheme.surface,
-                                        shape = MaterialTheme.shapes.small,
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (isCurrent) Icons.Filled.PlayArrow
+                                                  else Icons.Filled.MusicNote,
+                                    contentDescription = null,
+                                    tint = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer
+                                           else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    MarqueeText(
+                                        text = song.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer
+                                                else MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = if (isCurrent) Icons.Filled.PlayArrow
-                                                              else Icons.Filled.MusicNote,
-                                                contentDescription = null,
-                                                tint = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer
-                                                       else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(12.dp))
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                MarqueeText(
-                                                    text = song.title,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer
-                                                            else MaterialTheme.colorScheme.onSurface,
-                                                    modifier = Modifier.fillMaxWidth()
-                                                )
-                                                Text(
-                                                    text = song.artistName,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            IconButton(onClick = { viewModel.toggleFavorite(song) }) {
-                                                Icon(
-                                                    imageVector = if (song.id in favoriteIds) Icons.Filled.Favorite
-                                                                  else Icons.Filled.FavoriteBorder,
-                                                    contentDescription = if (song.id in favoriteIds) stringResource(R.string.cd_remove_from_favorites)
-                                                                        else stringResource(R.string.cd_add_to_favorites),
-                                                    tint = if (song.id in favoriteIds) MaterialTheme.colorScheme.primary
-                                                           else MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    }
+                                    )
+                                    Text(
+                                        text = song.artistName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(onClick = { onToggleFavorite(song) }) {
+                                    Icon(
+                                        imageVector = if (song.id in favoriteIds) Icons.Filled.Favorite
+                                                      else Icons.Filled.FavoriteBorder,
+                                        contentDescription = if (song.id in favoriteIds) stringResource(R.string.cd_remove_from_favorites)
+                                                            else stringResource(R.string.cd_add_to_favorites),
+                                        tint = if (song.id in favoriteIds) MaterialTheme.colorScheme.primary
+                                               else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
-        } else {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = stringResource(R.string.nowplaying_empty_title),
-                        style = MaterialTheme.typography.headlineMedium,
-                        textAlign = TextAlign.Center
-                    )
+        }
+    }
+}
 
-                    Spacer(modifier = Modifier.height(8.dp))
+@Composable
+private fun EmptyNowPlayingState(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = stringResource(R.string.nowplaying_empty_title),
+                style = MaterialTheme.typography.headlineMedium,
+                textAlign = TextAlign.Center
+            )
 
-                    Text(
-                        text = stringResource(R.string.nowplaying_empty_desc),
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = stringResource(R.string.nowplaying_empty_desc),
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

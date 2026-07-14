@@ -15,6 +15,7 @@ import com.schwanitz.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
+import com.schwanitz.ui.navigation.LocalBottomBarHeight
 import com.schwanitz.ui.components.SongListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,7 +106,7 @@ fun SelectSongsScreen(
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                    contentPadding = PaddingValues(bottom = LocalBottomBarHeight.current)
                 ) {
                     items(uiState.songs, key = { it.id }) { song ->
                         val isSelected = song.id in selectedIds

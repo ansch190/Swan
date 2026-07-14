@@ -24,6 +24,7 @@ import com.schwanitz.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
+import com.schwanitz.ui.navigation.LocalBottomBarHeight
 
 import com.schwanitz.domain.model.Song
 import com.schwanitz.ui.components.SongListItem
@@ -149,7 +150,7 @@ fun PlaylistDetailScreen(
             LazyColumn(
                 state = lazyListState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 80.dp)
+                contentPadding = PaddingValues(bottom = LocalBottomBarHeight.current)
             ) {
                 items(localSongs, key = { it.id }) { song ->
                     if (isEditing && !isFavorites) {

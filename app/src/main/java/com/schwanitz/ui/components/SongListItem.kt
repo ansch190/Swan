@@ -56,7 +56,7 @@ fun SongListItem(
             if (song.albumArtUri != null) {
                 AsyncImage(
                     model = song.albumArtUri,
-                    contentDescription = "Album Art",
+                    contentDescription = stringResource(R.string.cd_album_art),
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(12.dp)),
