@@ -1,22 +1,26 @@
 package com.schwanitz.domain.error
 
+import androidx.annotation.StringRes
 import com.schwanitz.R
 
 sealed class AppError {
-    data class Network(val message: String, val cause: Throwable? = null) : AppError()
-    data class Database(val message: String, val cause: Throwable? = null) : AppError()
-    data class Source(val sourceName: String, val message: String) : AppError()
-    data class Playback(val message: String, val cause: Throwable? = null) : AppError()
-    data class Io(val message: String, val cause: Throwable? = null) : AppError()
-    data class Unknown(val message: String, val cause: Throwable? = null) : AppError()
+    abstract val message: String
 
-    fun toUserMessage(): String = when (this) {
-        is Network -> message.ifBlank { "Network error" }
-        is Database -> message.ifBlank { "Database error" }
-        is Source -> message.ifBlank { "Source error: $sourceName" }
-        is Playback -> message.ifBlank { "Playback error" }
-        is Io -> message.ifBlank { "Storage error" }
-        is Unknown -> message.ifBlank { "An error occurred" }
+    data class Network(override val message: String, val cause: Throwable? = null) : AppError()
+    data class Database(override val message: String, val cause: Throwable? = null) : AppError()
+    data class Source(val sourceName: String, override val message: String) : AppError()
+    data class Playback(override val message: String, val cause: Throwable? = null) : AppError()
+    data class Io(override val message: String, val cause: Throwable? = null) : AppError()
+    data class Unknown(override val message: String, val cause: Throwable? = null) : AppError()
+
+    @StringRes
+    fun fallbackStringRes(): Int = when (this) {
+        is Network -> R.string.error_network
+        is Database -> R.string.error_database
+        is Source -> R.string.error_source
+        is Playback -> R.string.error_playback
+        is Io -> R.string.error_io
+        is Unknown -> R.string.error_unknown
     }
 
     companion object {

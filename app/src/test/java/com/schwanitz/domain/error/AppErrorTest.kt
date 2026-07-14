@@ -1,5 +1,6 @@
 package com.schwanitz.domain.error
 
+import com.schwanitz.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -14,84 +15,84 @@ class AppErrorTest {
     fun `from UnknownHostException returns Network error`() {
         val error = AppError.from(UnknownHostException("Host not found"))
         assertTrue(error is AppError.Network)
-        assertEquals("Host not found", error.toUserMessage())
+        assertEquals("Host not found", error.message)
     }
 
     @Test
     fun `from SocketTimeoutException returns Network error`() {
         val error = AppError.from(SocketTimeoutException("Timed out"))
         assertTrue(error is AppError.Network)
-        assertEquals("Timed out", error.toUserMessage())
+        assertEquals("Timed out", error.message)
     }
 
     @Test
     fun `from IOException returns Network error`() {
         val error = AppError.from(IOException("Connection refused"))
         assertTrue(error is AppError.Network)
-        assertEquals("Connection refused", error.toUserMessage())
+        assertEquals("Connection refused", error.message)
     }
 
     @Test
     fun `from OutOfMemoryError returns Io error`() {
         val error = AppError.from(OutOfMemoryError())
         assertTrue(error is AppError.Io)
-        assertEquals("Out of memory", error.toUserMessage())
+        assertEquals("Out of memory", error.message)
     }
 
     @Test
     fun `from generic exception returns Unknown error`() {
         val error = AppError.from(IllegalStateException("Something broke"))
         assertTrue(error is AppError.Unknown)
-        assertEquals("Something broke", error.toUserMessage())
+        assertEquals("Something broke", error.message)
     }
 
     @Test
     fun `from uses fallback when message is null`() {
         val error = AppError.from(RuntimeException(), "Custom fallback")
         assertTrue(error is AppError.Unknown)
-        assertEquals("Custom fallback", error.toUserMessage())
+        assertEquals("Custom fallback", error.message)
     }
 
     @Test
-    fun `toUserMessage returns default for blank Network message`() {
+    fun `fallbackStringRes returns error_network for blank Network message`() {
         val error = AppError.Network(message = "")
-        assertEquals("Network error", error.toUserMessage())
+        assertEquals(R.string.error_network, error.fallbackStringRes())
     }
 
     @Test
-    fun `toUserMessage returns default for blank Database message`() {
+    fun `fallbackStringRes returns error_database for blank Database message`() {
         val error = AppError.Database(message = "")
-        assertEquals("Database error", error.toUserMessage())
+        assertEquals(R.string.error_database, error.fallbackStringRes())
     }
 
     @Test
-    fun `toUserMessage returns default for blank Playback message`() {
+    fun `fallbackStringRes returns error_playback for blank Playback message`() {
         val error = AppError.Playback(message = "")
-        assertEquals("Playback error", error.toUserMessage())
+        assertEquals(R.string.error_playback, error.fallbackStringRes())
     }
 
     @Test
-    fun `toUserMessage returns default for blank Io message`() {
+    fun `fallbackStringRes returns error_io for blank Io message`() {
         val error = AppError.Io(message = "")
-        assertEquals("Storage error", error.toUserMessage())
+        assertEquals(R.string.error_io, error.fallbackStringRes())
     }
 
     @Test
-    fun `toUserMessage returns default for blank Unknown message`() {
+    fun `fallbackStringRes returns error_unknown for blank Unknown message`() {
         val error = AppError.Unknown(message = "")
-        assertEquals("An error occurred", error.toUserMessage())
+        assertEquals(R.string.error_unknown, error.fallbackStringRes())
     }
 
     @Test
-    fun `toUserMessage includes source name for blank Source message`() {
+    fun `fallbackStringRes returns error_source for blank Source message`() {
         val error = AppError.Source(sourceName = "My NAS", message = "")
-        assertEquals("Source error: My NAS", error.toUserMessage())
+        assertEquals(R.string.error_source, error.fallbackStringRes())
     }
 
     @Test
-    fun `toUserMessage returns custom message when present`() {
+    fun `message is preserved when custom message is present`() {
         val error = AppError.Network(message = "Custom network error")
-        assertEquals("Custom network error", error.toUserMessage())
+        assertEquals("Custom network error", error.message)
     }
 
     @Test

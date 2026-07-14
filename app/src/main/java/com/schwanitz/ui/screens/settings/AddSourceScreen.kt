@@ -336,7 +336,7 @@ private fun ConfigureSourceContent(
                 val urlPlaceholder = selectedProvider?.url ?: ""
                 val urlFocusRequester = remember { FocusRequester() }
                 LaunchedEffect(Unit) { urlFocusRequester.requestFocus() }
-                val usernameLabel = selectedProvider?.usernameHint ?: stringResource(R.string.webdav_username_hint)
+                val usernameLabel = selectedProvider?.let { stringResource(it.usernameHintRes) } ?: stringResource(R.string.webdav_username_hint)
 
                 ExposedDropdownMenuBox(
                     expanded = expanded,
@@ -401,9 +401,9 @@ private fun ConfigureSourceContent(
                         )
                 )
 
-                if (selectedProvider != null && selectedProvider.notes.isNotBlank()) {
+                if (selectedProvider != null && selectedProvider.notesRes != 0) {
                     Text(
-                        text = selectedProvider.notes,
+                        text = stringResource(selectedProvider.notesRes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -246,4 +246,13 @@
     <string name="error_unknown">Ein Fehler ist aufgetreten</string>
     <string name="error_scan_failed">Scan fehlgeschlagen für %s</string>
     <string name="error_auth_failed">Authentifizierung fehlgeschlagen</string>
+
+    <!-- WebDAV provider hints -->
+    <string name="webdav_pcloud_hint">pCloud-E-Mail</string>
+    <string name="webdav_koofr_hint">Koofr-E-Mail</string>
+    <string name="webdav_gmx_hint">GMX-E-Mail</string>
+    <string name="webdav_webde_hint">WEB.DE-E-Mail</string>
+    <string name="webdav_mailbox_hint">Mailbox.org-E-Mail</string>
+    <string name="webdav_pcloud_note">WebDAV erfordert ein kostenpflichtiges Abo; Kein 2FA möglich</string>
+    <string name="webdav_koofr_note">Separates App-Passwort erforderlich</string>
 </resources>

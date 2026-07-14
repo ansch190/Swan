@@ -10,7 +10,7 @@ class ErrorHolder {
     val errors: SharedFlow<AppError> = _errors
 
     fun emit(error: AppError) {
-        Timber.w("ErrorHolder emitting: %s", error.toUserMessage())
+        Timber.w("ErrorHolder emitting: %s", error.message)
         _errors.tryEmit(error)
     }
 

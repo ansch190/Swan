@@ -246,4 +246,13 @@
     <string name="error_unknown">An error occurred</string>
     <string name="error_scan_failed">Scan failed for %s</string>
     <string name="error_auth_failed">Authentication failed</string>
+
+    <!-- WebDAV provider hints -->
+    <string name="webdav_pcloud_hint">pCloud Email</string>
+    <string name="webdav_koofr_hint">Koofr Email</string>
+    <string name="webdav_gmx_hint">GMX Email</string>
+    <string name="webdav_webde_hint">WEB.DE Email</string>
+    <string name="webdav_mailbox_hint">Mailbox.org Email</string>
+    <string name="webdav_pcloud_note">WebDAV requires a paid plan; No 2FA possible</string>
+    <string name="webdav_koofr_note">Separate app password required</string>
 </resources>
