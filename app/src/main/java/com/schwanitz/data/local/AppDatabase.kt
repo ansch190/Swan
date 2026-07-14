@@ -43,7 +43,7 @@ import com.schwanitz.data.local.entity.SourceConfigEntity
         SongTechnicalInfoEntity::class,
         AlbumSongMappingEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
