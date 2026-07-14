@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SeriesRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
 import com.schwanitz.ui.common.ErrorHolder
@@ -17,7 +17,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SeriesDetailViewModel @Inject constructor(
-    private val musicRepository: MusicRepository,
+    private val seriesRepository: SeriesRepository,
     private val playerManager: MusicPlayerManager,
     private val playlistRepository: PlaylistRepository
 ) : ViewModel() {
@@ -33,14 +33,14 @@ class SeriesDetailViewModel @Inject constructor(
     fun loadSeries(seriesName: String) {
         viewModelScope.launch {
             runCatching {
-                val series = musicRepository.getSeriesByName(seriesName) ?: return@launch
+                val series = seriesRepository.getSeriesByName(seriesName) ?: return@launch
                 launch {
-                    musicRepository.getSongsBySeries(series.id).collect {
+                    seriesRepository.getSongsBySeries(series.id).collect {
                         _songs.value = it
                     }
                 }
                 launch {
-                    musicRepository.getAlbumsInSeries(series.id).collect {
+                    seriesRepository.getAlbumsInSeries(series.id).collect {
                         _albums.value = it
                     }
                 }

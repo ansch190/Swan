@@ -2,7 +2,7 @@ package com.schwanitz.ui.screens.home
 
 import app.cash.turbine.test
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.player.MusicPlayerManager
 import com.schwanitz.util.MainDispatcherRule
 import io.mockk.every
@@ -23,7 +23,7 @@ class HomeViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private lateinit var musicRepository: MusicRepository
+    private lateinit var songRepository: SongRepository
     private lateinit var playerManager: MusicPlayerManager
     private lateinit var viewModel: HomeViewModel
 
@@ -36,11 +36,11 @@ class HomeViewModelTest {
 
     @Before
     fun setUp() {
-        musicRepository = mockk(relaxed = true)
+        songRepository = mockk(relaxed = true)
         playerManager = mockk(relaxed = true)
-        every { musicRepository.getAllSongs() } returns flowOf(testSongs)
-        every { musicRepository.getFavoriteSongs() } returns flowOf(testSongs.filter { it.isFavorite })
-        viewModel = HomeViewModel(musicRepository, playerManager)
+        every { songRepository.getAllSongs() } returns flowOf(testSongs)
+        every { songRepository.getFavoriteSongs() } returns flowOf(testSongs.filter { it.isFavorite })
+        viewModel = HomeViewModel(songRepository, playerManager)
     }
 
     @Test
@@ -166,6 +166,6 @@ class HomeViewModelTest {
     @Test
     fun `toggleFavorite delegates to repository`() = runTest {
         viewModel.toggleFavorite(testSongs[0])
-        coVerify { musicRepository.toggleFavorite("1") }
+        coVerify { songRepository.toggleFavorite("1") }
     }
 }

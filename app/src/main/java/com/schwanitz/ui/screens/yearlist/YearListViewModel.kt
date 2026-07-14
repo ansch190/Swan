@@ -2,7 +2,7 @@ package com.schwanitz.ui.screens.yearlist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SongRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +11,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class YearListViewModel @Inject constructor(
-    private val musicRepository: MusicRepository
+    private val songRepository: SongRepository
 ) : ViewModel() {
 
     private val _allYears = MutableStateFlow<List<Int>>(emptyList())
@@ -19,7 +19,7 @@ class YearListViewModel @Inject constructor(
 
     fun loadYears() {
         viewModelScope.launch {
-            musicRepository.getAllYears().collect {
+            songRepository.getAllYears().collect {
                 _allYears.value = it
             }
         }

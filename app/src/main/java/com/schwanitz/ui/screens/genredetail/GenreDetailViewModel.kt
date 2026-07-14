@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
 import com.schwanitz.ui.common.ArtistImageLoader
@@ -18,7 +18,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class GenreDetailViewModel @Inject constructor(
-    private val musicRepository: MusicRepository,
+    private val songRepository: SongRepository,
     private val playerManager: MusicPlayerManager,
     private val artistImageLoader: ArtistImageLoader,
     private val playlistRepository: PlaylistRepository
@@ -41,13 +41,13 @@ class GenreDetailViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 launch {
-                    musicRepository.getSongsByGenre(genre).collect { _songs.value = it }
+                    songRepository.getSongsByGenre(genre).collect { _songs.value = it }
                 }
                 launch {
-                    musicRepository.getAlbumsByGenre(genre).collect { _albums.value = it }
+                    songRepository.getAlbumsByGenre(genre).collect { _albums.value = it }
                 }
                 launch {
-                    musicRepository.getArtistsByGenre(genre).collect {
+                    songRepository.getArtistsByGenre(genre).collect {
                         _artists.value = it
                         artistImageLoader.loadForArtists(it)
                     }

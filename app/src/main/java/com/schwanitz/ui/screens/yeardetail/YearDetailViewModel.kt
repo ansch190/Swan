@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
 import com.schwanitz.ui.common.ErrorHolder
@@ -17,7 +17,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class YearDetailViewModel @Inject constructor(
-    private val musicRepository: MusicRepository,
+    private val songRepository: SongRepository,
     private val playerManager: MusicPlayerManager,
     private val playlistRepository: PlaylistRepository
 ) : ViewModel() {
@@ -33,14 +33,14 @@ class YearDetailViewModel @Inject constructor(
     fun loadYear(year: Int) {
         viewModelScope.launch {
             runCatching {
-                musicRepository.getSongsByYear(year).collect {
+                songRepository.getSongsByYear(year).collect {
                     _songs.value = it
                 }
             }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
         viewModelScope.launch {
             runCatching {
-                musicRepository.getAlbumsByYear(year).collect {
+                songRepository.getAlbumsByYear(year).collect {
                     _albums.value = it
                 }
             }.exceptionOrNull()?.let { errorHolder.emit(it) }

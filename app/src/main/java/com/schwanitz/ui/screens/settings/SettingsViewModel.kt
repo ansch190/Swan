@@ -2,7 +2,7 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SourceLifecycleManager
 import com.schwanitz.domain.repository.SourceManager
 import com.schwanitz.domain.source.SourceConfig
 import com.schwanitz.ui.common.ErrorHolder
@@ -27,7 +27,7 @@ data class ScanProgress(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val sourceManager: SourceManager,
-    private val musicRepository: MusicRepository
+    private val sourceLifecycleManager: SourceLifecycleManager
 ) : ViewModel() {
 
     private val _scanProgress = MutableStateFlow(ScanProgress())
@@ -50,7 +50,7 @@ class SettingsViewModel @Inject constructor(
                         val newConfig = configs.first { it.id == newId }
                         Timber.i("New source detected: '%s', starting scan", newConfig.name)
                         _scanProgress.value = ScanProgress(sourceName = newConfig.name, isScanning = true)
-                        musicRepository.refreshSource(newId) { scanned, total ->
+                        sourceLifecycleManager.refreshSource(newId) { scanned, total ->
                             _scanProgress.value = ScanProgress(sourceName = newConfig.name, scanned = scanned, total = total, isScanning = true)
                         }
                     }
@@ -70,7 +70,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 sourceManager.setSourceEnabled(sourceId, enabled)
-                musicRepository.setSourceActive(sourceId, enabled)
+                sourceLifecycleManager.setSourceActive(sourceId, enabled)
             }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
@@ -79,7 +79,7 @@ class SettingsViewModel @Inject constructor(
         Timber.i("Deleting source %s", sourceId)
         viewModelScope.launch {
             runCatching {
-                musicRepository.deleteBySource(sourceId)
+                sourceLifecycleManager.deleteBySource(sourceId)
                 sourceManager.removeSource(sourceId)
             }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
@@ -89,7 +89,7 @@ class SettingsViewModel @Inject constructor(
         Timber.i("Reloading all enabled sources")
         viewModelScope.launch {
             try {
-                musicRepository.reloadEnabled { sourceName, scanned, total ->
+                sourceLifecycleManager.reloadEnabled { sourceName, scanned, total ->
                     _scanProgress.value = ScanProgress(sourceName, scanned, total, isScanning = true)
                 }
             } catch (e: Exception) {

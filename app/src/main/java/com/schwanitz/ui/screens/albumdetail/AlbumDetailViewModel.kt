@@ -2,12 +2,13 @@ package com.schwanitz.ui.screens.albumdetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.schwanitz.data.local.dao.AlbumDao
 import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.AlbumSeries
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.AlbumRepository
 import com.schwanitz.domain.repository.PlaylistRepository
+import com.schwanitz.domain.repository.SeriesRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.player.MusicPlayerManager
 import com.schwanitz.ui.common.ErrorHolder
 import com.schwanitz.ui.components.SelectionDelegate
@@ -19,9 +20,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AlbumDetailViewModel @Inject constructor(
-    private val musicRepository: MusicRepository,
+    private val songRepository: SongRepository,
+    private val albumRepository: AlbumRepository,
+    private val seriesRepository: SeriesRepository,
     private val playerManager: MusicPlayerManager,
-    private val albumDao: AlbumDao,
     private val playlistRepository: PlaylistRepository
 ) : ViewModel() {
 
@@ -39,15 +41,15 @@ class AlbumDetailViewModel @Inject constructor(
     fun loadAlbum(albumName: String, albumArtistName: String) {
         viewModelScope.launch {
             runCatching {
-                val album = albumDao.findByNameAndAlbumArtist(albumName, albumArtistName) ?: return@launch
+                val album = albumRepository.findAlbumByNameAndArtist(albumName, albumArtistName) ?: return@launch
                 launch {
                     runCatching {
-                        musicRepository.getSongsByAlbumId(album.id).collect { albumSongs ->
+                        songRepository.getSongsByAlbumId(album.id).collect { albumSongs ->
                             _songs.value = albumSongs
                             if (albumSongs.isNotEmpty()) {
                                 val albumId = albumSongs.first().albumId
                                 _artworks.value = if (albumId != null) {
-                                    musicRepository.getAlbumArtworks(albumId)
+                                    albumRepository.getAlbumArtworks(albumId)
                                 } else {
                                     emptyList()
                                 }
@@ -57,7 +59,7 @@ class AlbumDetailViewModel @Inject constructor(
                 }
                 launch {
                     runCatching {
-                        musicRepository.getSeriesForAlbum(album.id).collect { s ->
+                        seriesRepository.getSeriesForAlbum(album.id).collect { s ->
                             _series.value = s
                         }
                     }.exceptionOrNull()?.let { errorHolder.emit(it) }

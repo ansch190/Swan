@@ -115,12 +115,12 @@ fun NowPlayingScreen(
             Column(modifier = Modifier.padding(bottom = 24.dp)) {
                 PlayerControlBar(
                     playerState = playerState,
-                    onPlayPause = { viewModel.playerManager.togglePlayPause() },
-                    onSkipNext = { viewModel.playerManager.skipToNext() },
-                    onSkipPrevious = { viewModel.playerManager.skipToPrevious() },
-                    onShuffle = { viewModel.playerManager.toggleShuffle() },
-                    onRepeat = { viewModel.playerManager.cycleRepeatMode() },
-                    onSeek = { viewModel.playerManager.seekTo(it) }
+                    onPlayPause = { viewModel.onPlayPause() },
+                    onSkipNext = { viewModel.onSkipNext() },
+                    onSkipPrevious = { viewModel.onSkipPrevious() },
+                    onShuffle = { viewModel.onShuffle() },
+                    onRepeat = { viewModel.onRepeat() },
+                    onSeek = { viewModel.onSeek(it) }
                 )
 
                 QueueSection(
@@ -128,7 +128,7 @@ fun NowPlayingScreen(
                     queue = playerState.queue,
                     currentIdx = playerState.currentIndex,
                     favoriteIds = viewModel.favoriteIds.collectAsState().value,
-                    onPlayFromIndex = { viewModel.playerManager.playFromIndex(it) },
+                    onPlayFromIndex = { viewModel.onPlayFromIndex(it) },
                     onToggleFavorite = { viewModel.toggleFavorite(it) }
                 )
             }

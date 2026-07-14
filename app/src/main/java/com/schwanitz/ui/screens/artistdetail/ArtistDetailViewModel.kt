@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.ArtistRepository
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
 import com.schwanitz.ui.common.ErrorHolder
@@ -19,7 +19,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ArtistDetailViewModel @Inject constructor(
-    private val musicRepository: MusicRepository,
+    private val songRepository: SongRepository,
     private val playerManager: MusicPlayerManager,
     private val artistRepository: ArtistRepository,
     private val playlistRepository: PlaylistRepository
@@ -45,12 +45,12 @@ class ArtistDetailViewModel @Inject constructor(
                 if (artistName.isBlank()) {
                     Timber.d("Loading songs with no artist")
                     launch {
-                        musicRepository.getSongsWithNoArtist().collect {
+                        songRepository.getSongsWithNoArtist().collect {
                             _songs.value = it
                         }
                     }
                     launch {
-                        musicRepository.getAlbumsWithNoArtist().collect {
+                        songRepository.getAlbumsWithNoArtist().collect {
                             _albums.value = it
                         }
                     }
@@ -70,10 +70,10 @@ class ArtistDetailViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 launch {
-                    musicRepository.getSongsByArtistId(artistId).collect { _songs.value = it }
+                    songRepository.getSongsByArtistId(artistId).collect { _songs.value = it }
                 }
                 launch {
-                    musicRepository.getAlbumsByArtistId(artistId).collect { _albums.value = it }
+                    songRepository.getAlbumsByArtistId(artistId).collect { _albums.value = it }
                 }
                 launch {
                     _artistImageUri.value = artistRepository.getArtistImageLarge(artistId)

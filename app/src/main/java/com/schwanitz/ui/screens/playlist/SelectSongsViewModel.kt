@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,7 +23,7 @@ data class SelectSongsUiState(
 
 @HiltViewModel
 class SelectSongsViewModel @Inject constructor(
-    private val musicRepository: MusicRepository,
+    private val songRepository: SongRepository,
     private val playlistRepository: PlaylistRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -41,7 +41,7 @@ class SelectSongsViewModel @Inject constructor(
     val uiState: StateFlow<SelectSongsUiState> = combine(
         _searchQuery,
         _showFavoritesOnly,
-        musicRepository.getAllSongs()
+        songRepository.getAllSongs()
     ) { query, favoritesOnly, songs ->
         val filtered = songs.filterSongs(query, favoritesOnly)
         SelectSongsUiState(

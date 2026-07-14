@@ -4,7 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.AlbumRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.player.MusicPlayerManager
 import com.schwanitz.ui.common.ErrorHolder
 import com.schwanitz.ui.common.toggleFavorite
@@ -19,8 +20,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class NowPlayingViewModel @Inject constructor(
-    val playerManager: MusicPlayerManager,
-    private val musicRepository: MusicRepository
+    private val playerManager: MusicPlayerManager,
+    private val songRepository: SongRepository,
+    private val albumRepository: AlbumRepository
 ) : ViewModel() {
 
     val errorHolder = ErrorHolder()
@@ -32,7 +34,7 @@ class NowPlayingViewModel @Inject constructor(
     private val _artworks = MutableStateFlow<List<AlbumArtwork>>(emptyList())
     val artworks: StateFlow<List<AlbumArtwork>> = _artworks
 
-    val favoriteIds: StateFlow<Set<String>> = musicRepository.getFavoriteSongs()
+    val favoriteIds: StateFlow<Set<String>> = songRepository.getFavoriteSongs()
         .map { songs -> songs.map { it.id }.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
@@ -44,7 +46,7 @@ class NowPlayingViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 _artworks.value = if (albumId != null) {
-                    musicRepository.getAlbumArtworks(albumId)
+                    albumRepository.getAlbumArtworks(albumId)
                 } else {
                     emptyList()
                 }
@@ -52,5 +54,13 @@ class NowPlayingViewModel @Inject constructor(
         }
     }
 
-    fun toggleFavorite(song: Song) = toggleFavorite(song, musicRepository, errorHolder)
+    fun toggleFavorite(song: Song) = toggleFavorite(song, songRepository, errorHolder)
+
+    fun onPlayPause() = playerManager.togglePlayPause()
+    fun onSkipNext() = playerManager.skipToNext()
+    fun onSkipPrevious() = playerManager.skipToPrevious()
+    fun onShuffle() = playerManager.toggleShuffle()
+    fun onRepeat() = playerManager.cycleRepeatMode()
+    fun onSeek(positionMs: Long) = playerManager.seekTo(positionMs)
+    fun onPlayFromIndex(index: Int) = playerManager.playFromIndex(index)
 }

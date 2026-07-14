@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.R
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +22,7 @@ private const val FAVORITES_PLAYLIST_ID = -1L
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class PlaylistDetailViewModel @Inject constructor(
-    private val musicRepository: MusicRepository,
+    private val songRepository: SongRepository,
     private val playlistRepository: PlaylistRepository,
     private val playerManager: MusicPlayerManager,
     @ApplicationContext private val context: Context
@@ -51,7 +51,7 @@ class PlaylistDetailViewModel @Inject constructor(
         .filterNotNull()
         .flatMapLatest { id ->
             if (id == FAVORITES_PLAYLIST_ID) {
-                musicRepository.getFavoriteSongs()
+                songRepository.getFavoriteSongs()
             } else {
                 playlistRepository.getPlaylistSongs(id)
             }
@@ -78,7 +78,7 @@ class PlaylistDetailViewModel @Inject constructor(
         playerManager.play(song, songs.value)
     }
 
-    fun toggleFavorite(song: Song) = toggleFavorite(song, musicRepository, errorHolder)
+    fun toggleFavorite(song: Song) = toggleFavorite(song, songRepository, errorHolder)
 
     fun savePlaylistChanges(songIds: List<String>, deleteSongIds: List<String>) {
         viewModelScope.launch {

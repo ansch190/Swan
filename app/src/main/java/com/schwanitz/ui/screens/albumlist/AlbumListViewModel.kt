@@ -3,7 +3,7 @@ package com.schwanitz.ui.screens.albumlist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.Album
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SongRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +12,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AlbumListViewModel @Inject constructor(
-    private val musicRepository: MusicRepository
+    private val songRepository: SongRepository
 ) : ViewModel() {
 
     private val _allAlbums = MutableStateFlow<List<Album>>(emptyList())
@@ -20,7 +20,7 @@ class AlbumListViewModel @Inject constructor(
 
     fun loadAlbums() {
         viewModelScope.launch {
-            musicRepository.getAllAlbums().collect {
+            songRepository.getAllAlbums().collect {
                 _allAlbums.value = it
             }
         }

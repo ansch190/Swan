@@ -6,7 +6,9 @@ import com.schwanitz.data.genius.GeniusLyricsProvider
 import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.AlbumSeries
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.AlbumRepository
+import com.schwanitz.domain.repository.SeriesRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.domain.repository.SourceManager
 import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,7 +20,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SongInfoViewModel @Inject constructor(
-    private val musicRepository: MusicRepository,
+    private val songRepository: SongRepository,
+    private val albumRepository: AlbumRepository,
+    private val seriesRepository: SeriesRepository,
     private val sourceManager: SourceManager,
     private val lyricsProvider: GeniusLyricsProvider
 ) : ViewModel() {
@@ -49,29 +53,29 @@ class SongInfoViewModel @Inject constructor(
     fun loadSong(songId: String) {
         viewModelScope.launch {
             runCatching {
-                val s = musicRepository.getSongById(songId)
+                val s = songRepository.getSongById(songId)
                 _song.value = s
                 if (s != null) {
                     Timber.d("Loaded song: '%s' by %s", s.title, s.artistName)
                     if (s.albumId != null) {
                         launch {
                             runCatching {
-                                musicRepository.getSeriesForAlbum(s.albumId).collect {
+                                seriesRepository.getSeriesForAlbum(s.albumId).collect {
                                     _series.value = it
                                 }
                             }.exceptionOrNull()?.let { errorHolder.emit(it) }
                         }
                         launch {
                             runCatching {
-                                _trackTotal.value = musicRepository.getTrackTotal(s.albumId, s.discNumber)
-                                _discTotal.value = musicRepository.getDiscTotal(s.albumId)
+                                _trackTotal.value = albumRepository.getTrackTotal(s.albumId, s.discNumber)
+                                _discTotal.value = albumRepository.getDiscTotal(s.albumId)
                             }.exceptionOrNull()?.let { errorHolder.emit(it) }
                         }
                     }
                     val config = sourceManager.getSourceById(s.sourceId)
                     _sourceName.value = config?.name ?: s.sourceId
                     _artworks.value = if (s.albumId != null) {
-                        musicRepository.getAlbumArtworks(s.albumId)
+                        albumRepository.getAlbumArtworks(s.albumId)
                     } else {
                         emptyList()
                     }

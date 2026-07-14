@@ -2,7 +2,7 @@ package com.schwanitz.ui.screens.artistlist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.ui.common.ArtistImageLoader
 import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,7 +14,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ArtistListViewModel @Inject constructor(
-    private val musicRepository: MusicRepository,
+    private val songRepository: SongRepository,
     private val artistImageLoader: ArtistImageLoader
 ) : ViewModel() {
 
@@ -29,8 +29,8 @@ class ArtistListViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 combine(
-                    musicRepository.getAllArtistNames(),
-                    musicRepository.hasSongsWithNoArtist()
+                    songRepository.getAllArtistNames(),
+                    songRepository.hasSongsWithNoArtist()
                 ) { artists, hasNoArtist ->
                     if (hasNoArtist) listOf("") + artists else artists
                 }.collect {

@@ -1,12 +1,18 @@
 ﻿package com.schwanitz.di
 
+import com.schwanitz.data.repository.AlbumRepositoryImpl
 import com.schwanitz.data.repository.ArtistRepositoryImpl
-import com.schwanitz.data.repository.MusicRepositoryImpl
 import com.schwanitz.data.repository.PlaylistRepositoryImpl
+import com.schwanitz.data.repository.SeriesRepositoryImpl
+import com.schwanitz.data.repository.SongRepositoryImpl
+import com.schwanitz.data.repository.SourceLifecycleManagerImpl
 import com.schwanitz.data.repository.SourceManagerImpl
+import com.schwanitz.domain.repository.AlbumRepository
 import com.schwanitz.domain.repository.ArtistRepository
-import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.domain.repository.PlaylistRepository
+import com.schwanitz.domain.repository.SeriesRepository
+import com.schwanitz.domain.repository.SongRepository
+import com.schwanitz.domain.repository.SourceLifecycleManager
 import com.schwanitz.domain.repository.SourceManager
 import dagger.Binds
 import dagger.Module
@@ -25,7 +31,19 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindMusicRepository(impl: MusicRepositoryImpl): MusicRepository
+    abstract fun bindSongRepository(impl: SongRepositoryImpl): SongRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAlbumRepository(impl: AlbumRepositoryImpl): AlbumRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSeriesRepository(impl: SeriesRepositoryImpl): SeriesRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSourceLifecycleManager(impl: SourceLifecycleManagerImpl): SourceLifecycleManager
 
     @Binds
     @Singleton

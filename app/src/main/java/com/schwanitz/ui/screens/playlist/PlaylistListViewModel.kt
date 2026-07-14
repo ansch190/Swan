@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.R
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -33,13 +33,13 @@ data class PlaylistListUiState(
 @HiltViewModel
 class PlaylistListViewModel @Inject constructor(
     private val playlistRepository: PlaylistRepository,
-    private val musicRepository: MusicRepository,
+    private val songRepository: SongRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     val errorHolder = ErrorHolder()
 
-    private val favoritesCount = musicRepository.getFavoriteSongs()
+    private val favoritesCount = songRepository.getFavoriteSongs()
         .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
@@ -103,7 +103,7 @@ class PlaylistListViewModel @Inject constructor(
         format: PlaylistExportFormat
     ): String {
         val songs = if (playlistId == -1L) {
-            musicRepository.getFavoriteSongs().first()
+            songRepository.getFavoriteSongs().first()
         } else {
             playlistRepository.getPlaylistSongs(playlistId).first()
         }

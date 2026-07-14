@@ -3,7 +3,7 @@
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.repository.MusicRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.player.MusicPlayerManager
 import com.schwanitz.ui.common.ErrorHolder
 import com.schwanitz.ui.common.filterSongs
@@ -23,7 +23,7 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val musicRepository: MusicRepository,
+    private val songRepository: SongRepository,
     private val playerManager: MusicPlayerManager
 ) : ViewModel() {
 
@@ -36,7 +36,7 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = combine(
         _searchQuery,
         _showFavoritesOnly,
-        musicRepository.getAllSongs()
+        songRepository.getAllSongs()
     ) { query, favoritesOnly, songs ->
         val filtered = songs.filterSongs(query, favoritesOnly)
         HomeUiState(
@@ -59,5 +59,5 @@ class HomeViewModel @Inject constructor(
         playerManager.play(song, listOf(song))
     }
 
-    fun toggleFavorite(song: Song) = toggleFavorite(song, musicRepository, errorHolder)
+    fun toggleFavorite(song: Song) = toggleFavorite(song, songRepository, errorHolder)
 }
