@@ -2,35 +2,11 @@
 
 import androidx.room.*
 import com.schwanitz.data.local.entity.SongEntity
+import com.schwanitz.data.local.entity.SongWithNames
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SongDao {
-
-    data class SongWithNames(
-        val id: String,
-        val title: String,
-        val artistId: Long?,
-        val artistName: String?,
-        val albumId: Long?,
-        val albumName: String?,
-        val albumArtistName: String?,
-        val durationMs: Long,
-        val albumArtUri: String?,
-        val albumArtUriLarge: String?,
-        val sourceId: String,
-        val isFavorite: Boolean,
-        val isActive: Boolean,
-        val discNumber: Int,
-        val trackNumber: Int,
-        val year: Int,
-        val genre: String,
-        val mimeType: String,
-        val sampleRate: Int,
-        val bitrate: Int,
-        val fileSize: Long,
-        val tagVersion: String
-    )
 
     data class AlbumProjection(
         val albumId: Long,
@@ -39,92 +15,16 @@ interface SongDao {
         val albumArtUri: String?
     )
 
-    @Query("""
-        SELECT s.id, s.title, s.artistId, asm.albumId,
-            s.durationMs, s.sourceId, s.isFavorite, s.isActive,
-            asm.discNumber, asm.trackNumber,
-            al.year, s.genre, s.tagVersion,
-            sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
-            a.name as artistName,
-            al.name as albumName,
-            aw.uriSmall as albumArtUri,
-            aw.uriLarge as albumArtUriLarge,
-            al.albumArtist as albumArtistName
-        FROM songs s
-        INNER JOIN album_song_mapping asm ON s.id = asm.songId
-        LEFT JOIN artists a ON s.artistId = a.id
-        LEFT JOIN albums al ON asm.albumId = al.id
-        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
-        LEFT JOIN song_technical_info sti ON s.id = sti.songId
-        WHERE s.isActive = 1
-        ORDER BY s.title ASC
-    """)
+    @Query("SELECT * FROM SongWithNames WHERE isActive = 1 ORDER BY title ASC")
     fun getAllSongs(): Flow<List<SongWithNames>>
 
-    @Query("""
-        SELECT s.id, s.title, s.artistId, asm.albumId,
-            s.durationMs, s.sourceId, s.isFavorite, s.isActive,
-            asm.discNumber, asm.trackNumber,
-            al.year, s.genre, s.tagVersion,
-            sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
-            a.name as artistName,
-            al.name as albumName,
-            aw.uriSmall as albumArtUri,
-            aw.uriLarge as albumArtUriLarge,
-            al.albumArtist as albumArtistName
-        FROM songs s
-        INNER JOIN album_song_mapping asm ON s.id = asm.songId
-        LEFT JOIN artists a ON s.artistId = a.id
-        LEFT JOIN albums al ON asm.albumId = al.id
-        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
-        LEFT JOIN song_technical_info sti ON s.id = sti.songId
-        WHERE s.isActive = 1 AND s.isFavorite = 1
-        ORDER BY s.title ASC
-    """)
+    @Query("SELECT * FROM SongWithNames WHERE isActive = 1 AND isFavorite = 1 ORDER BY title ASC")
     fun getFavoriteSongs(): Flow<List<SongWithNames>>
 
-    @Query("""
-        SELECT s.id, s.title, s.artistId, asm.albumId,
-            s.durationMs, s.sourceId, s.isFavorite, s.isActive,
-            asm.discNumber, asm.trackNumber,
-            al.year, s.genre, s.tagVersion,
-            sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
-            a.name as artistName,
-            al.name as albumName,
-            aw.uriSmall as albumArtUri,
-            aw.uriLarge as albumArtUriLarge,
-            al.albumArtist as albumArtistName
-        FROM songs s
-        INNER JOIN album_song_mapping asm ON s.id = asm.songId
-        LEFT JOIN artists a ON s.artistId = a.id
-        LEFT JOIN albums al ON asm.albumId = al.id
-        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
-        LEFT JOIN song_technical_info sti ON s.id = sti.songId
-        WHERE asm.albumId = :albumId AND s.isActive = 1
-        ORDER BY asm.discNumber ASC, asm.trackNumber ASC
-    """)
+    @Query("SELECT * FROM SongWithNames WHERE albumId = :albumId AND isActive = 1 ORDER BY discNumber ASC, trackNumber ASC")
     fun getSongsByAlbumId(albumId: Long): Flow<List<SongWithNames>>
 
-    @Query("""
-        SELECT s.id, s.title, s.artistId, asm.albumId,
-            s.durationMs, s.sourceId, s.isFavorite, s.isActive,
-            asm.discNumber, asm.trackNumber,
-            al.year, s.genre, s.tagVersion,
-            sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
-            a.name as artistName,
-            al.name as albumName,
-            aw.uriSmall as albumArtUri,
-            aw.uriLarge as albumArtUriLarge,
-            al.albumArtist as albumArtistName
-        FROM songs s
-        INNER JOIN album_song_mapping asm ON s.id = asm.songId
-        LEFT JOIN artists a ON s.artistId = a.id
-        LEFT JOIN albums al ON asm.albumId = al.id
-        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
-        LEFT JOIN song_technical_info sti ON s.id = sti.songId
-        WHERE s.artistId = :artistId AND s.isActive = 1
-        ORDER BY asm.albumId ASC, asm.discNumber ASC, asm.trackNumber ASC
-    """)
+    @Query("SELECT * FROM SongWithNames WHERE artistId = :artistId AND isActive = 1 ORDER BY albumId ASC, discNumber ASC, trackNumber ASC")
     fun getSongsByArtistId(artistId: Long): Flow<List<SongWithNames>>
 
     @Query("""
@@ -139,26 +39,7 @@ interface SongDao {
     """)
     fun getAlbumsByArtistId(artistId: Long): Flow<List<AlbumProjection>>
 
-    @Query("""
-        SELECT s.id, s.title, s.artistId, asm.albumId,
-            s.durationMs, s.sourceId, s.isFavorite, s.isActive,
-            asm.discNumber, asm.trackNumber,
-            al.year, s.genre, s.tagVersion,
-            sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
-            a.name as artistName,
-            al.name as albumName,
-            aw.uriSmall as albumArtUri,
-            aw.uriLarge as albumArtUriLarge,
-            al.albumArtist as albumArtistName
-        FROM songs s
-        INNER JOIN album_song_mapping asm ON s.id = asm.songId
-        LEFT JOIN artists a ON s.artistId = a.id
-        LEFT JOIN albums al ON asm.albumId = al.id
-        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
-        LEFT JOIN song_technical_info sti ON s.id = sti.songId
-        WHERE al.year = :year AND s.isActive = 1
-        ORDER BY asm.albumId ASC, asm.discNumber ASC, asm.trackNumber ASC
-    """)
+    @Query("SELECT * FROM SongWithNames WHERE year = :year AND isActive = 1 ORDER BY albumId ASC, discNumber ASC, trackNumber ASC")
     fun getSongsByYear(year: Int): Flow<List<SongWithNames>>
 
     @Query("""
@@ -173,26 +54,7 @@ interface SongDao {
     """)
     fun getAlbumsByYear(year: Int): Flow<List<AlbumProjection>>
 
-    @Query("""
-        SELECT s.id, s.title, s.artistId, asm.albumId,
-            s.durationMs, s.sourceId, s.isFavorite, s.isActive,
-            asm.discNumber, asm.trackNumber,
-            al.year, s.genre, s.tagVersion,
-            sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
-            a.name as artistName,
-            al.name as albumName,
-            aw.uriSmall as albumArtUri,
-            aw.uriLarge as albumArtUriLarge,
-            al.albumArtist as albumArtistName
-        FROM songs s
-        INNER JOIN album_song_mapping asm ON s.id = asm.songId
-        LEFT JOIN artists a ON s.artistId = a.id
-        LEFT JOIN albums al ON asm.albumId = al.id
-        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
-        LEFT JOIN song_technical_info sti ON s.id = sti.songId
-        WHERE s.genre = :genre AND s.isActive = 1
-        ORDER BY asm.albumId ASC, asm.discNumber ASC, asm.trackNumber ASC
-    """)
+    @Query("SELECT * FROM SongWithNames WHERE genre = :genre AND isActive = 1 ORDER BY albumId ASC, discNumber ASC, trackNumber ASC")
     fun getSongsByGenre(genre: String): Flow<List<SongWithNames>>
 
     @Query("""
@@ -218,25 +80,7 @@ interface SongDao {
     @Query("SELECT name FROM artists ORDER BY name ASC")
     fun getAllArtistNamesFlow(): Flow<List<String>>
 
-    @Query("""
-        SELECT s.id, s.title, s.artistId, asm.albumId,
-            s.durationMs, s.sourceId, s.isFavorite, s.isActive,
-            asm.discNumber, asm.trackNumber,
-            al.year, s.genre, s.tagVersion,
-            sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
-            a.name as artistName,
-            al.name as albumName,
-            aw.uriSmall as albumArtUri,
-            aw.uriLarge as albumArtUriLarge,
-            al.albumArtist as albumArtistName
-        FROM songs s
-        INNER JOIN album_song_mapping asm ON s.id = asm.songId
-        LEFT JOIN artists a ON s.artistId = a.id
-        LEFT JOIN albums al ON asm.albumId = al.id
-        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
-        LEFT JOIN song_technical_info sti ON s.id = sti.songId
-        WHERE s.id = :id
-    """)
+    @Query("SELECT * FROM SongWithNames WHERE id = :id")
     suspend fun getSongById(id: String): SongWithNames?
 
     @Upsert
@@ -252,25 +96,10 @@ interface SongDao {
     suspend fun setActiveBySource(sourceId: String, active: Boolean)
 
     @Query("""
-        SELECT s.id, s.title, s.artistId, asm.albumId,
-            s.durationMs, s.sourceId, s.isFavorite, s.isActive,
-            asm.discNumber, asm.trackNumber,
-            al.year, s.genre, s.tagVersion,
-            sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
-            a.name as artistName,
-            al.name as albumName,
-            aw.uriSmall as albumArtUri,
-            aw.uriLarge as albumArtUriLarge,
-            al.albumArtist as albumArtistName
-        FROM songs s
-        INNER JOIN album_song_mapping asm ON s.id = asm.songId
-        LEFT JOIN artists a ON s.artistId = a.id
-        LEFT JOIN albums al ON asm.albumId = al.id
-        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
-        LEFT JOIN song_technical_info sti ON s.id = sti.songId
-        INNER JOIN album_series_mapping asrm ON asm.albumId = asrm.albumId
-        WHERE asrm.seriesId = :seriesId AND s.isActive = 1
-        ORDER BY asrm.volumeNumber ASC, asm.discNumber ASC, asm.trackNumber ASC
+        SELECT songView.* FROM SongWithNames songView
+        INNER JOIN album_series_mapping asrm ON songView.albumId = asrm.albumId
+        WHERE asrm.seriesId = :seriesId AND songView.isActive = 1
+        ORDER BY asrm.volumeNumber ASC, songView.discNumber ASC, songView.trackNumber ASC
     """)
     fun getSongsBySeries(seriesId: Long): Flow<List<SongWithNames>>
 
@@ -321,26 +150,7 @@ interface SongDao {
     """)
     suspend fun getAllActiveAlbums(): List<AlbumProjection>
 
-    @Query("""
-        SELECT s.id, s.title, s.artistId, asm.albumId,
-            s.durationMs, s.sourceId, s.isFavorite, s.isActive,
-            asm.discNumber, asm.trackNumber,
-            al.year, s.genre, s.tagVersion,
-            sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
-            a.name as artistName,
-            al.name as albumName,
-            aw.uriSmall as albumArtUri,
-            aw.uriLarge as albumArtUriLarge,
-            al.albumArtist as albumArtistName
-        FROM songs s
-        INNER JOIN album_song_mapping asm ON s.id = asm.songId
-        LEFT JOIN artists a ON s.artistId = a.id
-        LEFT JOIN albums al ON asm.albumId = al.id
-        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
-        LEFT JOIN song_technical_info sti ON s.id = sti.songId
-        WHERE s.artistId IS NULL AND s.isActive = 1
-        ORDER BY asm.albumId ASC, asm.discNumber ASC, asm.trackNumber ASC
-    """)
+    @Query("SELECT * FROM SongWithNames WHERE artistId IS NULL AND isActive = 1 ORDER BY albumId ASC, discNumber ASC, trackNumber ASC")
     fun getSongsWithNoArtist(): Flow<List<SongWithNames>>
 
     @Query("""

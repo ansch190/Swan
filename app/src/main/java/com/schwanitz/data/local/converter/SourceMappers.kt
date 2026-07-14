@@ -11,8 +11,6 @@ fun SourceConfigEntity.toDomain(): SourceConfig = SourceConfig(
     isEnabled = isEnabled,
     folderUri = folderUri,
     url = url,
-    username = username,
-    password = password,
     path = path
 )
 
@@ -23,7 +21,5 @@ fun SourceConfig.toEntity(): SourceConfigEntity = SourceConfigEntity(
     isEnabled = isEnabled,
     folderUri = folderUri,
     url = url,
-    username = username,
-    password = password,
     path = path
 )

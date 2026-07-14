@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.schwanitz.data.local.AppDatabase
+import com.schwanitz.data.local.CredentialStore
 import com.schwanitz.data.local.Migrations
 import com.schwanitz.data.local.dao.AlbumArtworkDao
 import com.schwanitz.data.local.dao.AlbumDao
@@ -29,7 +30,9 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
+    fun provideDatabase(@ApplicationContext context: Context, credentialStore: CredentialStore): AppDatabase {
+        Migrations.migrateCredentialsToEncryptedStore(context, credentialStore)
+
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,

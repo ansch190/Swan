@@ -26,6 +26,7 @@ import com.schwanitz.data.local.entity.SongEntity
 import com.schwanitz.data.local.entity.SongLyricsEntity
 import com.schwanitz.data.local.entity.SongTechnicalInfoEntity
 import com.schwanitz.data.local.entity.SourceConfigEntity
+import com.schwanitz.data.local.entity.SongWithNames
 
 @Database(
     entities = [
@@ -43,7 +44,8 @@ import com.schwanitz.data.local.entity.SourceConfigEntity
         SongTechnicalInfoEntity::class,
         AlbumSongMappingEntity::class
     ],
-    version = 2,
+    views = [SongWithNames::class],
+    version = 4,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

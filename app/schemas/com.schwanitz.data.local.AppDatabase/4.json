@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 3,
-    "identityHash": "d8fd8b61db98d677f59b36ea580d842c",
+    "version": 4,
+    "identityHash": "64869ca12d39f7c63ad55bc9c1e76d83",
     "entities": [
       {
         "tableName": "songs",
@@ -812,9 +812,15 @@
         ]
       }
     ],
+    "views": [
+      {
+        "viewName": "SongWithNames",
+        "createSql": "CREATE VIEW `${VIEW_NAME}` AS SELECT s.id, s.title, s.artistId, asm.albumId,\n        s.durationMs, s.sourceId, s.isFavorite, s.isActive,\n        asm.discNumber, asm.trackNumber,\n        al.year, s.genre, s.tagVersion,\n        sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,\n        a.name as artistName,\n        al.name as albumName,\n        aw.uriSmall as albumArtUri,\n        aw.uriLarge as albumArtUriLarge,\n        al.albumArtist as albumArtistName\n    FROM songs s\n    INNER JOIN album_song_mapping asm ON s.id = asm.songId\n    LEFT JOIN artists a ON s.artistId = a.id\n    LEFT JOIN albums al ON asm.albumId = al.id\n    LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0\n    LEFT JOIN song_technical_info sti ON s.id = sti.songId"
+      }
+    ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd8fd8b61db98d677f59b36ea580d842c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '64869ca12d39f7c63ad55bc9c1e76d83')"
     ]
   }
 }

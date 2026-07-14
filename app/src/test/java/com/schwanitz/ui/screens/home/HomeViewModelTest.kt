@@ -147,6 +147,20 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `search within favorites filters both`() = runTest {
+        viewModel.uiState.test {
+            skipItems(1)
+            viewModel.toggleFavoritesFilter()
+            awaitItem() // favorites only: 1 song
+            viewModel.onSearchQueryChange("Alpha")
+            val state = awaitItem()
+            // Only song 3 is a favorite AND matches "Alpha" (artist name)
+            assertEquals(1, state.songs.size)
+            assertEquals("Gamma Song", state.songs[0].title)
+        }
+    }
+
+    @Test
     fun `search query is stored in state`() = runTest {
         viewModel.uiState.test {
             skipItems(1)

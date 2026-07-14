@@ -1,6 +1,6 @@
 package com.schwanitz.data.local.converter
 
-import com.schwanitz.data.local.dao.SongDao
+import com.schwanitz.data.local.entity.SongWithNames
 import com.schwanitz.data.local.entity.AlbumArtworkEntity
 import com.schwanitz.data.local.entity.AlbumEntity
 import com.schwanitz.data.local.entity.AlbumSongMappingEntity
@@ -38,7 +38,7 @@ class MapperTest {
         bitrate: Int = 320,
         fileSize: Long = 10_000_000,
         tagVersion: String = "ID3v2.3"
-    ) = SongDao.SongWithNames(
+    ) = SongWithNames(
         id = id, title = title, artistId = artistId, artistName = artistName,
         albumId = albumId, albumName = albumName, albumArtistName = albumArtistName,
         durationMs = durationMs, albumArtUri = albumArtUri, albumArtUriLarge = albumArtUriLarge,

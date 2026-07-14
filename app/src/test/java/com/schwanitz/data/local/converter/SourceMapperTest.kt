@@ -19,8 +19,6 @@ class SourceMapperTest {
             isEnabled = true,
             folderUri = "content://some/uri",
             url = "https://nas.local/music",
-            username = "admin",
-            password = "secret",
             path = "/music"
         )
         val domain = entity.toDomain()
@@ -30,8 +28,8 @@ class SourceMapperTest {
         assertTrue(domain.isEnabled)
         assertEquals("content://some/uri", domain.folderUri)
         assertEquals("https://nas.local/music", domain.url)
-        assertEquals("admin", domain.username)
-        assertEquals("secret", domain.password)
+        assertNull(domain.username)
+        assertNull(domain.password)
         assertEquals("/music", domain.path)
     }
 
@@ -51,8 +49,6 @@ class SourceMapperTest {
             isEnabled = false,
             folderUri = "content://docs/123",
             url = null,
-            username = null,
-            password = null,
             path = "/sdcard/Music"
         )
         val entity = domain.toEntity()
@@ -62,13 +58,11 @@ class SourceMapperTest {
         assertEquals(false, entity.isEnabled)
         assertEquals("content://docs/123", entity.folderUri)
         assertNull(entity.url)
-        assertNull(entity.username)
-        assertNull(entity.password)
         assertEquals("/sdcard/Music", entity.path)
     }
 
     @Test
-    fun `roundtrip domain toEntity toDomain preserves identity`() {
+    fun `roundtrip domain toEntity toDomain drops credentials`() {
         val original = SourceConfig(
             id = "round-1",
             name = "Test Source",
@@ -81,7 +75,11 @@ class SourceMapperTest {
             path = "/data"
         )
         val roundtripped = original.toEntity().toDomain()
-        assertEquals(original, roundtripped)
+        assertEquals(original.id, roundtripped.id)
+        assertEquals(original.name, roundtripped.name)
+        assertEquals(original.type, roundtripped.type)
+        assertNull(roundtripped.username)
+        assertNull(roundtripped.password)
     }
 
     @Test
@@ -93,8 +91,6 @@ class SourceMapperTest {
             isEnabled = true,
             folderUri = "content://test",
             url = "https://test",
-            username = "u",
-            password = "p",
             path = "/p"
         )
         val roundtripped = original.toDomain().toEntity()

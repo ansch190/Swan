@@ -18,7 +18,5 @@ data class SourceConfigEntity(
     val isEnabled: Boolean = true,
     val folderUri: String? = null,
     val url: String? = null,
-    val username: String? = null,
-    val password: String? = null,
     val path: String? = null
 )

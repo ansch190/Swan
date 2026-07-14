@@ -25,21 +25,16 @@ import timber.log.Timber
 import java.io.IOException
 import java.io.StringReader
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class WebDavMusicSource @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val client: OkHttpClient
 ) : MusicSource {
 
     override val type: SourceType = SourceType.WEBDAV
-
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
 
     private val xmlMediaType = "application/xml; charset=utf-8".toMediaType()
 

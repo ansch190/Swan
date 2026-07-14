@@ -9,7 +9,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
 import timber.log.Timber
-import java.util.concurrent.TimeUnit
 import com.schwanitz.data.rateLimit.RateLimiter
 import com.schwanitz.di.GeniusRateLimiter as GeniusQualifier
 import javax.inject.Inject
@@ -18,15 +17,11 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class GeniusApiService @Inject constructor(
-    @GeniusQualifier private val rateLimiter: RateLimiter
+    @GeniusQualifier private val rateLimiter: RateLimiter,
+    private val client: OkHttpClient
 ) {
 
     private val json = Json { ignoreUnknownKeys = true }
-
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
 
     private val apiBase = "https://api.genius.com"
 

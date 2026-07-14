@@ -1,11 +1,10 @@
 ﻿package com.schwanitz.data.local.converter
 
-import com.schwanitz.data.local.dao.PlaylistDao
 import com.schwanitz.data.local.dao.SongDao
 import com.schwanitz.data.local.entity.*
 import com.schwanitz.domain.model.*
 
-fun SongDao.SongWithNames.toDomain(): Song = Song(
+fun SongWithNames.toDomain(): Song = Song(
     id = id,
     title = title,
     artistId = artistId,
@@ -83,29 +82,4 @@ fun AlbumArtwork.toEntity(): AlbumArtworkEntity = AlbumArtworkEntity(
     sortOrder = sortOrder,
     uriLarge = uriLarge,
     uriSmall = uriSmall
-)
-
-fun PlaylistDao.PlaylistSongWithNames.toSongDomain(): Song = Song(
-    id = id,
-    title = title,
-    artistId = artistId,
-    artistName = artistName ?: "",
-    albumId = albumId,
-    albumName = albumName ?: "",
-    albumArtistName = albumArtistName ?: "",
-    durationMs = durationMs,
-    albumArtUri = albumArtUri,
-    albumArtUriLarge = albumArtUriLarge,
-    sourceId = sourceId,
-    isFavorite = isFavorite,
-    isActive = isActive,
-    discNumber = discNumber,
-    trackNumber = trackNumber,
-    year = year,
-    genre = genre,
-    mimeType = mimeType,
-    sampleRate = sampleRate,
-    bitrate = bitrate,
-    fileSize = fileSize,
-    tagVersion = tagVersion
 )

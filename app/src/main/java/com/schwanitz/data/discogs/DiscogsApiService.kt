@@ -5,15 +5,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
-import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import timber.log.Timber
-import java.net.UnknownHostException
-import java.util.concurrent.Callable
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
 import com.schwanitz.data.rateLimit.RateLimiter
 import com.schwanitz.di.DiscogsRateLimiter as DiscogsQualifier
 import javax.inject.Inject
@@ -22,33 +16,10 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class DiscogsApiService @Inject constructor(
-    @DiscogsQualifier private val rateLimiter: RateLimiter
+    @DiscogsQualifier private val rateLimiter: RateLimiter,
+    private val client: OkHttpClient
 ) {
     private val json = Json { ignoreUnknownKeys = true }
-
-    private val dnsExecutor = Executors.newCachedThreadPool { r ->
-        Thread(r, "DiscogsDns").also { it.isDaemon = true }
-    }
-
-    private val timeoutDns = object : Dns {
-        override fun lookup(hostname: String): List<java.net.InetAddress> {
-            val future = dnsExecutor.submit(Callable {
-                Dns.SYSTEM.lookup(hostname)
-            })
-            try {
-                return future.get(10, TimeUnit.SECONDS)
-            } catch (e: TimeoutException) {
-                future.cancel(true)
-                throw UnknownHostException("DNS lookup timed out for $hostname")
-            }
-        }
-    }
-
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .dns(timeoutDns)
-        .build()
 
     private val apiBase = "https://api.discogs.com"
     private val authParams = "key=${BuildConfig.DISCOGS_CONSUMER_KEY}&secret=${BuildConfig.DISCOGS_CONSUMER_SECRET}"

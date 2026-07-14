@@ -102,6 +102,7 @@ dependencies {
     implementation("org.slf4j:slf4j-android:1.7.36")
     implementation(libs.jsoup)
     implementation(libs.timber)
+    implementation(libs.security.crypto)
     implementation("androidx.documentfile:documentfile:1.1.0")
     implementation(libs.androidx.datastore.preferences)
 

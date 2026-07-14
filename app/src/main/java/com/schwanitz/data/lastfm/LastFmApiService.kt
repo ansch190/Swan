@@ -8,7 +8,6 @@ import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import timber.log.Timber
-import java.util.concurrent.TimeUnit
 import com.schwanitz.data.rateLimit.RateLimiter
 import com.schwanitz.di.LastFmRateLimiter as LastFmQualifier
 import javax.inject.Inject
@@ -17,15 +16,11 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class LastFmApiService @Inject constructor(
-    @LastFmQualifier private val rateLimiter: RateLimiter
+    @LastFmQualifier private val rateLimiter: RateLimiter,
+    private val client: OkHttpClient
 ) {
 
     private val json = Json { ignoreUnknownKeys = true }
-
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
 
     private val apiBase = "https://ws.audioscrobbler.com/2.0/"
 
