@@ -3,3 +3,6 @@
 #
 # For more details, see
 #   https://d.android.com/r/tools/r8/keep-rules
+
+# Tagix (SNAPSHOT) — no bundled R8 rules
+-keep class com.github.ansch190.** { *; }
