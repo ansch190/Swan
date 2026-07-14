@@ -63,20 +63,10 @@ fun SongListItem(
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Surface(
+                AlbumArtPlaceholder(
                     modifier = Modifier.size(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Filled.MusicNote,
-                            contentDescription = stringResource(R.string.cd_album_art),
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                    iconSize = 24.dp
+                )
             }
         },
         headlineContent = {

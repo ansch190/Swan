@@ -64,6 +64,13 @@ fun Album.toEntity(): AlbumEntity = AlbumEntity(
     year = year
 )
 
+fun SongDao.AlbumProjection.toDomain(): Album = Album(
+    id = albumId,
+    name = albumName,
+    albumArtist = albumArtist ?: "",
+    albumArtUri = albumArtUri
+)
+
 fun AlbumArtworkEntity.toDomain(): AlbumArtwork = AlbumArtwork(
     albumId = albumId,
     sortOrder = sortOrder,

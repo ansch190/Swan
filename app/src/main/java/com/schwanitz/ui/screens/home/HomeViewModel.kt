@@ -6,6 +6,8 @@ import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.player.MusicPlayerManager
 import com.schwanitz.ui.common.ErrorHolder
+import com.schwanitz.ui.common.filterSongs
+import com.schwanitz.ui.common.toggleFavorite
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -36,15 +38,7 @@ class HomeViewModel @Inject constructor(
         _showFavoritesOnly,
         musicRepository.getAllSongs()
     ) { query, favoritesOnly, songs ->
-        val filtered = when {
-            query.isNotBlank() -> songs.filter {
-                it.title.contains(query, ignoreCase = true) ||
-                        it.artistName.contains(query, ignoreCase = true) ||
-                        it.albumName.contains(query, ignoreCase = true)
-            }
-            favoritesOnly -> songs.filter { it.isFavorite }
-            else -> songs
-        }
+        val filtered = songs.filterSongs(query, favoritesOnly)
         HomeUiState(
             songs = filtered,
             isLoading = false,
@@ -65,10 +59,5 @@ class HomeViewModel @Inject constructor(
         playerManager.play(song, listOf(song))
     }
 
-    fun toggleFavorite(song: Song) {
-        viewModelScope.launch {
-            runCatching { musicRepository.toggleFavorite(song.id) }
-                .exceptionOrNull()?.let { errorHolder.emit(it) }
-        }
-    }
+    fun toggleFavorite(song: Song) = toggleFavorite(song, musicRepository, errorHolder)
 }

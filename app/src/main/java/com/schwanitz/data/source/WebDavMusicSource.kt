@@ -155,7 +155,7 @@ class WebDavMusicSource @Inject constructor(
                         collectAudioFiles(baseUrl, username, password, entry.href, result, depth + 1)
                     }
                 }
-            } else if (isAudioFile(entry.href)) {
+            } else if (entry.href.isAudioFile()) {
                 result.add(fullUrl to entry.contentLength)
             }
         }
@@ -328,12 +328,6 @@ class WebDavMusicSource @Inject constructor(
             } ?: throw IOException("Empty body")
         }
         return tempFile
-    }
-
-    private fun isAudioFile(name: String): Boolean {
-        val extensions = setOf("mp3", "flac", "wav", "aac", "ogg", "m4a", "wma", "opus")
-        val ext = name.substringAfterLast('.', "").lowercase()
-        return ext in extensions
     }
 
     suspend fun testConnection(

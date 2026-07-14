@@ -11,6 +11,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import com.schwanitz.ui.common.ErrorHolder
+import com.schwanitz.ui.common.filterSongs
 import javax.inject.Inject
 
 data class SelectSongsUiState(
@@ -42,15 +43,7 @@ class SelectSongsViewModel @Inject constructor(
         _showFavoritesOnly,
         musicRepository.getAllSongs()
     ) { query, favoritesOnly, songs ->
-        val filtered = when {
-            query.isNotBlank() -> songs.filter {
-                it.title.contains(query, ignoreCase = true) ||
-                    it.artistName.contains(query, ignoreCase = true) ||
-                    it.albumName.contains(query, ignoreCase = true)
-            }
-            favoritesOnly -> songs.filter { it.isFavorite }
-            else -> songs
-        }
+        val filtered = songs.filterSongs(query, favoritesOnly)
         SelectSongsUiState(
             songs = filtered,
             isLoading = false,

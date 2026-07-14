@@ -7,6 +7,7 @@ import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.player.MusicPlayerManager
 import com.schwanitz.ui.common.ErrorHolder
+import com.schwanitz.ui.common.toggleFavorite
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -51,10 +52,5 @@ class NowPlayingViewModel @Inject constructor(
         }
     }
 
-    fun toggleFavorite(song: Song) {
-        viewModelScope.launch {
-            runCatching { musicRepository.toggleFavorite(song.id) }
-                .exceptionOrNull()?.let { errorHolder.emit(it) }
-        }
-    }
+    fun toggleFavorite(song: Song) = toggleFavorite(song, musicRepository, errorHolder)
 }

@@ -38,6 +38,8 @@ import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
 import com.schwanitz.ui.components.MarqueeText
 import com.schwanitz.ui.common.CollectSnackbarErrors
+import com.schwanitz.ui.components.ArtworkPager
+import com.schwanitz.ui.components.AlbumArtPlaceholder
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
 import kotlinx.coroutines.launch
 
@@ -181,50 +183,11 @@ private fun SongHeader(song: Song, artworks: List<AlbumArtwork>) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (artworks.isNotEmpty()) {
-            val artPagerState = rememberPagerState(pageCount = { artworks.size })
-            LaunchedEffect(song.id) {
-                artPagerState.scrollToPage(0)
-            }
-            HorizontalPager(
-                state = artPagerState,
-                modifier = Modifier.size(200.dp)
-            ) { page ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                ) {
-                    AsyncImage(
-                        model = artworks[page].uriLarge,
-                        contentDescription = stringResource(R.string.cd_album_art),
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
-                }
-            }
-            if (artworks.size > 1) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    repeat(artworks.size) { index ->
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 3.dp)
-                                .size(if (artPagerState.currentPage == index) 8.dp else 6.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (artPagerState.currentPage == index)
-                                        MaterialTheme.colorScheme.onSurface
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                                )
-                        )
-                    }
-                }
-            }
+            ArtworkPager(
+                artworks = artworks,
+                modifier = Modifier.size(200.dp),
+                scrollKey = song.id
+            )
         } else if (song.albumArtUriLarge != null) {
             AsyncImage(
                 model = song.albumArtUriLarge,
@@ -236,20 +199,10 @@ private fun SongHeader(song: Song, artworks: List<AlbumArtwork>) {
                 contentScale = ContentScale.Fit
             )
         } else {
-            Surface(
+            AlbumArtPlaceholder(
                 modifier = Modifier.size(200.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Filled.MusicNote,
-                        contentDescription = stringResource(R.string.cd_album_art),
-                        modifier = Modifier.size(80.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+                iconSize = 80.dp
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))

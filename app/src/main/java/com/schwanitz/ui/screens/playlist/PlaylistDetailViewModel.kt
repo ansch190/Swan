@@ -14,6 +14,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import com.schwanitz.ui.common.ErrorHolder
+import com.schwanitz.ui.common.toggleFavorite
 import javax.inject.Inject
 
 private const val FAVORITES_PLAYLIST_ID = -1L
@@ -77,13 +78,7 @@ class PlaylistDetailViewModel @Inject constructor(
         playerManager.play(song, songs.value)
     }
 
-    fun toggleFavorite(song: Song) {
-        viewModelScope.launch {
-            runCatching {
-                musicRepository.toggleFavorite(song.id)
-            }.exceptionOrNull()?.let { errorHolder.emit(it) }
-        }
-    }
+    fun toggleFavorite(song: Song) = toggleFavorite(song, musicRepository, errorHolder)
 
     fun savePlaylistChanges(songIds: List<String>, deleteSongIds: List<String>) {
         viewModelScope.launch {

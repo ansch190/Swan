@@ -125,15 +125,9 @@ class LocalFolderMusicSource @Inject constructor(
         for (file in files) {
             if (file.isDirectory) {
                 collectAudioFiles(file, result)
-            } else if (file.isFile && isAudioFile(file.name ?: "")) {
+            } else if (file.isFile && (file.name ?: "").isAudioFile()) {
                 result.add(file.uri)
             }
         }
-    }
-
-    private fun isAudioFile(name: String): Boolean {
-        val extensions = setOf("mp3", "flac", "wav", "aac", "ogg", "m4a", "wma", "opus")
-        val ext = name.substringAfterLast('.', "").lowercase()
-        return ext in extensions
     }
 }

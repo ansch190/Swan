@@ -4,10 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.repository.ArtistRepository
 import com.schwanitz.domain.repository.MusicRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
+import com.schwanitz.ui.common.ArtistImageLoader
 import com.schwanitz.ui.common.ErrorHolder
 import com.schwanitz.ui.components.SelectionDelegate
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,7 +20,7 @@ import javax.inject.Inject
 class GenreDetailViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
     private val playerManager: MusicPlayerManager,
-    private val artistRepository: ArtistRepository,
+    private val artistImageLoader: ArtistImageLoader,
     private val playlistRepository: PlaylistRepository
 ) : ViewModel() {
 
@@ -35,9 +35,7 @@ class GenreDetailViewModel @Inject constructor(
 
     val errorHolder = ErrorHolder()
 
-    private val _artistImageUris = MutableStateFlow<Map<String, String?>>(emptyMap())
-    val artistImageUris: StateFlow<Map<String, String?>> = _artistImageUris
-    private val imageUris = mutableMapOf<String, String?>()
+    val artistImageUris: StateFlow<Map<String, String?>> = artistImageLoader.artistImageUris
 
     fun loadGenre(genre: String) {
         viewModelScope.launch {
@@ -51,32 +49,10 @@ class GenreDetailViewModel @Inject constructor(
                 launch {
                     musicRepository.getArtistsByGenre(genre).collect {
                         _artists.value = it
-                        loadArtistImages()
+                        artistImageLoader.loadForArtists(it)
                     }
                 }
             }.exceptionOrNull()?.let { errorHolder.emit(it) }
-        }
-    }
-
-    private suspend fun loadArtistImages() {
-        for (artist in _artists.value) {
-            try {
-                if (artist.isBlank()) {
-                    imageUris[artist] = null
-                    _artistImageUris.value = imageUris.toMap()
-                    continue
-                }
-                if (!imageUris.containsKey(artist)) {
-                    imageUris[artist] = null
-                    _artistImageUris.value = imageUris.toMap()
-                    val artistEntity = artistRepository.getArtistByName(artist)
-                    val uri = artistEntity?.let { artistRepository.getArtistImageSmall(it.id) }
-                    imageUris[artist] = uri
-                    _artistImageUris.value = imageUris.toMap()
-                }
-            } catch (e: Exception) {
-                // skip this artist, continue with next
-            }
         }
     }
 

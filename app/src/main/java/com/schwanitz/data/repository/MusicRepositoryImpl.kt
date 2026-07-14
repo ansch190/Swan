@@ -72,7 +72,7 @@ class MusicRepositoryImpl @Inject constructor(
 
     override fun getAlbumsByArtistId(artistId: Long): Flow<List<Album>> {
         return songDao.getAlbumsByArtistId(artistId).map { projections ->
-            projections.map { Album(id = it.albumId, name = it.albumName, albumArtist = it.albumArtist ?: "", albumArtUri = it.albumArtUri) }
+            projections.map { it.toDomain() }
         }
     }
 
@@ -84,7 +84,7 @@ class MusicRepositoryImpl @Inject constructor(
 
     override fun getAlbumsByYear(year: Int): Flow<List<Album>> {
         return songDao.getAlbumsByYear(year).map { projections ->
-            projections.map { Album(id = it.albumId, name = it.albumName, albumArtist = it.albumArtist ?: "", albumArtUri = it.albumArtUri) }
+            projections.map { it.toDomain() }
         }
     }
 
@@ -96,7 +96,7 @@ class MusicRepositoryImpl @Inject constructor(
 
     override fun getAlbumsByGenre(genre: String): Flow<List<Album>> {
         return songDao.getAlbumsByGenre(genre).map { projections ->
-            projections.map { Album(id = it.albumId, name = it.albumName, albumArtist = it.albumArtist ?: "", albumArtUri = it.albumArtUri) }
+            projections.map { it.toDomain() }
         }
     }
 
@@ -110,7 +110,7 @@ class MusicRepositoryImpl @Inject constructor(
 
     override fun getAllAlbums(): Flow<List<Album>> {
         return songDao.getAllAlbums().map { projections ->
-            projections.map { Album(id = it.albumId, name = it.albumName, albumArtist = it.albumArtist ?: "", albumArtUri = it.albumArtUri) }
+            projections.map { it.toDomain() }
         }
     }
 
@@ -186,7 +186,7 @@ class MusicRepositoryImpl @Inject constructor(
 
     override fun getAlbumsInSeries(seriesId: Long): Flow<List<Album>> {
         return songDao.getAlbumsInSeries(seriesId).map { projections ->
-            projections.map { Album(id = it.albumId, name = it.albumName, albumArtist = it.albumArtist ?: "", albumArtUri = it.albumArtUri) }
+            projections.map { it.toDomain() }
         }
     }
 
@@ -206,7 +206,7 @@ class MusicRepositoryImpl @Inject constructor(
 
     override fun getAlbumsWithNoArtist(): Flow<List<Album>> {
         return songDao.getAlbumsWithNoArtist().map { projections ->
-            projections.map { Album(id = it.albumId, name = it.albumName, albumArtist = it.albumArtist ?: "", albumArtUri = it.albumArtUri) }
+            projections.map { it.toDomain() }
         }
     }
 
