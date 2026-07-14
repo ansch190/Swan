@@ -14,13 +14,15 @@ import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import com.schwanitz.data.rateLimit.RateLimiter
+import com.schwanitz.di.DiscogsRateLimiter as DiscogsQualifier
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class DiscogsApiService @Inject constructor(
-    private val rateLimiter: DiscogsRateLimiter
+    @DiscogsQualifier private val rateLimiter: RateLimiter
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 

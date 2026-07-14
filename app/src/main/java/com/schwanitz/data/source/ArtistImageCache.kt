@@ -45,7 +45,7 @@ object ArtistImageCache {
         }
     }
 
-    fun deleteUris(context: Context, uris: Set<String>) {
+    fun deleteUnreferenced(context: Context, uris: Set<String>) {
         val filesToKeep = uris.mapNotNull { uri ->
             try { File(Uri.parse(uri).path ?: "").name } catch (_: Exception) { null }
         }.toSet()

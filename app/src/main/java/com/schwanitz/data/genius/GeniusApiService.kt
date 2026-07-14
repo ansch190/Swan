@@ -10,12 +10,16 @@ import okhttp3.Request
 import org.jsoup.Jsoup
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
+import com.schwanitz.data.rateLimit.RateLimiter
+import com.schwanitz.di.GeniusRateLimiter as GeniusQualifier
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
-class GeniusApiService @Inject constructor() {
+class GeniusApiService @Inject constructor(
+    @GeniusQualifier private val rateLimiter: RateLimiter
+) {
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -54,6 +58,7 @@ class GeniusApiService @Inject constructor() {
         return withTimeout(30_000.milliseconds) {
             withContext(Dispatchers.IO) {
                 try {
+                    rateLimiter.acquire()
                     val request = Request.Builder()
                         .url("$apiBase/search?q=$encoded")
                         .header("Authorization", "Bearer ${BuildConfig.GENIUS_ACCESS_TOKEN}")
@@ -95,6 +100,7 @@ class GeniusApiService @Inject constructor() {
         return withTimeout(30_000.milliseconds) {
             withContext(Dispatchers.IO) {
                 try {
+                    rateLimiter.acquire()
                     val request = Request.Builder()
                         .url(pageUrl)
                         .header("User-Agent", "SwanMusicPlayer/1.0")

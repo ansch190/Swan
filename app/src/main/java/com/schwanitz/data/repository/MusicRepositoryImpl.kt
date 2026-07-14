@@ -333,7 +333,7 @@ class MusicRepositoryImpl @Inject constructor(
         val usedSmallUris = artistPicDao.getAllSmallUris().toSet()
         val usedLargeUris = artistPicDao.getAllLargeUris().toSet()
         val usedUris = usedSmallUris + usedLargeUris
-        ArtistImageCache.deleteUris(context, usedUris)
+        ArtistImageCache.deleteUnreferenced(context, usedUris)
     }
 
     private suspend fun cleanupOrphanedArtworkFiles() {

@@ -1,14 +1,10 @@
-package com.schwanitz.data.discogs
+package com.schwanitz.data.rateLimit
 
 import kotlinx.coroutines.delay
 import timber.log.Timber
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlin.time.Duration.Companion.milliseconds
 
-@Singleton
-class DiscogsRateLimiter @Inject constructor() {
-    private val maxPerMinute = 50
+class RateLimiter(private val maxPerMinute: Int) {
     private val slots = mutableListOf<Long>()
     private val lock = Any()
 

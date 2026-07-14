@@ -9,12 +9,16 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
+import com.schwanitz.data.rateLimit.RateLimiter
+import com.schwanitz.di.LastFmRateLimiter as LastFmQualifier
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
-class LastFmApiService @Inject constructor() {
+class LastFmApiService @Inject constructor(
+    @LastFmQualifier private val rateLimiter: RateLimiter
+) {
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -43,6 +47,7 @@ class LastFmApiService @Inject constructor() {
         return withTimeout(30_000.milliseconds) {
             withContext(Dispatchers.IO) {
                 try {
+                    rateLimiter.acquire()
                     val request = Request.Builder()
                         .url(url)
                         .header("User-Agent", "SwanMusicPlayer/1.0")
