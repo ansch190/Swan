@@ -81,7 +81,9 @@ class MusicPlayerManager @Inject constructor(
                 if (index in songQueue.indices) {
                     _playerState.value = _playerState.value.copy(
                         currentSong = songQueue[index],
-                        currentIndex = index
+                        currentIndex = index,
+                        duration = player.duration.coerceAtLeast(0),
+                        currentPosition = 0
                     )
                 }
             }
