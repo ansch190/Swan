@@ -124,12 +124,14 @@ fun AlbumDetailScreen(
                             onPlaySelection = { viewModel.playSelection() },
                             onAddToPlaylist = { showPlaylistPicker = true },
                             onAddToQueue = { viewModel.addSelectionToQueue() },
-                            extraMenuItems = {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.context_play_entire_album)) },
-                                    onClick = { viewModel.playEntireAlbum(song) }
-                                )
-                            }
+                            extraMenuItems = if (cdList.size > 1) {
+                                {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.context_play_entire_album)) },
+                                        onClick = { viewModel.playEntireAlbum(song) }
+                                    )
+                                }
+                            } else {{}}
                         )
                     }
                 }
