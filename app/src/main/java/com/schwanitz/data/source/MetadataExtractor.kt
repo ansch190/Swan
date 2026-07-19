@@ -103,21 +103,26 @@ object MetadataExtractor {
             val allUris: List<String>
             val allArtworks: List<ArtworkResult>
 
-            if (albumKey.isNotEmpty() && albumKey in albumArtworkCache) {
-                allUris = albumArtworkCache[albumKey]!!
-                allArtworks = emptyList()
-                Timber.d("Artwork cache HIT for album key: %s (%d URIs)", albumKey, allUris.size)
-            } else {
-                val artworkResults = if (bestMetadata != null) saveArtwork(bestMetadata, context) else emptyList()
-                val artworkUris = artworkResults.map { it.largeUri }
+            if (albumKey.isNotEmpty()) {
+                val placeholder = albumArtworkCache.putIfAbsent(albumKey, emptyList())
+                if (placeholder != null) {
+                    allUris = placeholder
+                    allArtworks = emptyList()
+                    Timber.d("Artwork cache HIT for album key: %s (%d URIs)", albumKey, allUris.size)
+                } else {
+                    val artworkResults = if (bestMetadata != null) saveArtwork(bestMetadata, context) else emptyList()
+                    val artworkUris = artworkResults.map { it.largeUri }
 
-                allUris = artworkUris
-                allArtworks = artworkResults
-
-                if (albumKey.isNotEmpty() && allUris.isNotEmpty()) {
-                    albumArtworkCache[albumKey] = allUris
-                    Timber.d("Artwork cache STORE for album key: %s (%d URIs)", albumKey, allUris.size)
+                    if (artworkUris.isNotEmpty()) {
+                        albumArtworkCache[albumKey] = artworkUris
+                        Timber.d("Artwork cache STORE for album key: %s (%d URIs)", albumKey, artworkUris.size)
+                    }
+                    allUris = artworkUris
+                    allArtworks = artworkResults
                 }
+            } else {
+                allUris = emptyList()
+                allArtworks = emptyList()
             }
 
             val song = Song(
