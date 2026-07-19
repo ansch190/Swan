@@ -28,21 +28,24 @@ class SourceLifecycleManagerImpl @Inject constructor(
             return
         }
         Timber.d("Loading songs from source...")
+        songLyricsDao.deleteBySource(sourceId)
+        songDao.deleteBySource(sourceId)
+        scanOrchestrator.deleteOrphanedAlbums()
         val result = try {
-            source.loadSongs(config, onProgress)
+            source.loadSongs(config, onProgress) { batch ->
+                scanOrchestrator.persistScanResult(batch)
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error loading songs for %s", sourceId)
             throw e
         }
-        Timber.d("Found %d songs, %d albums. Replacing old data...", result.songs.size, result.albums.size)
-        songLyricsDao.deleteBySource(sourceId)
-        songDao.deleteBySource(sourceId)
-        scanOrchestrator.deleteOrphanedAlbums()
-        scanOrchestrator.persistScanResult(result)
+        if (result.songs.isNotEmpty()) {
+            scanOrchestrator.persistScanResult(result)
+        }
         scanOrchestrator.cleanupOrphanedArtworkFiles()
         scanOrchestrator.cleanupOrphanedArtists()
         scanOrchestrator.refreshAlbumSeries()
-        Timber.i("refreshSource finished for %s: %d songs, %d albums", sourceId, result.songs.size, result.albums.size)
+        Timber.i("refreshSource finished for %s", sourceId)
     }
 
     override suspend fun deleteBySource(sourceId: String) {
@@ -69,10 +72,14 @@ class SourceLifecycleManagerImpl @Inject constructor(
                 songLyricsDao.deleteBySource(config.id)
                 songDao.deleteBySource(config.id)
                 scanOrchestrator.deleteOrphanedAlbums()
-                val result = source.loadSongs(config) { scanned, total ->
+                val result = source.loadSongs(config, { scanned, total ->
                     onProgress(config.name, scanned, total)
+                }) { batch ->
+                    scanOrchestrator.persistScanResult(batch)
                 }
-                scanOrchestrator.persistScanResult(result)
+                if (result.songs.isNotEmpty()) {
+                    scanOrchestrator.persistScanResult(result)
+                }
             } catch (e: Exception) {
                 Timber.e(e, "Error reloading source %s, skipping", config.name)
             }

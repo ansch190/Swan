@@ -1,7 +1,6 @@
 ﻿package com.schwanitz.data.source
 
 import android.content.Context
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import com.schwanitz.domain.model.Album
@@ -27,7 +26,8 @@ class LocalFolderMusicSource @Inject constructor(
 
     override suspend fun loadSongs(
         config: SourceConfig,
-        onProgress: (Int, Int) -> Unit
+        onProgress: (Int, Int) -> Unit,
+        onBatch: suspend (LoadSongsResult) -> Unit
     ): LoadSongsResult = withContext(Dispatchers.IO) {
         val treeUri = Uri.parse(config.folderUri ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap()))
         val documentFile = DocumentFile.fromTreeUri(context, treeUri) ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
@@ -37,7 +37,7 @@ class LocalFolderMusicSource @Inject constructor(
 
         val total = audioUris.size
         val songs = mutableListOf<Song>()
-        val albumMap = mutableMapOf<String, com.schwanitz.domain.model.Album>()
+        val albumMap = mutableMapOf<String, Album>()
         val albumArtworkMap = mutableMapOf<String, MutableList<AlbumArtwork>>()
         val albumArtworkCache = mutableMapOf<String, List<String>>()
 
@@ -55,55 +55,46 @@ class LocalFolderMusicSource @Inject constructor(
                 try {
                     val source = ContentUriDataSource(afd, uri.toString())
                     val fileSize = source.length()
-                    val retriever = MediaMetadataRetriever()
-                    try {
-                        val fd = afd.parcelFileDescriptor.fileDescriptor
-                        if (afd.declaredLength >= 0L) {
-                            retriever.setDataSource(fd, afd.startOffset, afd.declaredLength)
-                        } else {
-                            retriever.setDataSource(fd)
+                    val extension = uri.toString().substringAfterLast('.', "").lowercase()
+                    val result = MetadataExtractor.buildSong(
+                        source, uri.toString(), config.id, context, fileSize,
+                        albumArtworkCache = albumArtworkCache,
+                        fileExtension = extension
+                    )
+                    val totalMs = System.currentTimeMillis() - t0
+                    if (result.song != null) {
+                        Timber.d("[%d/%d] '%s' OK (%dms)", index + 1, total, result.song.title, totalMs)
+
+                        val albumKey = "${result.song.albumArtistName}|${result.song.albumName}|${result.song.year}"
+                        if (albumKey !in albumMap) {
+                            val albumEntry = Album(
+                                name = result.song.albumName,
+                                albumArtist = result.song.albumArtistName,
+                                year = result.song.year
+                            )
+                            albumMap[albumKey] = albumEntry
                         }
-                        val result = MetadataExtractor.buildSong(
-                            source, retriever, uri.toString(), config.id, context, fileSize,
-                            albumArtworkCache = albumArtworkCache
-                        )
-                        val totalMs = System.currentTimeMillis() - t0
-                        if (result.song != null) {
-                            Timber.d("[%d/%d] '%s' OK (%dms)", index + 1, total, result.song.title, totalMs)
 
-                            val albumKey = "${result.song.albumArtistName}|${result.song.albumName}|${result.song.year}"
-                            if (albumKey !in albumMap) {
-                                val albumEntry = Album(
-                                    name = result.song.albumName,
-                                    albumArtist = result.song.albumArtistName,
-                                    year = result.song.year
-                                )
-                                albumMap[albumKey] = albumEntry
-                            }
+                        val albumForSong = albumMap[albumKey]!!
+                        val songWithAlbumId = result.song.copy(albumId = albumForSong.id)
 
-                            val albumForSong = albumMap[albumKey]!!
-                            val songWithAlbumId = result.song.copy(albumId = albumForSong.id)
+                        songs.add(songWithAlbumId)
 
-                            songs.add(songWithAlbumId)
-
-                            if (result.artworks.isNotEmpty()) {
-                                val artworkList = albumArtworkMap.getOrPut(albumKey) { mutableListOf() }
-                                for (artResult in result.artworks) {
-                                    artworkList.add(
-                                        AlbumArtwork(
-                                            albumId = 0,
-                                            sortOrder = artworkList.size,
-                                            uriLarge = artResult.largeUri,
-                                            uriSmall = artResult.smallUri
-                                        )
+                        if (result.artworks.isNotEmpty()) {
+                            val artworkList = albumArtworkMap.getOrPut(albumKey) { mutableListOf() }
+                            for (artResult in result.artworks) {
+                                artworkList.add(
+                                    AlbumArtwork(
+                                        albumId = 0,
+                                        sortOrder = artworkList.size,
+                                        uriLarge = artResult.largeUri,
+                                        uriSmall = artResult.smallUri
                                     )
-                                }
+                                )
                             }
-                        } else {
-                            Timber.w("[%d/%d] %s -> FAILED (%dms)", index + 1, total, uri.lastPathSegment, totalMs)
                         }
-                    } finally {
-                        try { retriever.release() } catch (_: Exception) {}
+                    } else {
+                        Timber.w("[%d/%d] %s -> FAILED (%dms)", index + 1, total, uri.lastPathSegment, totalMs)
                     }
                 } finally {
                     try { afd.close() } catch (_: Exception) {}

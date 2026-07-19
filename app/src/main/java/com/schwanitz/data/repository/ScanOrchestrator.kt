@@ -33,7 +33,6 @@ class ScanOrchestrator @Inject constructor(
     private val albumSeriesDao: AlbumSeriesDao,
     @ApplicationContext private val context: Context
 ) {
-    @androidx.room.Transaction
     suspend fun persistScanResult(result: LoadSongsResult) {
         val artistNameToId = mutableMapOf<String, Long>()
 

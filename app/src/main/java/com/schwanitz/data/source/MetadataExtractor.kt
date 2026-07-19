@@ -1,7 +1,6 @@
 ﻿package com.schwanitz.data.source
 
 import android.content.Context
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import com.schwanitz.domain.model.Song
 import com.schwanitz.api.MetadataManager
@@ -43,12 +42,12 @@ object MetadataExtractor {
 
     fun buildSong(
         source: SeekableDataSource,
-        retriever: MediaMetadataRetriever,
         songId: String,
         sourceId: String,
         context: Context,
         fileSize: Long = 0L,
-        albumArtworkCache: MutableMap<String, List<String>> = mutableMapOf()
+        albumArtworkCache: MutableMap<String, List<String>> = mutableMapOf(),
+        fileExtension: String = ""
     ): BuildSongResult {
         return try {
             val metadataList: List<Metadata>
@@ -97,12 +96,7 @@ object MetadataExtractor {
             val finalTitle = textFields.title.ifBlank { fileName }
             Timber.d("Extracted for %s: title=%s artist=%s album=%s albumArtist=%s disc=%s track=%s year=%d genre=%s tag=%s", songId, textFields.title, textFields.artist, textFields.album, textFields.albumArtist, textFields.discRaw, textFields.trackRaw, textFields.year, textFields.genre, textFields.tagVersion)
 
-            val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-            val durationMs = durationStr?.toLongOrNull() ?: 0L
-
-            val mimeType = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE) ?: ""
-            val sampleRate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)?.toIntOrNull() ?: 0
-            val bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull() ?: 0
+            val mimeType = extensionToMimeType(fileExtension)
 
             val albumKey = "${textFields.albumArtist.trim()}|${textFields.album.trim()}|${textFields.year}"
 
@@ -114,21 +108,11 @@ object MetadataExtractor {
                 allArtworks = emptyList()
                 Timber.d("Artwork cache HIT for album key: %s (%d URIs)", albumKey, allUris.size)
             } else {
-                val mmrUris = mutableListOf<String>()
-                val artworkResults = mutableListOf<ArtworkResult>()
+                val artworkResults = if (bestMetadata != null) saveArtwork(bestMetadata, context) else emptyList()
+                val artworkUris = artworkResults.map { it.largeUri }
 
-                val mmrArtworkBytes = retriever.embeddedPicture
-                if (mmrArtworkBytes != null) {
-                    val result = ArtworkCache.saveScaled(mmrArtworkBytes, context, 0)
-                    mmrUris.add(result.largeUri)
-                    artworkResults.add(result)
-                }
-
-                val tagArtResults = if (bestMetadata != null) saveArtwork(bestMetadata, context) else emptyList()
-                val tagUris = tagArtResults.map { it.largeUri }
-                allUris = (mmrUris + tagUris.filter { it !in mmrUris })
-
-                allArtworks = artworkResults + tagArtResults.filter { it.largeUri !in mmrUris }
+                allUris = artworkUris
+                allArtworks = artworkResults
 
                 if (albumKey.isNotEmpty() && allUris.isNotEmpty()) {
                     albumArtworkCache[albumKey] = allUris
@@ -141,7 +125,7 @@ object MetadataExtractor {
                 title = finalTitle,
                 artistName = textFields.artist.trim(),
                 albumName = textFields.album.trim(),
-                durationMs = durationMs,
+                durationMs = 0L,
                 sourceId = sourceId,
                 albumArtistName = textFields.albumArtist.trim(),
                 discNumber = textFields.discRaw.trim().substringBefore('/').filter { it.isDigit() }.toIntOrNull() ?: 0,
@@ -149,8 +133,8 @@ object MetadataExtractor {
                 year = textFields.year,
                 genre = textFields.genre,
                 mimeType = mimeType,
-                sampleRate = sampleRate,
-                bitrate = bitrate,
+                sampleRate = 0,
+                bitrate = 0,
                 tagVersion = textFields.tagVersion,
                 fileSize = fileSize
             )
@@ -160,6 +144,18 @@ object MetadataExtractor {
             Timber.e(e, "buildSong failed for %s", songId)
             BuildSongResult(null, emptyList())
         }
+    }
+
+    private fun extensionToMimeType(ext: String): String = when (ext.lowercase()) {
+        "mp3" -> "audio/mpeg"
+        "flac" -> "audio/flac"
+        "m4a" -> "audio/mp4"
+        "ogg" -> "audio/ogg"
+        "opus" -> "audio/opus"
+        "wav" -> "audio/wav"
+        "wma" -> "audio/x-ms-wma"
+        "aac" -> "audio/aac"
+        else -> "audio/mpeg"
     }
 
     private fun extractTextFields(metadata: Metadata): TextFields {

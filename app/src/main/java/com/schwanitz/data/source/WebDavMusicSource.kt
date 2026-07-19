@@ -1,7 +1,6 @@
 ﻿package com.schwanitz.data.source
 
 import android.content.Context
-import android.media.MediaMetadataRetriever
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.Song
@@ -12,7 +11,13 @@ import com.schwanitz.domain.source.SourceType
 import com.schwanitz.io.SeekableDataSources
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import okhttp3.Credentials
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
@@ -24,7 +29,6 @@ import org.xmlpull.v1.XmlPullParserFactory
 import timber.log.Timber
 import java.io.IOException
 import java.io.StringReader
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -45,9 +49,18 @@ class WebDavMusicSource @Inject constructor(
         </D:propfind>
     """.trimIndent().toRequestBody(xmlMediaType)
 
+    private companion object {
+        const val BATCH_SIZE = 100
+        const val CONCURRENCY = 4
+        const val DEFAULT_RANGE_LIMIT = 524287L
+        const val MP3_HEADER_RANGE_LIMIT = 1023L
+        const val MP3_HEADER_SIZE = 10
+    }
+
     override suspend fun loadSongs(
         config: SourceConfig,
-        onProgress: (Int, Int) -> Unit
+        onProgress: (Int, Int) -> Unit,
+        onBatch: suspend (LoadSongsResult) -> Unit
     ): LoadSongsResult = withContext(Dispatchers.IO) {
         try {
             val baseUrl = config.url?.trimEnd('/') ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
@@ -62,36 +75,49 @@ class WebDavMusicSource @Inject constructor(
             val total = audioEntries.size
             Timber.d("Finished collecting. Found %d audio files.", total)
 
-            val songs = mutableListOf<Song>()
-            val albumMap = mutableMapOf<String, Album>()
-            val albumArtworkMap = mutableMapOf<String, MutableList<AlbumArtwork>>()
-            val albumArtworkCache = mutableMapOf<String, List<String>>()
+            val albumArtworkCache = ConcurrentHashMap<String, List<String>>()
+            var batchSongs = mutableListOf<Song>()
+            var batchAlbums = mutableMapOf<String, Album>()
+            var batchArtworks = mutableMapOf<String, MutableList<AlbumArtwork>>()
+            var processedCount = 0
+            val semaphore = Semaphore(CONCURRENCY)
 
-            Timber.d("Starting metadata extraction for %d files", total)
-            audioEntries.forEachIndexed { index, (url, fileSize) ->
-                val t0 = System.currentTimeMillis()
-                onProgress(index + 1, total)
-                val result = extractMetadata(url, config.id, username, password, fileSize, albumArtworkCache)
-                val dt = System.currentTimeMillis() - t0
+            Timber.d("Starting metadata extraction for %d files (concurrency=%d)", total, CONCURRENCY)
+            val results = coroutineScope {
+                audioEntries.mapIndexed { index, (url, fileSize) ->
+                    async {
+                        semaphore.withPermit {
+                            val t0 = System.currentTimeMillis()
+                            onProgress(index + 1, total)
+                            val result = extractMetadata(url, config.id, username, password, fileSize, albumArtworkCache)
+                            val dt = System.currentTimeMillis() - t0
+                            Timber.d("[%d/%d] %s -> %s (%dms)", index + 1, total,
+                                url.substringAfterLast('/'),
+                                result.song?.title ?: "FAILED", dt)
+                            result
+                        }
+                    }
+                }.awaitAll()
+            }
+
+            for (result in results) {
                 if (result.song != null) {
-                    Timber.d("[%d/%d] '%s' OK (%dms)", index + 1, total, result.song.title, dt)
-
                     val albumKey = "${result.song.albumArtistName}|${result.song.albumName}|${result.song.year}"
-                    if (albumKey !in albumMap) {
+                    if (albumKey !in batchAlbums) {
                         val albumEntry = Album(
                             name = result.song.albumName,
                             albumArtist = result.song.albumArtistName,
                             year = result.song.year
                         )
-                        albumMap[albumKey] = albumEntry
+                        batchAlbums[albumKey] = albumEntry
                     }
 
-                    val albumForSong = albumMap[albumKey]!!
+                    val albumForSong = batchAlbums[albumKey]!!
                     val songWithAlbumId = result.song.copy(albumId = albumForSong.id)
-                    songs.add(songWithAlbumId)
+                    batchSongs.add(songWithAlbumId)
 
                     if (result.artworks.isNotEmpty()) {
-                        val artworkList = albumArtworkMap.getOrPut(albumKey) { mutableListOf() }
+                        val artworkList = batchArtworks.getOrPut(albumKey) { mutableListOf() }
                         for (artResult in result.artworks) {
                             artworkList.add(
                                 AlbumArtwork(
@@ -103,14 +129,24 @@ class WebDavMusicSource @Inject constructor(
                             )
                         }
                     }
-                } else {
-                    Timber.w("[%d/%d] %s -> FAILED (%dms)", index + 1, total, url.substringAfterLast('/'), dt)
+                }
+
+                processedCount++
+                if (processedCount % BATCH_SIZE == 0 && batchSongs.isNotEmpty()) {
+                    Timber.d("Flushing batch of %d songs", batchSongs.size)
+                    onBatch(LoadSongsResult(batchSongs.toList(), batchAlbums.values.toList(), batchArtworks.toMap()))
+                    batchSongs = mutableListOf()
+                    batchAlbums = mutableMapOf()
+                    batchArtworks = mutableMapOf()
                 }
             }
 
-            val albums = albumMap.values.toList()
-            val allArtworks = albumArtworkMap.toMap()
-            LoadSongsResult(songs, albums, allArtworks)
+            if (batchSongs.isNotEmpty()) {
+                Timber.d("Flushing final batch of %d songs", batchSongs.size)
+                onBatch(LoadSongsResult(batchSongs, batchAlbums.values.toList(), batchArtworks.toMap()))
+            }
+
+            LoadSongsResult(emptyList(), emptyList(), emptyMap())
         } catch (e: Exception) {
             Timber.e(e, "loadSongs failed for %s", config.url)
             LoadSongsResult(emptyList(), emptyList(), emptyMap())
@@ -264,65 +300,84 @@ class WebDavMusicSource @Inject constructor(
         fileSize: Long = 0L,
         albumArtworkCache: MutableMap<String, List<String>>
     ): BuildSongResult {
-        val partialFile = try {
+        val extension = audioUrl.substringAfterLast('.', "").lowercase()
+        return try {
+            val rangeHeader = getRequestRange(audioUrl, username, password, fileSize, extension)
             val t0 = System.currentTimeMillis()
-            val file = downloadPartial(audioUrl, username, password)
+            val bytes = downloadToBytes(audioUrl, username, password, rangeHeader)
             val dlDt = System.currentTimeMillis() - t0
-            Timber.d("Partial download OK: %d bytes in %dms for %s", file.length(), dlDt, audioUrl)
-            file
-        } catch (e: Exception) {
-            Timber.e(e, "Partial download failed for %s", audioUrl)
-            return BuildSongResult(null, emptyList())
-        }
+            Timber.d("Downloaded %d bytes in %dms for %s (range: %s)", bytes.size, dlDt, audioUrl, rangeHeader)
 
-        try {
-            val source = SeekableDataSources.forPath(partialFile.toPath())
-            val retriever = MediaMetadataRetriever()
+            val source = SeekableDataSources.forBytes(bytes)
             try {
-                Timber.d("Extracting metadata from partial file: %s", partialFile.absolutePath)
-                retriever.setDataSource(partialFile.absolutePath)
-                return MetadataExtractor.buildSong(
-                    source, retriever, audioUrl, sourceId, context, fileSize,
-                    albumArtworkCache = albumArtworkCache
+                MetadataExtractor.buildSong(
+                    source, audioUrl, sourceId, context, fileSize,
+                    albumArtworkCache = albumArtworkCache,
+                    fileExtension = extension
                 )
             } finally {
-                try { retriever.release() } catch (_: Exception) {}
-                try { source.close() } catch (_: Exception) {}
+                source.close()
             }
         } catch (e: Exception) {
             Timber.e(e, "Metadata extraction failed for %s", audioUrl)
-            return BuildSongResult(null, emptyList())
-        } finally {
-            if (partialFile.exists()) partialFile.delete()
+            BuildSongResult(null, emptyList())
         }
     }
 
-    private fun downloadPartial(
+    private fun getRequestRange(
         url: String,
         username: String?,
-        password: String?
-    ): java.io.File {
-        val tempFile = java.io.File(context.cacheDir, "webdav_temp_${UUID.randomUUID()}.tmp")
+        password: String?,
+        fileSize: Long,
+        extension: String
+    ): String {
+        if (extension == "mp3") {
+            return try {
+                val headerBytes = downloadToBytes(url, username, password, "bytes=0-$MP3_HEADER_RANGE_LIMIT")
+                if (headerBytes.size >= MP3_HEADER_SIZE &&
+                    headerBytes[0] == 0x49.toByte() &&
+                    headerBytes[1] == 0x44.toByte() &&
+                    headerBytes[2] == 0x33.toByte()
+                ) {
+                    val synchsafeSize =
+                        (headerBytes[6].toInt() and 0x7F shl 21) or
+                        (headerBytes[7].toInt() and 0x7F shl 14) or
+                        (headerBytes[8].toInt() and 0x7F shl 7) or
+                        (headerBytes[9].toInt() and 0x7F)
+                    val totalTagSize = MP3_HEADER_SIZE + synchsafeSize
+                    val rangeEnd = totalTagSize.coerceAtMost(1048575) - 1
+                    Timber.d("MP3 ID3v2 tag detected: %d bytes (range: 0-%d)", totalTagSize, rangeEnd)
+                    "bytes=0-$rangeEnd"
+                } else {
+                    Timber.d("No ID3v2 header found for %s, using default range", url)
+                    "bytes=0-262143"
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to probe MP3 header for %s, using default range", url)
+                "bytes=0-262143"
+            }
+        }
+        return "bytes=0-$DEFAULT_RANGE_LIMIT"
+    }
 
-        val requestBuilder = Request.Builder()
-            .url(url)
-            .header("Range", "bytes=0-1048575")
-
+    private fun downloadToBytes(
+        url: String,
+        username: String?,
+        password: String?,
+        rangeHeader: String? = null
+    ): ByteArray {
+        val requestBuilder = Request.Builder().url(url)
+        if (rangeHeader != null) {
+            requestBuilder.header("Range", rangeHeader)
+        }
         if (username != null && password != null) {
             requestBuilder.header("Authorization", Credentials.basic(username, password))
         }
 
         client.newCall(requestBuilder.build()).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Unexpected code $response for $url")
-            val contentLength = response.body?.contentLength() ?: -1L
-            Timber.d("downloadPartial %s -> %d, content-length=%d", url, response.code, contentLength)
-            response.body?.byteStream()?.use { input ->
-                tempFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            } ?: throw IOException("Empty body")
+            return response.body?.bytes() ?: throw IOException("Empty body for $url")
         }
-        return tempFile
     }
 
     suspend fun testConnection(
