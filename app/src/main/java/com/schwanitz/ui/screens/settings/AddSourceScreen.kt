@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -518,9 +519,9 @@ private fun WebDavSourceConfig(
         && url.isNotBlank() && username.isNotBlank() && password.isNotBlank()
     val buttonColors = when (connectionTestState) {
         is ConnectionTestState.Success -> ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.tertiary,
-            disabledContainerColor = MaterialTheme.colorScheme.tertiary,
-            disabledContentColor = MaterialTheme.colorScheme.onTertiary
+            containerColor = Color(0xFF2E7D32),
+            disabledContainerColor = Color(0xFF2E7D32),
+            disabledContentColor = Color.White
         )
         is ConnectionTestState.Failure -> ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.error,
