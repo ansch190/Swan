@@ -51,6 +51,8 @@ fun SongInfoScreen(
     onAlbumClick: (String, String) -> Unit,
     onArtistClick: (String) -> Unit,
     onAllArtistsClick: () -> Unit,
+    onAllAlbumArtistsClick: () -> Unit,
+    onAlbumArtistClick: (String) -> Unit,
     onAllAlbumsClick: () -> Unit,
     onAllYearsClick: () -> Unit,
     onAllGenresClick: () -> Unit,
@@ -134,6 +136,8 @@ fun SongInfoScreen(
                         onAlbumClick = onAlbumClick,
                         onArtistClick = onArtistClick,
                         onAllArtistsClick = onAllArtistsClick,
+                        onAllAlbumArtistsClick = onAllAlbumArtistsClick,
+                        onAlbumArtistClick = onAlbumArtistClick,
                         onAllAlbumsClick = onAllAlbumsClick,
                         onAllYearsClick = onAllYearsClick,
                         onAllGenresClick = onAllGenresClick,
@@ -246,6 +250,8 @@ private fun MetadataTab(
     onAlbumClick: (String, String) -> Unit,
     onArtistClick: (String) -> Unit,
     onAllArtistsClick: () -> Unit,
+    onAllAlbumArtistsClick: () -> Unit,
+    onAlbumArtistClick: (String) -> Unit,
     onAllAlbumsClick: () -> Unit,
     onAllYearsClick: () -> Unit,
     onAllGenresClick: () -> Unit,
@@ -263,12 +269,7 @@ private fun MetadataTab(
         Spacer(modifier = Modifier.height(8.dp))
 
         InfoRow(stringResource(R.string.songinfo_field_title), song.title.ifBlank { "-" })
-        InfoRow(
-            label = stringResource(R.string.songinfo_field_artist),
-            value = song.artistName.ifBlank { "-" },
-            onLabelClick = onAllArtistsClick,
-            onValueClick = { onArtistClick(song.artistName) }
-        )
+        InfoRow(stringResource(R.string.songinfo_field_artist), song.artistName.ifBlank { "-" })
         InfoRow(
             label = stringResource(R.string.songinfo_field_album),
             value = song.albumName.ifBlank { "-" },
@@ -285,7 +286,12 @@ private fun MetadataTab(
                 onValueClick = { onSeriesClick(series.name) }
             )
         }
-        InfoRow(stringResource(R.string.songinfo_field_album_artist), song.albumArtistName.ifBlank { "-" })
+        InfoRow(
+            label = stringResource(R.string.songinfo_field_album_artist),
+            value = song.albumArtistName.ifBlank { "-" },
+            onLabelClick = onAllAlbumArtistsClick,
+            onValueClick = { onAlbumArtistClick(song.albumArtistName) }
+        )
         InfoRow(
             stringResource(R.string.songinfo_field_track),
             if (song.trackNumber > 0) {

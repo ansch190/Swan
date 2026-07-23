@@ -47,7 +47,7 @@ class GenreDetailViewModel @Inject constructor(
                     songRepository.getAlbumsByGenre(genre).collect { _albums.value = it }
                 }
                 launch {
-                    songRepository.getArtistsByGenre(genre).collect {
+                    songRepository.getAlbumArtistsByGenre(genre).collect {
                         _artists.value = it
                         artistImageLoader.loadForArtists(it)
                     }

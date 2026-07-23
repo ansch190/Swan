@@ -53,6 +53,10 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(Routes.artistDetail(artist))
                 },
                 onAllArtistsClick = { navController.navigate(Routes.ALL_ARTISTS) },
+                onAllAlbumArtistsClick = { navController.navigate(Routes.ALL_ARTISTS) },
+                onAlbumArtistClick = { artist ->
+                    navController.navigate(Routes.artistDetail(artist))
+                },
                 onAllAlbumsClick = { navController.navigate(Routes.ALL_ALBUMS) },
                 onAllYearsClick = { navController.navigate(Routes.ALL_YEARS) },
                 onAllGenresClick = { navController.navigate(Routes.ALL_GENRES) },

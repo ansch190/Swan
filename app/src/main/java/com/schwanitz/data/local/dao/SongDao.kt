@@ -167,4 +167,55 @@ interface SongDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM songs WHERE artistId IS NULL AND isActive = 1)")
     fun hasSongsWithNoArtist(): Flow<Boolean>
+
+    @Query("""
+        SELECT DISTINCT al.albumArtist FROM albums al
+        INNER JOIN album_song_mapping asm ON al.id = asm.albumId
+        INNER JOIN songs s ON asm.songId = s.id AND s.isActive = 1
+        WHERE al.albumArtist != ''
+        ORDER BY al.albumArtist ASC
+    """)
+    fun getAllAlbumArtistNamesFlow(): Flow<List<String>>
+
+    @Query("""
+        SELECT DISTINCT al.albumArtist FROM songs s
+        INNER JOIN album_song_mapping asm ON s.id = asm.songId
+        INNER JOIN albums al ON asm.albumId = al.id
+        WHERE s.genre = :genre AND s.isActive = 1 AND al.albumArtist != ''
+        ORDER BY al.albumArtist ASC
+    """)
+    fun getAlbumArtistsByGenre(genre: String): Flow<List<String>>
+
+    @Query("SELECT * FROM SongWithNames WHERE albumArtistName = :albumArtistName AND isActive = 1 ORDER BY albumId ASC, discNumber ASC, trackNumber ASC")
+    fun getSongsByAlbumArtistName(albumArtistName: String): Flow<List<SongWithNames>>
+
+    @Query("""
+        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri
+        FROM songs s
+        INNER JOIN album_song_mapping asm ON s.id = asm.songId
+        LEFT JOIN albums al ON asm.albumId = al.id
+        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
+        WHERE al.albumArtist = :albumArtistName AND s.isActive = 1
+        GROUP BY asm.albumId
+        ORDER BY al.name ASC
+    """)
+    fun getAlbumsByAlbumArtistName(albumArtistName: String): Flow<List<AlbumProjection>>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM albums al INNER JOIN album_song_mapping asm ON al.id = asm.albumId INNER JOIN songs s ON asm.songId = s.id AND s.isActive = 1 WHERE al.albumArtist IS NULL OR al.albumArtist = '')")
+    fun hasAlbumsWithNoAlbumArtist(): Flow<Boolean>
+
+    @Query("SELECT * FROM SongWithNames WHERE isActive = 1 AND (albumArtistName IS NULL OR albumArtistName = '') ORDER BY albumId ASC, discNumber ASC, trackNumber ASC")
+    fun getSongsWithNoAlbumArtist(): Flow<List<SongWithNames>>
+
+    @Query("""
+        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri
+        FROM songs s
+        INNER JOIN album_song_mapping asm ON s.id = asm.songId
+        LEFT JOIN albums al ON asm.albumId = al.id
+        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
+        WHERE (al.albumArtist IS NULL OR al.albumArtist = '') AND s.isActive = 1
+        GROUP BY asm.albumId
+        ORDER BY al.name ASC
+    """)
+    fun getAlbumsWithNoAlbumArtist(): Flow<List<AlbumProjection>>
 }

@@ -29,8 +29,8 @@ class ArtistListViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 combine(
-                    songRepository.getAllArtistNames(),
-                    songRepository.hasSongsWithNoArtist()
+                    songRepository.getAllAlbumArtistNames(),
+                    songRepository.hasAlbumsWithNoAlbumArtist()
                 ) { artists, hasNoArtist ->
                     if (hasNoArtist) listOf("") + artists else artists
                 }.collect {

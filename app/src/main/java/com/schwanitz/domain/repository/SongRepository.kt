@@ -17,6 +17,13 @@ interface SongRepository {
     fun getAlbumsByGenre(genre: String): Flow<List<Album>>
     fun getArtistsByGenre(genre: String): Flow<List<String>>
     fun getAllArtistNames(): Flow<List<String>>
+    fun getAllAlbumArtistNames(): Flow<List<String>>
+    fun getAlbumArtistsByGenre(genre: String): Flow<List<String>>
+    fun getSongsByAlbumArtistName(albumArtistName: String): Flow<List<Song>>
+    fun getAlbumsByAlbumArtistName(albumArtistName: String): Flow<List<Album>>
+    fun getSongsWithNoAlbumArtist(): Flow<List<Song>>
+    fun getAlbumsWithNoAlbumArtist(): Flow<List<Album>>
+    fun hasAlbumsWithNoAlbumArtist(): Flow<Boolean>
     fun getAllAlbums(): Flow<List<Album>>
     fun getAllYears(): Flow<List<Int>>
     fun getAllGenres(): Flow<List<String>>

@@ -43,43 +43,40 @@ class ArtistDetailViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 if (artistName.isBlank()) {
-                    Timber.d("Loading songs with no artist")
+                    Timber.d("Loading songs with no album artist")
                     launch {
-                        songRepository.getSongsWithNoArtist().collect {
+                        songRepository.getSongsWithNoAlbumArtist().collect {
                             _songs.value = it
                         }
                     }
                     launch {
-                        songRepository.getAlbumsWithNoArtist().collect {
+                        songRepository.getAlbumsWithNoAlbumArtist().collect {
                             _albums.value = it
                         }
                     }
                 } else {
-                    val artist = artistRepository.getArtistByName(artistName) ?: run {
-                        Timber.w("Artist not found: '%s'", artistName)
-                        return@launch
+                    Timber.d("Loading album artist: '%s'", artistName)
+                    launch {
+                        songRepository.getSongsByAlbumArtistName(artistName).collect {
+                            _songs.value = it
+                        }
                     }
-                    Timber.d("Loading artist: '%s' (id=%d)", artist.name, artist.id)
-                    loadArtist(artist.id)
-                }
-            }.exceptionOrNull()?.let { errorHolder.emit(it) }
-        }
-    }
-
-    private fun loadArtist(artistId: Long) {
-        viewModelScope.launch {
-            runCatching {
-                launch {
-                    songRepository.getSongsByArtistId(artistId).collect { _songs.value = it }
-                }
-                launch {
-                    songRepository.getAlbumsByArtistId(artistId).collect { _albums.value = it }
-                }
-                launch {
-                    _artistImageUri.value = artistRepository.getArtistImageLarge(artistId)
-                }
-                launch {
-                    _artistBiography.value = artistRepository.getArtistBiography(artistId)
+                    launch {
+                        songRepository.getAlbumsByAlbumArtistName(artistName).collect {
+                            _albums.value = it
+                        }
+                    }
+                    viewModelScope.launch {
+                        val artist = artistRepository.getArtistByName(artistName)
+                        if (artist != null) {
+                            launch {
+                                _artistImageUri.value = artistRepository.getArtistImageLarge(artist.id)
+                            }
+                            launch {
+                                _artistBiography.value = artistRepository.getArtistBiography(artist.id)
+                            }
+                        }
+                    }
                 }
             }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
