@@ -30,7 +30,7 @@ class SelectSongsViewModel @Inject constructor(
 
     val errorHolder = ErrorHolder()
 
-    val playlistId: Long = savedStateHandle.get<String>("playlistId")?.toLongOrNull() ?: 0L
+    val playlistId: Long = savedStateHandle.get<Long>("playlistId") ?: 0L
 
     private val _searchQuery = MutableStateFlow("")
     private val _showFavoritesOnly = MutableStateFlow(false)
