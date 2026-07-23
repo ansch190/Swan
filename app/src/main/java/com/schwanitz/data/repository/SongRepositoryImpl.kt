@@ -150,4 +150,12 @@ class SongRepositoryImpl @Inject constructor(
     override suspend fun toggleFavorite(songId: String) {
         songDao.toggleFavorite(songId)
     }
+
+    override suspend fun deleteBySource(sourceId: String) {
+        songDao.deleteBySource(sourceId)
+    }
+
+    override suspend fun setActiveBySource(sourceId: String, active: Boolean) {
+        songDao.setActiveBySource(sourceId, active)
+    }
 }

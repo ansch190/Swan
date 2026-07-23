@@ -1,7 +1,7 @@
 package com.schwanitz.data.repository
 
-import com.schwanitz.data.local.dao.SongDao
-import com.schwanitz.data.local.dao.SongLyricsDao
+import com.schwanitz.domain.repository.SongLyricsRepository
+import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.domain.repository.SourceLifecycleManager
 import com.schwanitz.domain.repository.SourceManager
 import timber.log.Timber
@@ -10,8 +10,8 @@ import javax.inject.Singleton
 
 @Singleton
 class SourceLifecycleManagerImpl @Inject constructor(
-    private val songDao: SongDao,
-    private val songLyricsDao: SongLyricsDao,
+    private val songRepository: SongRepository,
+    private val songLyricsRepository: SongLyricsRepository,
     private val sourceManager: SourceManager,
     private val sourceRegistry: MusicSourceRegistry,
     private val scanOrchestrator: ScanOrchestrator
@@ -28,8 +28,8 @@ class SourceLifecycleManagerImpl @Inject constructor(
             return
         }
         Timber.d("Loading songs from source...")
-        songLyricsDao.deleteBySource(sourceId)
-        songDao.deleteBySource(sourceId)
+        songLyricsRepository.deleteBySource(sourceId)
+        songRepository.deleteBySource(sourceId)
         scanOrchestrator.deleteOrphanedAlbums()
         val result = try {
             source.loadSongs(config, onProgress) { batch ->
@@ -50,8 +50,8 @@ class SourceLifecycleManagerImpl @Inject constructor(
 
     override suspend fun deleteBySource(sourceId: String) {
         Timber.d("Deleting all data for source %s", sourceId)
-        songLyricsDao.deleteBySource(sourceId)
-        songDao.deleteBySource(sourceId)
+        songLyricsRepository.deleteBySource(sourceId)
+        songRepository.deleteBySource(sourceId)
         scanOrchestrator.deleteOrphanedAlbums()
         scanOrchestrator.cleanupOrphanedArtworkFiles()
         scanOrchestrator.cleanupOrphanedArtists()
@@ -59,7 +59,7 @@ class SourceLifecycleManagerImpl @Inject constructor(
     }
 
     override suspend fun setSourceActive(sourceId: String, active: Boolean) {
-        songDao.setActiveBySource(sourceId, active)
+        songRepository.setActiveBySource(sourceId, active)
     }
 
     override suspend fun reloadEnabled(onProgress: (sourceName: String, scanned: Int, total: Int) -> Unit) {
@@ -69,8 +69,8 @@ class SourceLifecycleManagerImpl @Inject constructor(
             val source = sourceRegistry.get(config.type) ?: continue
             Timber.d("Reloading source: %s (%s)", config.name, config.type)
             try {
-                songLyricsDao.deleteBySource(config.id)
-                songDao.deleteBySource(config.id)
+                songLyricsRepository.deleteBySource(config.id)
+                songRepository.deleteBySource(config.id)
                 scanOrchestrator.deleteOrphanedAlbums()
                 val result = source.loadSongs(config, { scanned, total ->
                     onProgress(config.name, scanned, total)

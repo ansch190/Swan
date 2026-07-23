@@ -31,4 +31,6 @@ interface SongRepository {
     fun getAlbumsWithNoArtist(): Flow<List<Album>>
     fun hasSongsWithNoArtist(): Flow<Boolean>
     suspend fun toggleFavorite(songId: String)
+    suspend fun deleteBySource(sourceId: String)
+    suspend fun setActiveBySource(sourceId: String, active: Boolean)
 }
