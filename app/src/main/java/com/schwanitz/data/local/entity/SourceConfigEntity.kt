@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
     tableName = "source_configs",
     indices = [
         Index(value = ["folderUri"], unique = true),
-        Index(value = ["url"], unique = true)
+        Index(value = ["url", "path"], unique = true)
     ]
 )
 data class SourceConfigEntity(

@@ -9,6 +9,12 @@ import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import javax.inject.Inject
 
+class EscalatingTree : Timber.Tree() {
+    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+        android.util.Log.e(tag ?: "Timber", message, t)
+    }
+}
+
 @HiltAndroidApp
 class MyApplication : Application() {
 
@@ -18,7 +24,7 @@ class MyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         if (BuildConfig.DEBUG) {
-            Timber.plant(Timber.DebugTree())
+            Timber.plant(EscalatingTree())
         }
         applySavedLanguage()
     }

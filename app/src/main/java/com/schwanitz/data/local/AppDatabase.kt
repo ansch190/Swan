@@ -45,7 +45,7 @@ import com.schwanitz.data.local.entity.SongWithNames
         AlbumSongMappingEntity::class
     ],
     views = [SongWithNames::class],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

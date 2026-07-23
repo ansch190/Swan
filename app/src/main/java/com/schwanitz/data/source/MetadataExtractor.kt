@@ -46,7 +46,7 @@ object MetadataExtractor {
         sourceId: String,
         context: Context,
         fileSize: Long = 0L,
-        albumArtworkCache: MutableMap<String, List<String>> = mutableMapOf(),
+        albumArtworkCache: MutableMap<String, List<ArtworkResult>> = mutableMapOf(),
         fileExtension: String = ""
     ): BuildSongResult {
         return try {
@@ -58,7 +58,7 @@ object MetadataExtractor {
                     metadataManager.readFromSource(source, ScanConfiguration.comfortScan())
                 })
                 metadataList = try {
-                    future.get(15, TimeUnit.SECONDS)
+                    future.get(30, TimeUnit.SECONDS)
                 } catch (e: TimeoutException) {
                     future.cancel(true)
                     Timber.w("Tagix scan timed out for %s", songId)
@@ -98,24 +98,31 @@ object MetadataExtractor {
 
             val mimeType = extensionToMimeType(fileExtension)
 
-            val albumKey = "${textFields.albumArtist.trim()}|${textFields.album.trim()}|${textFields.year}"
+            val albumKey = "${textFields.albumArtist.trim()}|${textFields.album.trim()}"
 
             val allUris: List<String>
             val allArtworks: List<ArtworkResult>
 
             if (albumKey.isNotEmpty()) {
-                val placeholder = albumArtworkCache.putIfAbsent(albumKey, emptyList())
-                if (placeholder != null) {
-                    allUris = placeholder
-                    allArtworks = emptyList()
+                val existing = albumArtworkCache[albumKey]
+                if (existing != null) {
+                    allUris = existing.map { it.largeUri }
+                    allArtworks = existing
                     Timber.d("Artwork cache HIT for album key: %s (%d URIs)", albumKey, allUris.size)
                 } else {
                     val artworkResults = if (bestMetadata != null) saveArtwork(bestMetadata, context) else emptyList()
                     val artworkUris = artworkResults.map { it.largeUri }
 
                     if (artworkUris.isNotEmpty()) {
-                        albumArtworkCache[albumKey] = artworkUris
+                        val blankUris = artworkUris.filter { it.isBlank() }
+                        if (blankUris.isNotEmpty()) {
+                            Timber.w("Artwork for %s has %d blank URIs out of %d", songId, blankUris.size, artworkUris.size)
+                        }
+                        albumArtworkCache[albumKey] = artworkResults
                         Timber.d("Artwork cache STORE for album key: %s (%d URIs)", albumKey, artworkUris.size)
+                    } else {
+                        val picCount = bestMetadata?.pictures?.size ?: 0
+                        Timber.d("No artwork for %s (metadata pictures: %d, bestMetadata: %s)", songId, picCount, bestMetadata?.tagFormat)
                     }
                     allUris = artworkUris
                     allArtworks = artworkResults

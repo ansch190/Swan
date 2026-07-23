@@ -29,6 +29,8 @@ import org.xmlpull.v1.XmlPullParserFactory
 import timber.log.Timber
 import java.io.IOException
 import java.io.StringReader
+import java.net.URLDecoder
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -51,72 +53,80 @@ class WebDavMusicSource @Inject constructor(
 
     private companion object {
         const val BATCH_SIZE = 100
-        const val CONCURRENCY = 4
+        const val CONCURRENCY = 3
         const val DEFAULT_RANGE_LIMIT = 524287L
         const val MP3_HEADER_RANGE_LIMIT = 1023L
         const val MP3_HEADER_SIZE = 10
+        const val MAX_DEPTH = 50
+        const val PROPFIND_MAX_RETRIES = 3
+        val PROPFIND_BACKOFF_MS = longArrayOf(1000, 2000, 4000)
     }
+
+    private val propfindClient = client.newBuilder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(90, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
 
     override suspend fun loadSongs(
         config: SourceConfig,
         onProgress: (Int, Int) -> Unit,
         onBatch: suspend (LoadSongsResult) -> Unit
     ): LoadSongsResult = withContext(Dispatchers.IO) {
-        try {
-            val baseUrl = config.url?.trimEnd('/') ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
-            val username = config.username
-            val password = config.password
+        val baseUrl = config.url?.trimEnd('/') ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
+        val username = config.username
+        val password = config.password
 
-            val rawPath = config.path?.let { "/${it.trimStart('/')}" } ?: "/"
-            val startUrl = if (rawPath.startsWith("http")) rawPath else "$baseUrl$rawPath"
+        val rawPath = config.path?.let { "/${it.trimStart('/')}" } ?: "/"
+        val startUrl = if (rawPath.startsWith("http")) rawPath else "$baseUrl$rawPath"
 
-            val audioEntries = mutableListOf<Pair<String, Long>>()
-            collectAudioFiles(baseUrl, username, password, startUrl, audioEntries)
-            val total = audioEntries.size
-            Timber.d("Finished collecting. Found %d audio files.", total)
+        val audioEntries = mutableListOf<Pair<String, Long>>()
+        collectAudioFiles(baseUrl, username, password, startUrl, audioEntries)
+        val total = audioEntries.size
+        Timber.d("Finished collecting. Found %d audio files.", total)
 
-            val albumArtworkCache = ConcurrentHashMap<String, List<String>>()
-            var batchSongs = mutableListOf<Song>()
-            var batchAlbums = mutableMapOf<String, Album>()
-            var batchArtworks = mutableMapOf<String, MutableList<AlbumArtwork>>()
-            var processedCount = 0
-            val semaphore = Semaphore(CONCURRENCY)
+        val albumArtworkCache = ConcurrentHashMap<String, List<ArtworkResult>>()
+        var batchSongs = mutableListOf<Song>()
+        var batchAlbums = mutableMapOf<String, Album>()
+        var batchArtworks = mutableMapOf<String, MutableList<AlbumArtwork>>()
+        var processedCount = 0
+        val semaphore = Semaphore(CONCURRENCY)
 
-            Timber.d("Starting metadata extraction for %d files (concurrency=%d)", total, CONCURRENCY)
-            val results = coroutineScope {
-                audioEntries.mapIndexed { index, (url, fileSize) ->
-                    async {
-                        semaphore.withPermit {
-                            val t0 = System.currentTimeMillis()
-                            onProgress(index + 1, total)
-                            val result = extractMetadata(url, config.id, username, password, fileSize, albumArtworkCache)
-                            val dt = System.currentTimeMillis() - t0
-                            Timber.d("[%d/%d] %s -> %s (%dms)", index + 1, total,
-                                url.substringAfterLast('/'),
-                                result.song?.title ?: "FAILED", dt)
-                            result
-                        }
+        Timber.d("Starting metadata extraction for %d files (concurrency=%d)", total, CONCURRENCY)
+        val results = coroutineScope {
+            audioEntries.mapIndexed { index, (url, fileSize) ->
+                async {
+                    semaphore.withPermit {
+                        val t0 = System.currentTimeMillis()
+                        onProgress(index + 1, total)
+                        val result = extractMetadata(url, config.id, username, password, fileSize, albumArtworkCache)
+                        val dt = System.currentTimeMillis() - t0
+                        Timber.d("[%d/%d] %s -> %s (%dms)", index + 1, total,
+                            url.substringAfterLast('/'),
+                            result.song?.title ?: "FAILED", dt)
+                        result
                     }
-                }.awaitAll()
-            }
+                }
+            }.awaitAll()
+        }
 
-            for (result in results) {
-                if (result.song != null) {
-                    val albumKey = "${result.song.albumArtistName}|${result.song.albumName}|${result.song.year}"
-                    if (albumKey !in batchAlbums) {
-                        val albumEntry = Album(
-                            name = result.song.albumName,
-                            albumArtist = result.song.albumArtistName,
-                            year = result.song.year
-                        )
-                        batchAlbums[albumKey] = albumEntry
-                    }
+        for (result in results) {
+            if (result.song != null) {
+                val albumKey = "${result.song.albumArtistName}|${result.song.albumName}"
+                if (albumKey !in batchAlbums) {
+                    val albumEntry = Album(
+                        name = result.song.albumName,
+                        albumArtist = result.song.albumArtistName,
+                        year = result.song.year
+                    )
+                    batchAlbums[albumKey] = albumEntry
+                }
 
-                    val albumForSong = batchAlbums[albumKey]!!
-                    val songWithAlbumId = result.song.copy(albumId = albumForSong.id)
-                    batchSongs.add(songWithAlbumId)
+                val albumForSong = batchAlbums[albumKey]!!
+                val songWithAlbumId = result.song.copy(albumId = albumForSong.id)
+                batchSongs.add(songWithAlbumId)
 
-                    if (result.artworks.isNotEmpty()) {
+                    if (result.artworks.isNotEmpty() && albumKey !in batchArtworks) {
                         val artworkList = batchArtworks.getOrPut(albumKey) { mutableListOf() }
                         for (artResult in result.artworks) {
                             artworkList.add(
@@ -129,31 +139,27 @@ class WebDavMusicSource @Inject constructor(
                             )
                         }
                     }
-                }
-
-                processedCount++
-                if (processedCount % BATCH_SIZE == 0 && batchSongs.isNotEmpty()) {
-                    Timber.d("Flushing batch of %d songs", batchSongs.size)
-                    onBatch(LoadSongsResult(batchSongs.toList(), batchAlbums.values.toList(), batchArtworks.toMap()))
-                    batchSongs = mutableListOf()
-                    batchAlbums = mutableMapOf()
-                    batchArtworks = mutableMapOf()
-                }
             }
 
-            if (batchSongs.isNotEmpty()) {
-                Timber.d("Flushing final batch of %d songs", batchSongs.size)
-                onBatch(LoadSongsResult(batchSongs, batchAlbums.values.toList(), batchArtworks.toMap()))
+            processedCount++
+            if (processedCount % BATCH_SIZE == 0 && batchSongs.isNotEmpty()) {
+                Timber.d("Flushing batch of %d songs", batchSongs.size)
+                onBatch(LoadSongsResult(batchSongs.toList(), batchAlbums.values.toList(), batchArtworks.toMap()))
+                batchSongs = mutableListOf()
+                batchAlbums = mutableMapOf()
+                batchArtworks = mutableMapOf()
             }
-
-            LoadSongsResult(emptyList(), emptyList(), emptyMap())
-        } catch (e: Exception) {
-            Timber.e(e, "loadSongs failed for %s", config.url)
-            LoadSongsResult(emptyList(), emptyList(), emptyMap())
         }
+
+        if (batchSongs.isNotEmpty()) {
+            Timber.d("Flushing final batch of %d songs", batchSongs.size)
+            onBatch(LoadSongsResult(batchSongs, batchAlbums.values.toList(), batchArtworks.toMap()))
+        }
+
+        LoadSongsResult(emptyList(), emptyList(), emptyMap())
     }
 
-    private fun collectAudioFiles(
+    private suspend fun collectAudioFiles(
         baseUrl: String,
         username: String?,
         password: String?,
@@ -161,12 +167,17 @@ class WebDavMusicSource @Inject constructor(
         result: MutableList<Pair<String, Long>>,
         depth: Int = 0
     ) {
-        if (depth > 10) {
-            Timber.w("Max recursion depth reached for %s", path)
+        if (depth > MAX_DEPTH) {
+            Timber.w("Max recursion depth (%d) reached for %s", MAX_DEPTH, path)
             return
         }
 
-        val entries = propfind(baseUrl, username, password, path)
+        val entries = try {
+            propfind(baseUrl, username, password, path)
+        } catch (e: Exception) {
+            Timber.e(e, "PROPFIND failed for %s, skipping subtree", path)
+            return
+        }
         for (entry in entries) {
             val fullUrl = if (entry.href.startsWith("http")) {
                 entry.href
@@ -177,8 +188,18 @@ class WebDavMusicSource @Inject constructor(
             }
 
             if (entry.isCollection) {
-                val entryPath = entry.href.trim('/').lowercase()
-                val currentPathOnly = path.toHttpUrlOrNull()?.encodedPath ?: path
+                val decodedHref = try {
+                    URLDecoder.decode(entry.href, "UTF-8")
+                } catch (_: Exception) {
+                    entry.href
+                }
+                val decodedPath = try {
+                    URLDecoder.decode(path, "UTF-8")
+                } catch (_: Exception) {
+                    path
+                }
+                val entryPath = decodedHref.trim('/').lowercase()
+                val currentPathOnly = decodedPath.toHttpUrlOrNull()?.encodedPath ?: decodedPath
                 val currentPath = currentPathOnly.trim('/').lowercase()
 
                 if (entryPath != currentPath && entryPath.isNotEmpty()) {
@@ -215,25 +236,38 @@ class WebDavMusicSource @Inject constructor(
             requestBuilder.header("Authorization", Credentials.basic(username, password))
         }
 
-        return try {
-            client.newCall(requestBuilder.build()).execute().use { response ->
-                if (response.code == 401) {
-                    Timber.e("Authentication failed for %s", url)
-                    return emptyList()
-                }
+        val request = requestBuilder.build()
+        var lastException: Exception? = null
 
-                val responseBody = response.body?.string()
-                if (!response.isSuccessful || responseBody == null) {
-                    Timber.w("HTTP %d from %s", response.code, url)
-                    return emptyList()
-                }
+        for (attempt in 1..PROPFIND_MAX_RETRIES) {
+            try {
+                propfindClient.newCall(request).execute().use { response ->
+                    if (response.code == 401) {
+                        Timber.e("Authentication failed for %s", url)
+                        return emptyList()
+                    }
 
-                parsePropfindResponse(responseBody, url)
+                    val responseBody = response.body?.string()
+                    if (!response.isSuccessful || responseBody == null) {
+                        throw IOException("HTTP ${response.code} from $url")
+                    }
+
+                    return parsePropfindResponse(responseBody, url)
+                }
+            } catch (e: Exception) {
+                lastException = e
+                val isRetryable = e is IOException || e is java.net.SocketTimeoutException
+                if (attempt < PROPFIND_MAX_RETRIES && isRetryable) {
+                    val waitMs = PROPFIND_BACKOFF_MS[attempt - 1]
+                    Timber.w(e, "PROPFIND retry %d/%d for %s in %dms", attempt, PROPFIND_MAX_RETRIES, url, waitMs)
+                    Thread.sleep(waitMs)
+                } else {
+                    throw e
+                }
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to parse PROPFIND response from %s", url)
-            emptyList()
         }
+
+        throw lastException ?: IOException("PROPFIND failed for $url after $PROPFIND_MAX_RETRIES attempts")
     }
 
     private fun parsePropfindResponse(
@@ -298,30 +332,43 @@ class WebDavMusicSource @Inject constructor(
         username: String?,
         password: String?,
         fileSize: Long = 0L,
-        albumArtworkCache: MutableMap<String, List<String>>
+        albumArtworkCache: MutableMap<String, List<ArtworkResult>>
     ): BuildSongResult {
         val extension = audioUrl.substringAfterLast('.', "").lowercase()
-        return try {
-            val rangeHeader = getRequestRange(audioUrl, username, password, fileSize, extension)
-            val t0 = System.currentTimeMillis()
-            val bytes = downloadToBytes(audioUrl, username, password, rangeHeader)
-            val dlDt = System.currentTimeMillis() - t0
-            Timber.d("Downloaded %d bytes in %dms for %s (range: %s)", bytes.size, dlDt, audioUrl, rangeHeader)
+        val maxRetries = 3
+        val backoffMs = longArrayOf(1000, 2000, 4000)
 
-            val source = SeekableDataSources.forBytes(bytes)
+        for (attempt in 1..maxRetries) {
             try {
-                MetadataExtractor.buildSong(
-                    source, audioUrl, sourceId, context, fileSize,
-                    albumArtworkCache = albumArtworkCache,
-                    fileExtension = extension
-                )
-            } finally {
-                source.close()
+                val rangeHeader = getRequestRange(audioUrl, username, password, fileSize, extension)
+                val t0 = System.currentTimeMillis()
+                val bytes = downloadToBytes(audioUrl, username, password, rangeHeader)
+                val dlDt = System.currentTimeMillis() - t0
+                Timber.d("Downloaded %d bytes in %dms for %s (range: %s)", bytes.size, dlDt, audioUrl, rangeHeader)
+
+                val source = SeekableDataSources.forBytes(bytes)
+                try {
+                    return MetadataExtractor.buildSong(
+                        source, audioUrl, sourceId, context, fileSize,
+                        albumArtworkCache = albumArtworkCache,
+                        fileExtension = extension
+                    )
+                } finally {
+                    source.close()
+                }
+            } catch (e: Exception) {
+                val isRetryable = e is java.io.IOException || e is java.net.SocketTimeoutException
+                if (attempt < maxRetries && isRetryable) {
+                    val waitMs = backoffMs[attempt - 1]
+                    Timber.w(e, "Retry %d/%d for %s in %dms", attempt, maxRetries, audioUrl, waitMs)
+                    Thread.sleep(waitMs)
+                } else {
+                    Timber.e(e, "Metadata extraction failed for %s (attempt %d/%d)", audioUrl, attempt, maxRetries)
+                    return BuildSongResult(null, emptyList())
+                }
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Metadata extraction failed for %s", audioUrl)
-            BuildSongResult(null, emptyList())
         }
+        return BuildSongResult(null, emptyList())
     }
 
     private fun getRequestRange(

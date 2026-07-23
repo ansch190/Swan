@@ -39,7 +39,7 @@ class LocalFolderMusicSource @Inject constructor(
         val songs = mutableListOf<Song>()
         val albumMap = mutableMapOf<String, Album>()
         val albumArtworkMap = mutableMapOf<String, MutableList<AlbumArtwork>>()
-        val albumArtworkCache = mutableMapOf<String, List<String>>()
+        val albumArtworkCache = mutableMapOf<String, List<ArtworkResult>>()
 
         Timber.d("Starting scan: %d files", total)
         audioUris.forEachIndexed { index, uri ->
@@ -80,7 +80,7 @@ class LocalFolderMusicSource @Inject constructor(
 
                         songs.add(songWithAlbumId)
 
-                        if (result.artworks.isNotEmpty()) {
+                        if (result.artworks.isNotEmpty() && albumKey !in albumArtworkMap) {
                             val artworkList = albumArtworkMap.getOrPut(albumKey) { mutableListOf() }
                             for (artResult in result.artworks) {
                                 artworkList.add(

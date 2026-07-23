@@ -16,6 +16,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -48,9 +49,13 @@ class AlbumDetailViewModel @Inject constructor(
                             _songs.value = albumSongs
                             if (albumSongs.isNotEmpty()) {
                                 val albumId = albumSongs.first().albumId
+                                Timber.d("AlbumDetail: albumId=%s for album '%s', songs=%d", albumId, albumName, albumSongs.size)
                                 _artworks.value = if (albumId != null) {
-                                    albumRepository.getAlbumArtworks(albumId)
+                                    val arts = albumRepository.getAlbumArtworks(albumId)
+                                    Timber.d("AlbumDetail: %d artworks for albumId=%s", arts.size, albumId)
+                                    arts
                                 } else {
+                                    Timber.w("AlbumDetail: albumId is null for album '%s'", albumName)
                                     emptyList()
                                 }
                             }

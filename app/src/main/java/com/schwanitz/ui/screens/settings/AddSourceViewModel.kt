@@ -191,7 +191,11 @@ class AddSourceViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(isSaving = false, error = context.getString(R.string.add_source_url_required))
                         return@launch
                     }
-                    if (existing.any { it.id != editSourceId && it.url?.trimEnd('/') == cleanUrl }) {
+                    if (existing.any {
+                        it.id != editSourceId
+                            && it.url?.trimEnd('/') == cleanUrl
+                            && it.path == state.path.trim('/').takeIf { p -> p.isNotBlank() }
+                    }) {
                         _uiState.value = _uiState.value.copy(isSaving = false, error = context.getString(R.string.add_source_duplicate_url))
                         return@launch
                     }

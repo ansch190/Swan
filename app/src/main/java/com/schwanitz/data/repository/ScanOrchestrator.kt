@@ -56,7 +56,7 @@ class ScanOrchestrator @Inject constructor(
                 albumDao.upsert(albumEntity)
             }
             upsertedAlbums.add("${albumEntity.name}|${albumEntity.albumArtist}" to albumId)
-            artworkKeyId["${albumEntity.albumArtist}|${albumEntity.name}|${albumEntity.year}"] = albumId
+            artworkKeyId["${albumEntity.albumArtist}|${albumEntity.name}"] = albumId
         }
 
         val songEntities = mutableListOf<com.schwanitz.data.local.entity.SongEntity>()
@@ -82,9 +82,13 @@ class ScanOrchestrator @Inject constructor(
         songTechnicalInfoDao.upsertAll(technicalInfoEntities)
 
         val artworkEntities = result.artworks.flatMap { (albumKey, artworks) ->
-            val realAlbumId = artworkKeyId[albumKey] ?: return@flatMap emptyList()
+            val realAlbumId = artworkKeyId[albumKey] ?: run {
+                Timber.w("Artwork key '%s' not found in DB (available: %s)", albumKey, artworkKeyId.keys.joinToString())
+                return@flatMap emptyList()
+            }
             artworks.map { it.copy(albumId = realAlbumId).toEntity() }
         }
+        Timber.d("Persisting %d artwork entities", artworkEntities.size)
         albumArtworkDao.upsertAll(artworkEntities)
     }
 

@@ -161,7 +161,7 @@
     <string name="add_source_untitled">Untitled</string>
     <string name="add_source_duplicate_local">This source already exists</string>
     <string name="add_source_url_required">URL required</string>
-    <string name="add_source_duplicate_url">This URL already exists</string>
+    <string name="add_source_duplicate_url">This URL and path combination already exists</string>
 
     <!-- About screen -->
     <string name="about_title">About</string>

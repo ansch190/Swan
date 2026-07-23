@@ -30,7 +30,9 @@ object ArtworkCache {
             null
         }
 
-        return ArtworkResult(smallUri = smallUri, largeUri = largeUri)
+        val result = ArtworkResult(smallUri = smallUri, largeUri = largeUri)
+        Timber.d("Artwork saved: large=%s (%d bytes), small=%s, index=%d", largeUri.takeLast(40), largeBytes.size, smallUri?.takeLast(40), index)
+        return result
     }
 
     private fun saveToDisk(bytes: ByteArray, context: Context, index: Int, suffix: String): String {

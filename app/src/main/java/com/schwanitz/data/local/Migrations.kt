@@ -46,7 +46,14 @@ object Migrations {
         }
     }
 
-    val all = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP INDEX IF NOT EXISTS index_source_configs_url")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_source_configs_url_path ON source_configs(url, path)")
+        }
+    }
+
+    val all = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 
     fun migrateCredentialsToEncryptedStore(context: Context, store: CredentialStore) {
         val dbPath = context.getDatabasePath("music_player_db")

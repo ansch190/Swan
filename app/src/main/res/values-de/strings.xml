@@ -161,7 +161,7 @@
     <string name="add_source_untitled">Unbenannt</string>
     <string name="add_source_duplicate_local">Diese Quelle existiert bereits</string>
     <string name="add_source_url_required">URL erforderlich</string>
-    <string name="add_source_duplicate_url">Diese URL existiert bereits</string>
+    <string name="add_source_duplicate_url">Diese URL-Pfad-Kombination existiert bereits</string>
 
     <!-- About screen -->
     <string name="about_title">Über</string>
