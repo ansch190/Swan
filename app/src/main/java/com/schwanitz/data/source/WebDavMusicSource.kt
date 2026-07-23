@@ -10,6 +10,7 @@ import com.schwanitz.domain.source.SourceConfig
 import com.schwanitz.domain.source.SourceType
 import com.schwanitz.io.SeekableDataSources
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -80,20 +81,24 @@ class WebDavMusicSource @Inject constructor(
         val rawPath = config.path?.let { "/${it.trimStart('/')}" } ?: "/"
         val startUrl = if (rawPath.startsWith("http")) rawPath else "$baseUrl$rawPath"
 
-        val audioEntries = mutableListOf<Pair<String, Long>>()
-        collectAudioFiles(baseUrl, username, password, startUrl, audioEntries)
+        val audioEntries = collectAudioFiles(baseUrl, username, password, startUrl)
         val total = audioEntries.size
-        Timber.d("Finished collecting. Found %d audio files.", total)
+        Timber.e("WebDAV enumeration complete: %d audio files found", total)
+
+        if (audioEntries.isEmpty()) {
+            return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
+        }
 
         val albumArtworkCache = ConcurrentHashMap<String, List<ArtworkResult>>()
         var batchSongs = mutableListOf<Song>()
         var batchAlbums = mutableMapOf<String, Album>()
         var batchArtworks = mutableMapOf<String, MutableList<AlbumArtwork>>()
-        var processedCount = 0
         val semaphore = Semaphore(CONCURRENCY)
 
-        Timber.d("Starting metadata extraction for %d files (concurrency=%d)", total, CONCURRENCY)
-        val results = coroutineScope {
+        Timber.e("Starting metadata extraction for %d files (concurrency=%d)", total, CONCURRENCY)
+        val failedUrls = mutableSetOf<String>()
+
+        var results = coroutineScope {
             audioEntries.mapIndexed { index, (url, fileSize) ->
                 async {
                     semaphore.withPermit {
@@ -101,6 +106,7 @@ class WebDavMusicSource @Inject constructor(
                         onProgress(index + 1, total)
                         val result = extractMetadata(url, config.id, username, password, fileSize, albumArtworkCache)
                         val dt = System.currentTimeMillis() - t0
+                        if (result.song == null) failedUrls.add(url)
                         Timber.d("[%d/%d] %s -> %s (%dms)", index + 1, total,
                             url.substringAfterLast('/'),
                             result.song?.title ?: "FAILED", dt)
@@ -110,8 +116,35 @@ class WebDavMusicSource @Inject constructor(
             }.awaitAll()
         }
 
+        if (failedUrls.isNotEmpty()) {
+            Timber.e("Metadata extraction failed for %d/%d files, starting retry pass", failedUrls.size, total)
+            val retryResults = coroutineScope {
+                audioEntries.filter { (url, _) -> url in failedUrls }.mapIndexed { index, (url, fileSize) ->
+                    async {
+                        semaphore.withPermit {
+                            val t0 = System.currentTimeMillis()
+                            val result = extractMetadata(url, config.id, username, password, fileSize, albumArtworkCache)
+                            val dt = System.currentTimeMillis() - t0
+                            Timber.d("[RETRY %d/%d] %s -> %s (%dms)", index + 1, failedUrls.size,
+                                url.substringAfterLast('/'),
+                                result.song?.title ?: "FAILED", dt)
+                            result
+                        }
+                    }
+                }.awaitAll()
+            }
+            val recovered = retryResults.filter { it.song != null }
+            if (recovered.isNotEmpty()) {
+                Timber.e("Recovered %d files in retry pass", recovered.size)
+            }
+            results = results.filter { it.song != null } + retryResults
+        }
+
+        var successCount = 0
+        var failCount = 0
         for (result in results) {
             if (result.song != null) {
+                successCount++
                 val albumKey = "${result.song.albumArtistName}|${result.song.albumName}"
                 if (albumKey !in batchAlbums) {
                     val albumEntry = Album(
@@ -126,34 +159,41 @@ class WebDavMusicSource @Inject constructor(
                 val songWithAlbumId = result.song.copy(albumId = albumForSong.id)
                 batchSongs.add(songWithAlbumId)
 
-                    if (result.artworks.isNotEmpty() && albumKey !in batchArtworks) {
-                        val artworkList = batchArtworks.getOrPut(albumKey) { mutableListOf() }
-                        for (artResult in result.artworks) {
-                            artworkList.add(
-                                AlbumArtwork(
-                                    albumId = 0,
-                                    sortOrder = artworkList.size,
-                                    uriLarge = artResult.largeUri,
-                                    uriSmall = artResult.smallUri
-                                )
+                if (result.artworks.isNotEmpty() && albumKey !in batchArtworks) {
+                    val artworkList = batchArtworks.getOrPut(albumKey) { mutableListOf() }
+                    for (artResult in result.artworks) {
+                        artworkList.add(
+                            AlbumArtwork(
+                                albumId = 0,
+                                sortOrder = artworkList.size,
+                                uriLarge = artResult.largeUri,
+                                uriSmall = artResult.smallUri
                             )
-                        }
+                        )
                     }
-            }
+                }
 
-            processedCount++
-            if (processedCount % BATCH_SIZE == 0 && batchSongs.isNotEmpty()) {
-                Timber.d("Flushing batch of %d songs", batchSongs.size)
-                onBatch(LoadSongsResult(batchSongs.toList(), batchAlbums.values.toList(), batchArtworks.toMap()))
-                batchSongs = mutableListOf()
-                batchAlbums = mutableMapOf()
-                batchArtworks = mutableMapOf()
+                if (successCount % BATCH_SIZE == 0 && batchSongs.isNotEmpty()) {
+                    Timber.d("Flushing batch of %d songs", batchSongs.size)
+                    onBatch(LoadSongsResult(batchSongs.toList(), batchAlbums.values.toList(), batchArtworks.toMap()))
+                    batchSongs = mutableListOf()
+                    batchAlbums = mutableMapOf()
+                    batchArtworks = mutableMapOf()
+                }
+            } else {
+                failCount++
             }
         }
 
         if (batchSongs.isNotEmpty()) {
             Timber.d("Flushing final batch of %d songs", batchSongs.size)
             onBatch(LoadSongsResult(batchSongs, batchAlbums.values.toList(), batchArtworks.toMap()))
+        }
+
+        if (failCount > 0) {
+            Timber.e("WebDAV scan: %d files enumerated, %d songs OK, %d FAILED", total, successCount, failCount)
+        } else {
+            Timber.e("WebDAV scan: %d files enumerated, %d songs OK", total, successCount)
         }
 
         LoadSongsResult(emptyList(), emptyList(), emptyMap())
@@ -163,21 +203,59 @@ class WebDavMusicSource @Inject constructor(
         baseUrl: String,
         username: String?,
         password: String?,
+        path: String
+    ): List<Pair<String, Long>> = coroutineScope {
+        val failedPaths = mutableListOf<String>()
+
+        val firstPass = propfindRecursive(baseUrl, username, password, path, failedPaths, this@coroutineScope, 0)
+
+        if (failedPaths.isNotEmpty()) {
+            Timber.e("Retrying %d failed PROPFIND paths", failedPaths.size)
+            val retryPaths = failedPaths.toList()
+            failedPaths.clear()
+
+            val retryResults = retryPaths.map { failedPath ->
+                async { propfindRecursive(baseUrl, username, password, failedPath, failedPaths, this@coroutineScope, 0) }
+            }.awaitAll()
+
+            val retryFiles = retryResults.flatten()
+            if (retryFiles.isNotEmpty()) {
+                Timber.e("Recovered %d files from retry pass", retryFiles.size)
+            }
+            for (p in failedPaths) {
+                Timber.e("PROPFIND permanently failed for %s — files in this subtree are missing", p)
+            }
+            firstPass + retryFiles
+        } else {
+            firstPass
+        }
+    }
+
+    private suspend fun propfindRecursive(
+        baseUrl: String,
+        username: String?,
+        password: String?,
         path: String,
-        result: MutableList<Pair<String, Long>>,
-        depth: Int = 0
-    ) {
+        failedPaths: MutableList<String>,
+        scope: CoroutineScope,
+        depth: Int
+    ): List<Pair<String, Long>> {
         if (depth > MAX_DEPTH) {
-            Timber.w("Max recursion depth (%d) reached for %s", MAX_DEPTH, path)
-            return
+            Timber.e("Max recursion depth (%d) reached for %s", MAX_DEPTH, path)
+            return emptyList()
         }
 
         val entries = try {
             propfind(baseUrl, username, password, path)
         } catch (e: Exception) {
-            Timber.e(e, "PROPFIND failed for %s, skipping subtree", path)
-            return
+            Timber.e(e, "PROPFIND failed for %s after %d retries, adding to retry queue", path, PROPFIND_MAX_RETRIES)
+            failedPaths.add(path)
+            return emptyList()
         }
+
+        val audioFiles = mutableListOf<Pair<String, Long>>()
+        val childDirs = mutableListOf<String>()
+
         for (entry in entries) {
             val fullUrl = if (entry.href.startsWith("http")) {
                 entry.href
@@ -204,13 +282,27 @@ class WebDavMusicSource @Inject constructor(
 
                 if (entryPath != currentPath && entryPath.isNotEmpty()) {
                     if (entryPath.startsWith(currentPath) || currentPath.isEmpty()) {
-                        collectAudioFiles(baseUrl, username, password, entry.href, result, depth + 1)
+                        childDirs.add(entry.href)
                     }
                 }
             } else if (entry.href.isAudioFile()) {
-                result.add(fullUrl to entry.contentLength)
+                audioFiles.add(fullUrl to entry.contentLength)
             }
         }
+
+        val childResults = childDirs.map { dir ->
+            scope.async {
+                try {
+                    propfindRecursive(baseUrl, username, password, dir, failedPaths, scope, depth + 1)
+                } catch (e: Exception) {
+                    Timber.e(e, "Child traversal failed for %s, skipping subtree", dir)
+                    failedPaths.add(dir)
+                    emptyList()
+                }
+            }
+        }.awaitAll()
+
+        return audioFiles + childResults.flatten()
     }
 
     private fun propfind(
