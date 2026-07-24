@@ -172,7 +172,11 @@ private fun SourceItem(
             if (raw != null) Uri.decode(raw).substringAfter(':') else stringResource(R.string.settings_source_local)
         }
         SourceType.WEBDAV -> source.url ?: stringResource(R.string.settings_source_webdav)
-        SourceType.SMB -> source.path ?: stringResource(R.string.settings_source_smb)
+        SourceType.SMB -> {
+            val host = source.url ?: ""
+            val share = source.path ?: ""
+            if (host.isNotEmpty()) "$host/$share" else stringResource(R.string.settings_source_smb)
+        }
     }
 
     val modifier = if (onEditClick != null) {

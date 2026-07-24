@@ -6,6 +6,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.R
+import com.schwanitz.data.source.SmbMusicSource
 import com.schwanitz.data.source.WebDavMusicSource
 import com.schwanitz.domain.repository.SourceManager
 import com.schwanitz.domain.error.AppError
@@ -47,13 +48,14 @@ sealed class ConnectionTestState {
     data object Idle : ConnectionTestState()
     data object Testing : ConnectionTestState()
     data object Success : ConnectionTestState()
-    data object Failure : ConnectionTestState()
+    data class Failure(val message: String? = null) : ConnectionTestState()
 }
 
 @HiltViewModel
 class AddSourceViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val webDavMusicSource: WebDavMusicSource,
+    private val smbMusicSource: SmbMusicSource,
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -93,7 +95,12 @@ class AddSourceViewModel @Inject constructor(
     }
 
     fun selectType(type: SourceType) {
-        _uiState.value = _uiState.value.copy(step = Step.CONFIGURE, selectedType = type, error = null)
+        _uiState.value = _uiState.value.copy(
+            step = Step.CONFIGURE,
+            selectedType = type,
+            error = null,
+            path = if (type == SourceType.SMB) "" else _uiState.value.path
+        )
     }
 
     fun selectProvider(provider: WebDavProvider?) {
@@ -143,19 +150,32 @@ class AddSourceViewModel @Inject constructor(
 
     fun testConnection() {
         val state = _uiState.value
-        Timber.d("Testing connection to %s", state.url)
+        Timber.d("Testing connection to %s (type=%s)", state.url, state.selectedType)
         viewModelScope.launch {
             _uiState.value = state.copy(connectionTestState = ConnectionTestState.Testing)
-            val result = webDavMusicSource.testConnection(
-                url = state.url,
-                username = state.username,
-                password = state.password,
-                path = state.path
-            )
+            val result = when (state.selectedType) {
+                SourceType.WEBDAV -> webDavMusicSource.testConnection(
+                    url = state.url,
+                    username = state.username,
+                    password = state.password,
+                    path = state.path
+                )
+                SourceType.SMB -> {
+                    val sharePath = state.path.trim('/')
+                    val shareName = sharePath.substringBefore('/')
+                    smbMusicSource.testConnection(
+                        host = state.url,
+                        shareName = shareName,
+                        username = state.username,
+                        password = state.password
+                    )
+                }
+                else -> Result.failure(Exception("Unsupported type"))
+            }
             _uiState.value = _uiState.value.copy(
                 connectionTestState = result.fold(
                     onSuccess = { ConnectionTestState.Success },
-                    onFailure = { ConnectionTestState.Failure }
+                    onFailure = { ConnectionTestState.Failure(it.message ?: it.toString()) }
                 )
             )
         }
@@ -200,7 +220,27 @@ class AddSourceViewModel @Inject constructor(
                         return@launch
                     }
                 }
-                SourceType.SMB -> {}
+                SourceType.SMB -> {
+                    val cleanHost = state.url.trimEnd('/')
+                    if (cleanHost.isBlank()) {
+                        _uiState.value = _uiState.value.copy(isSaving = false, error = context.getString(R.string.add_source_url_required))
+                        return@launch
+                    }
+                    val cleanSharePath = state.path.trim('/')
+                    if (cleanSharePath.isBlank()) {
+                        _uiState.value = _uiState.value.copy(isSaving = false, error = context.getString(R.string.add_source_url_required))
+                        return@launch
+                    }
+                    if (existing.any {
+                        it.id != editSourceId
+                            && it.type == SourceType.SMB
+                            && it.url?.trimEnd('/') == cleanHost
+                            && it.path == cleanSharePath
+                    }) {
+                        _uiState.value = _uiState.value.copy(isSaving = false, error = context.getString(R.string.add_source_duplicate_url))
+                        return@launch
+                    }
+                }
             }
 
             val config = SourceConfig(

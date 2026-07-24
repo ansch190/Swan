@@ -56,7 +56,7 @@ class SourceManagerImpl @Inject constructor(
     }
 
     private fun SourceConfig.saveCredentials() {
-        if (type == com.schwanitz.domain.source.SourceType.WEBDAV) {
+        if (type == com.schwanitz.domain.source.SourceType.WEBDAV || type == com.schwanitz.domain.source.SourceType.SMB) {
             val u = username
             val p = password
             if (!u.isNullOrBlank() && !p.isNullOrBlank()) {
@@ -66,7 +66,7 @@ class SourceManagerImpl @Inject constructor(
     }
 
     private fun SourceConfig.withCredentials(): SourceConfig {
-        if (type != com.schwanitz.domain.source.SourceType.WEBDAV) return this
+        if (type != com.schwanitz.domain.source.SourceType.WEBDAV && type != com.schwanitz.domain.source.SourceType.SMB) return this
         val (u, p) = credentialStore.load(id) ?: return this
         return copy(username = u, password = p)
     }

@@ -3,10 +3,9 @@
 import android.content.Context
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import com.schwanitz.data.source.AuthHttpDataSourceFactory
+import com.schwanitz.data.source.smb.SmartDataSourceFactory
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,10 +21,9 @@ object PlayerModule {
     @Singleton
     fun provideExoPlayer(
         @ApplicationContext context: Context,
-        authHttpDataSourceFactory: AuthHttpDataSourceFactory
+        smartDataSourceFactory: SmartDataSourceFactory
     ): ExoPlayer {
-        val dataSourceFactory = DefaultDataSource.Factory(context, authHttpDataSourceFactory)
-        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
+        val mediaSourceFactory = DefaultMediaSourceFactory(smartDataSourceFactory)
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)

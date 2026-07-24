@@ -117,6 +117,7 @@ fun AddSourceScreen(
                     val canSave = when (uiState.selectedType) {
                         SourceType.LOCAL -> uiState.sourceName.isNotBlank() && uiState.folderPathDisplay.isNotEmpty()
                         SourceType.WEBDAV -> uiState.sourceName.isNotBlank() && uiState.url.isNotBlank() && uiState.url != "https://" && uiState.username.isNotBlank() && uiState.password.isNotBlank()
+                        SourceType.SMB -> uiState.sourceName.isNotBlank() && uiState.url.isNotBlank() && uiState.path.isNotBlank()
                         else -> false
                     }
                     IconButton(
@@ -226,8 +227,7 @@ private fun TypeSelectionContent(
             icon = Icons.Filled.DevicesOther,
             title = stringResource(R.string.add_source_smb),
             description = stringResource(R.string.add_source_smb_desc),
-            enabled = false,
-            onClick = {}
+            onClick = { onTypeSelected(SourceType.SMB) }
         )
     }
 }
@@ -309,13 +309,18 @@ private fun ConfigureSourceContent(
                 onSelectProvider = callbacks.onSelectProvider,
                 onTestConnection = callbacks.onTestConnection
             )
-            SourceType.SMB -> {
-                Text(
-                    text = stringResource(R.string.add_source_smb_coming_soon),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            SourceType.SMB -> SmbSourceConfig(
+                server = state.url,
+                sharePath = state.path,
+                username = state.username,
+                password = state.password,
+                connectionTestState = state.connectionTestState,
+                onServerChange = callbacks.onUrlChange,
+                onSharePathChange = callbacks.onPathChange,
+                onUsernameChange = callbacks.onUsernameChange,
+                onPasswordChange = callbacks.onPasswordChange,
+                onTestConnection = callbacks.onTestConnection
+            )
         }
 
         if (state.error != null) {
@@ -558,5 +563,141 @@ private fun WebDavSourceConfig(
             }
             else -> Text(stringResource(R.string.add_source_test_connection))
         }
+    }
+
+    if (connectionTestState is ConnectionTestState.Failure && connectionTestState.message != null) {
+        Text(
+            text = connectionTestState.message,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SmbSourceConfig(
+    server: String,
+    sharePath: String,
+    username: String,
+    password: String,
+    connectionTestState: ConnectionTestState,
+    onServerChange: (String) -> Unit,
+    onSharePathChange: (String) -> Unit,
+    onUsernameChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onTestConnection: () -> Unit
+) {
+    var passwordVisible by remember { mutableStateOf(false) }
+    val serverFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) { serverFocusRequester.requestFocus() }
+
+    OutlinedTextField(
+        value = server,
+        onValueChange = onServerChange,
+        label = { Text(stringResource(R.string.add_source_smb_server)) },
+        placeholder = { Text(stringResource(R.string.add_source_smb_server_hint)) },
+        singleLine = true,
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(serverFocusRequester),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Uri
+        )
+    )
+
+    OutlinedTextField(
+        value = sharePath,
+        onValueChange = onSharePathChange,
+        label = { Text(stringResource(R.string.add_source_smb_share)) },
+        placeholder = { Text(stringResource(R.string.add_source_smb_share_hint)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    OutlinedTextField(
+        value = username,
+        onValueChange = onUsernameChange,
+        label = { Text(stringResource(R.string.webdav_username_hint)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Ascii
+        )
+    )
+    OutlinedTextField(
+        value = password,
+        onValueChange = onPasswordChange,
+        label = { Text(stringResource(R.string.add_source_password_label)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password
+        ),
+        trailingIcon = {
+            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                Icon(
+                    imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                    contentDescription = if (passwordVisible) stringResource(R.string.cd_hide_password) else stringResource(R.string.cd_show_password)
+                )
+            }
+        }
+    )
+
+    val buttonEnabled = connectionTestState !is ConnectionTestState.Testing
+        && server.isNotBlank() && sharePath.isNotBlank()
+    val buttonColors = when (connectionTestState) {
+        is ConnectionTestState.Success -> ButtonDefaults.buttonColors(
+            containerColor = Color(0xFF2E7D32),
+            disabledContainerColor = Color(0xFF2E7D32),
+            disabledContentColor = Color.White
+        )
+        is ConnectionTestState.Failure -> ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.error,
+            contentColor = MaterialTheme.colorScheme.onError
+        )
+        else -> ButtonDefaults.buttonColors()
+    }
+
+    Button(
+        onClick = onTestConnection,
+        enabled = if (connectionTestState is ConnectionTestState.Success) false else buttonEnabled,
+        colors = buttonColors,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        when (val state = connectionTestState) {
+            is ConnectionTestState.Testing -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.add_source_testing))
+            }
+            is ConnectionTestState.Success -> {
+                Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.add_source_connected))
+            }
+            is ConnectionTestState.Failure -> {
+                Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.retry))
+            }
+            else -> Text(stringResource(R.string.add_source_test_connection))
+        }
+    }
+
+    if (connectionTestState is ConnectionTestState.Failure && connectionTestState.message != null) {
+        Text(
+            text = connectionTestState.message,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(top = 8.dp)
+        )
     }
 }

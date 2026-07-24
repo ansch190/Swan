@@ -8,6 +8,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.schwanitz.data.source.AuthHttpDataSourceFactory
+import com.schwanitz.data.source.smb.SmbDataSource
 import com.schwanitz.domain.error.AppError
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.SourceManager
@@ -60,6 +61,7 @@ class MusicPlayerManager @Inject constructor(
         scope.launch {
             sourceManager.sources.collect { sources ->
                 authHttpDataSourceFactory.updateSources(sources)
+                SmbDataSource.updateSources(sources)
             }
         }
         player.addListener(object : Player.Listener {

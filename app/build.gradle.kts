@@ -105,6 +105,7 @@ dependencies {
     implementation(libs.security.crypto)
     implementation("androidx.documentfile:documentfile:1.1.0")
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.smbj)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

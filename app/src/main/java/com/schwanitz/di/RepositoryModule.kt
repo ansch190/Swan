@@ -21,6 +21,7 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import com.schwanitz.data.source.LocalFolderMusicSource
+import com.schwanitz.data.source.SmbMusicSource
 import com.schwanitz.data.source.WebDavMusicSource
 import com.schwanitz.domain.source.MusicSource
 import dagger.Provides
@@ -75,4 +76,8 @@ object SourceModule {
     @Provides
     @IntoSet
     fun provideWebDavMusicSource(source: WebDavMusicSource): MusicSource = source
+
+    @Provides
+    @IntoSet
+    fun provideSmbMusicSource(source: SmbMusicSource): MusicSource = source
 }

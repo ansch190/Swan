@@ -162,6 +162,11 @@
     <string name="add_source_duplicate_local">Diese Quelle existiert bereits</string>
     <string name="add_source_url_required">URL erforderlich</string>
     <string name="add_source_duplicate_url">Diese URL-Pfad-Kombination existiert bereits</string>
+    <string name="add_source_smb_server">Server-Adresse</string>
+    <string name="add_source_smb_server_hint">z.B. 192.168.1.100</string>
+    <string name="add_source_smb_share">Freigabe und Pfad</string>
+    <string name="add_source_smb_share_hint">z.B. Musik</string>
+    <string name="add_source_smb_test_failed">Verbindung fehlgeschlagen – Server und Freigabe prüfen</string>
 
     <!-- About screen -->
     <string name="about_title">Über</string>
