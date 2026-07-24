@@ -167,6 +167,9 @@
     <string name="add_source_smb_share">Share and path</string>
     <string name="add_source_smb_share_hint">e.g. MusicShare</string>
     <string name="add_source_smb_test_failed">Connection failed – check server and share</string>
+    <string name="add_source_smb_connected">Connected successfully (%1$d items, %2$d audio files)</string>
+    <string name="add_source_webdav_connected">Connected successfully (%1$d items found)</string>
+    <string name="add_source_webdav_test_failed">Could not connect – check URL and credentials</string>
 
     <!-- About screen -->
     <string name="about_title">About</string>

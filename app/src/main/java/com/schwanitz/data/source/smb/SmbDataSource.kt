@@ -79,7 +79,6 @@ class SmbDataSource(
     override fun close() {
         try { inputStream?.close() } catch (_: Exception) {}
         try { smbFile?.close() } catch (_: Exception) {}
-        try { session?.close() } catch (_: Exception) {}
         inputStream = null
         smbFile = null
         session = null

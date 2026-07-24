@@ -1,6 +1,7 @@
 ﻿package com.schwanitz.data.source
 
 import android.content.Context
+import com.schwanitz.R
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.Song
@@ -528,12 +529,15 @@ class WebDavMusicSource @Inject constructor(
         try {
             val entries = propfind(url, username, password, path.ifBlank { "/" })
             if (entries.isEmpty()) {
-                Result.failure(Exception("Could not connect — check URL and credentials"))
+                Result.failure(Exception(context.getString(R.string.add_source_webdav_test_failed)))
             } else {
-                Result.success("Connected successfully (${entries.size} items found)")
+                Result.success(context.getString(R.string.add_source_webdav_connected, entries.size))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            val rootCause = generateSequence<Throwable>(e) { it.cause }.last()
+            val msg = "${rootCause.javaClass.simpleName}: ${rootCause.message}"
+            Timber.e(e, "WebDAV test failed for %s", url)
+            Result.failure(Exception(msg))
         }
     }
 

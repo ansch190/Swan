@@ -5,6 +5,7 @@ import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.mssmb2.SMB2CreateDisposition
 import com.hierynomus.mssmb2.SMB2ShareAccess
 import com.hierynomus.smbj.share.DiskShare
+import com.schwanitz.R
 import com.schwanitz.data.source.smb.SmbConnectionManager
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.AlbumArtwork
@@ -44,9 +45,10 @@ class SmbMusicSource @Inject constructor(
         const val BATCH_SIZE = 100
         const val CONCURRENCY = 3
         const val DEFAULT_RANGE_LIMIT = 524287L
-        const val MP3_HEADER_RANGE_LIMIT = 1023L
         const val MP3_HEADER_SIZE = 10L
         const val MAX_DEPTH = 50
+        const val MAX_ENUM_RETRIES = 2
+        const val LIST_MAX_RETRIES = 3
         val RETRY_BACKOFF_MS = longArrayOf(1000, 2000, 4000)
     }
 
@@ -74,6 +76,7 @@ class SmbMusicSource @Inject constructor(
         Timber.i("SMB enumeration complete: %d audio files found", total)
 
         if (audioEntries.isEmpty()) {
+            connectionManager.closeAll()
             return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
         }
 
@@ -175,6 +178,7 @@ class SmbMusicSource @Inject constructor(
             onBatch(LoadSongsResult(batchSongs, batchAlbums.values.toList(), batchArtworks.toMap()))
         }
 
+        connectionManager.closeAll()
         Timber.i("SMB scan: %d enumerated, %d OK, %d FAILED", total, successCount, failCount)
         LoadSongsResult(emptyList(), emptyList(), emptyMap())
     }
@@ -187,53 +191,138 @@ class SmbMusicSource @Inject constructor(
         password: String
     ): List<SmbAudioEntry> = withContext(Dispatchers.IO) {
         val session = connectionManager.connect(host, username, password)
-        try {
-            val share = session.connectShare(shareName) as DiskShare
-            val diskName = share.smbPath.shareName
-            val result = mutableListOf<SmbAudioEntry>()
-            listRecursive(share, host, diskName, subPath.removePrefix("/"), result, 0)
-            result
-        } finally {
-            try { session.close() } catch (_: Exception) {}
+        val share = connectionManager.getShare(session, shareName)
+        val diskName = share.smbPath.shareName
+        val result = mutableListOf<SmbAudioEntry>()
+
+        var failedDirs = mutableSetOf<String>()
+        coroutineScope {
+            listRecursive(share, host, diskName, subPath.removePrefix("/"), result, 0, failedDirs, this)
         }
+
+        for (retryPass in 1..MAX_ENUM_RETRIES) {
+            if (failedDirs.isEmpty()) break
+            Timber.i("Retrying %d failed directories (pass %d/%d)", failedDirs.size, retryPass, MAX_ENUM_RETRIES)
+            val retryFailedDirs = mutableSetOf<String>()
+            for (dir in failedDirs) {
+                try {
+                    val s = connectionManager.reconnect(host, username, password)
+                    val sh = connectionManager.getShare(s, shareName)
+                    coroutineScope {
+                        listRecursive(sh, host, diskName, dir, result, 0, retryFailedDirs, this)
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Directory retry failed for %s", dir)
+                    retryFailedDirs.add(dir)
+                }
+            }
+            if (retryFailedDirs.isEmpty()) {
+                Timber.i("All directory retries recovered")
+            } else {
+                Timber.w("%d directories still failing after retry", retryFailedDirs.size)
+            }
+            failedDirs = retryFailedDirs
+        }
+
+        result
     }
 
-    private fun listRecursive(
+    private suspend fun listRecursive(
         share: DiskShare,
         host: String,
         diskName: String,
         path: String,
         result: MutableList<SmbAudioEntry>,
-        depth: Int
+        depth: Int,
+        failedDirs: MutableSet<String>,
+        scope: kotlinx.coroutines.CoroutineScope
     ) {
-        if (depth > MAX_DEPTH) return
-
-        val entries = try {
-            share.list(path)
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to list %s", path)
+        if (depth > MAX_DEPTH) {
+            Timber.e("Max recursion depth (%d) reached for %s", MAX_DEPTH, path)
             return
         }
 
-        for (entry in entries) {
-            val name = entry.fileName
-            if (name == "." || name == "..") continue
+        val subDirs = mutableListOf<String>()
+        val listed = listDirectoryWithRetry(share, path, host, diskName, result, subDirs, failedDirs)
+        if (!listed) return
 
-            val fullPath = if (path.isEmpty()) name else "$path/$name"
-            val isDir = (entry.fileAttributes and DIR_ATTR) != 0L
-
-            if (isDir) {
-                listRecursive(share, host, diskName, fullPath, result, depth + 1)
-            } else if (name.isAudioFile()) {
-                val encodedPath = URLEncoder.encode(fullPath, "UTF-8").replace("+", "%20")
-                result.add(SmbAudioEntry(
-                    smbUri = "smb://$host/$diskName/$encodedPath",
-                    relativePath = fullPath,
-                    shareName = diskName,
-                    fileSize = entry.endOfFile
-                ))
+        if (subDirs.isNotEmpty()) {
+            val childResults = subDirs.map { dir ->
+                scope.async {
+                    val partial = mutableListOf<SmbAudioEntry>()
+                    try {
+                        listRecursive(share, host, diskName, dir, partial, depth + 1, failedDirs, scope)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Child traversal failed for %s, skipping subtree", dir)
+                        failedDirs.add(dir)
+                    }
+                    partial
+                }
+            }.awaitAll().flatten()
+            synchronized(result) {
+                result.addAll(childResults)
             }
         }
+    }
+
+    private fun listDirectoryWithRetry(
+        share: DiskShare,
+        path: String,
+        host: String,
+        diskName: String,
+        result: MutableList<SmbAudioEntry>,
+        subDirs: MutableList<String>,
+        failedDirs: MutableSet<String>
+    ): Boolean {
+        for (attempt in 1..LIST_MAX_RETRIES) {
+            try {
+                val entries = share.list(path)
+                for (entry in entries) {
+                    val name = entry.fileName
+                    if (name == "." || name == "..") continue
+
+                    val fullPath = if (path.isEmpty()) name else "$path/$name"
+                    val isDir = (entry.fileAttributes and DIR_ATTR) != 0L
+
+                    if (isDir) {
+                        subDirs.add(fullPath)
+                    } else if (name.isAudioFile()) {
+                        val encodedPath = URLEncoder.encode(fullPath, "UTF-8").replace("+", "%20")
+                        result.add(SmbAudioEntry(
+                            smbUri = "smb://$host/$diskName/$encodedPath",
+                            relativePath = fullPath,
+                            shareName = diskName,
+                            fileSize = entry.endOfFile
+                        ))
+                    }
+                }
+                return true
+            } catch (e: Exception) {
+                val isRetryable = e is IOException || e is java.net.SocketTimeoutException
+                if (attempt < LIST_MAX_RETRIES && isRetryable) {
+                    val waitMs = RETRY_BACKOFF_MS[attempt - 1]
+                    Timber.w(e, "share.list() retry %d/%d for %s in %dms", attempt, LIST_MAX_RETRIES, path, waitMs)
+                    Thread.sleep(waitMs)
+                } else {
+                    Timber.e(e, "share.list() failed for %s after %d retries, adding to retry queue", path, LIST_MAX_RETRIES)
+                    failedDirs.add(path)
+                    return false
+                }
+            }
+        }
+        return false
+    }
+
+    private fun computeMp3RangeLimit(data: ByteArray): Long {
+        if (data.size < MP3_HEADER_SIZE) return 262143L
+        if (data[0] != 0x49.toByte() || data[1] != 0x44.toByte() || data[2] != 0x33.toByte()) return 262143L
+
+        val synchsafeSize =
+            (data[6].toInt() and 0x7F shl 21) or
+            (data[7].toInt() and 0x7F shl 14) or
+            (data[8].toInt() and 0x7F shl 7) or
+            (data[9].toInt() and 0x7F)
+        return (MP3_HEADER_SIZE + synchsafeSize).coerceAtMost(1048575L)
     }
 
     private fun extractMetadata(
@@ -247,10 +336,22 @@ class SmbMusicSource @Inject constructor(
         for (attempt in 1..3) {
             try {
                 val extension = entry.relativePath.substringAfterLast('.', "").lowercase()
-                val rangeLimit = if (extension == "mp3") downloadMp3Range(entry, host, username, password) else DEFAULT_RANGE_LIMIT
-                val bytes = downloadBytes(entry, host, username, password, 0, rangeLimit)
+                val initialLimit = if (extension == "mp3") 262143L else DEFAULT_RANGE_LIMIT
+                val bytes = downloadBytes(entry, host, username, password, 0, initialLimit)
 
-                val source = SeekableDataSources.forBytes(bytes)
+                val rangeLimit = if (extension == "mp3") {
+                    val tagLimit = computeMp3RangeLimit(bytes)
+                    if (tagLimit > bytes.size.toLong()) {
+                        val extra = downloadBytes(entry, host, username, password, bytes.size.toLong(), tagLimit - bytes.size.toLong())
+                        bytes + extra
+                    } else {
+                        bytes.copyOf(tagLimit.toInt())
+                    }
+                } else {
+                    bytes
+                }
+
+                val source = SeekableDataSources.forBytes(rangeLimit)
                 try {
                     return MetadataExtractor.buildSong(
                         source, entry.smbUri, sourceId, context, entry.fileSize,
@@ -263,42 +364,15 @@ class SmbMusicSource @Inject constructor(
             } catch (e: Exception) {
                 val isRetryable = e is IOException || e is java.net.SocketTimeoutException
                 if (attempt < 3 && isRetryable) {
+                    Timber.w(e, "Retry %d/3 for %s in %dms", attempt, entry.relativePath, RETRY_BACKOFF_MS[attempt - 1])
                     Thread.sleep(RETRY_BACKOFF_MS[attempt - 1])
                 } else {
-                    Timber.e(e, "Metadata extraction failed for %s", entry.relativePath)
+                    Timber.e(e, "Metadata extraction failed for %s (attempt %d/3)", entry.relativePath, attempt)
                     return BuildSongResult(null, emptyList())
                 }
             }
         }
         return BuildSongResult(null, emptyList())
-    }
-
-    private fun downloadMp3Range(
-        entry: SmbAudioEntry,
-        host: String,
-        username: String,
-        password: String
-    ): Long {
-        return try {
-            val headerBytes = downloadBytes(entry, host, username, password, 0, MP3_HEADER_RANGE_LIMIT)
-            if (headerBytes.size >= MP3_HEADER_SIZE &&
-                headerBytes[0] == 0x49.toByte() &&
-                headerBytes[1] == 0x44.toByte() &&
-                headerBytes[2] == 0x33.toByte()
-            ) {
-                val synchsafeSize =
-                    (headerBytes[6].toInt() and 0x7F shl 21) or
-                    (headerBytes[7].toInt() and 0x7F shl 14) or
-                    (headerBytes[8].toInt() and 0x7F shl 7) or
-                    (headerBytes[9].toInt() and 0x7F)
-                (MP3_HEADER_SIZE + synchsafeSize).coerceAtMost(1048575L)
-            } else {
-                262143L
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "MP3 header probe failed for %s", entry.relativePath)
-            262143L
-        }
     }
 
     private fun downloadBytes(
@@ -310,42 +384,42 @@ class SmbMusicSource @Inject constructor(
         length: Long
     ): ByteArray {
         val session = connectionManager.connect(host, username, password)
+        val share = connectionManager.getShare(session, entry.shareName)
+        val file = share.openFile(
+            entry.relativePath,
+            EnumSet.of(AccessMask.GENERIC_READ),
+            null,
+            EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
+            SMB2CreateDisposition.FILE_OPEN,
+            null
+        )
         try {
-            val share = session.connectShare(entry.shareName) as DiskShare
-            val file = share.openFile(
-                entry.relativePath,
-                EnumSet.of(AccessMask.GENERIC_READ),
-                null,
-                EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
-                SMB2CreateDisposition.FILE_OPEN,
-                null
-            )
-            try {
-                val inputStream = file.getInputStream()
-                val bytesToRead = minOf(length, entry.fileSize - offset).toInt()
-                val buffer = ByteArray(bytesToRead)
-                if (offset > 0) {
-                    var skipped = offset
-                    val skipBuf = ByteArray(8192)
-                    while (skipped > 0) {
-                        val toSkip = minOf(skipBuf.size.toLong(), skipped).toInt()
-                        val s = inputStream.read(skipBuf, 0, toSkip)
-                        if (s <= 0) break
-                        skipped -= s
-                    }
+            val inputStream = file.getInputStream()
+            val bytesToRead = minOf(length, entry.fileSize - offset).toInt()
+            val buffer = ByteArray(bytesToRead)
+            if (offset > 0) {
+                var skipped = offset
+                val skipBuf = ByteArray(8192)
+                while (skipped > 0) {
+                    val toSkip = minOf(skipBuf.size.toLong(), skipped).toInt()
+                    val s = inputStream.read(skipBuf, 0, toSkip)
+                    if (s <= 0) break
+                    skipped -= s
                 }
-                var totalRead = 0
-                while (totalRead < bytesToRead) {
-                    val read = inputStream.read(buffer, totalRead, bytesToRead - totalRead)
-                    if (read <= 0) break
-                    totalRead += read
-                }
-                return buffer.copyOf(totalRead)
-            } finally {
-                try { file.close() } catch (_: Exception) {}
             }
+            var totalRead = 0
+            while (totalRead < bytesToRead) {
+                val read = inputStream.read(buffer, totalRead, bytesToRead - totalRead)
+                if (read <= 0) break
+                totalRead += read
+            }
+            return buffer.copyOf(totalRead)
+        } catch (e: IOException) {
+            Timber.w(e, "Download failed, reconnecting for %s", entry.relativePath)
+            connectionManager.reconnect(host, username, password)
+            throw e
         } finally {
-            try { session.close() } catch (_: Exception) {}
+            try { file.close() } catch (_: Exception) {}
         }
     }
 
@@ -357,17 +431,13 @@ class SmbMusicSource @Inject constructor(
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             val session = connectionManager.connect(host, username, password)
-            try {
-                val share = session.connectShare(shareName) as DiskShare
-                val entries = share.list("")
-                val fileCount = entries.count {
-                    val isDir = (it.fileAttributes and DIR_ATTR) != 0L
-                    !isDir && it.fileName.isAudioFile()
-                }
-                Result.success("Verbunden (${entries.size} Einträge, $fileCount Audiodateien)")
-            } finally {
-                try { session.close() } catch (_: Exception) {}
+            val share = connectionManager.getShare(session, shareName)
+            val entries = share.list("")
+            val fileCount = entries.count {
+                val isDir = (it.fileAttributes and DIR_ATTR) != 0L
+                !isDir && it.fileName.isAudioFile()
             }
+            Result.success(context.getString(R.string.add_source_smb_connected, entries.size, fileCount))
         } catch (e: Exception) {
             val rootCause = generateSequence<Throwable>(e) { it.cause }.last()
             val msg = "${rootCause.javaClass.simpleName}: ${rootCause.message}"

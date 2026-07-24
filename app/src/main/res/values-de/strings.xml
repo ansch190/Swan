@@ -167,6 +167,9 @@
     <string name="add_source_smb_share">Freigabe und Pfad</string>
     <string name="add_source_smb_share_hint">z.B. Musik</string>
     <string name="add_source_smb_test_failed">Verbindung fehlgeschlagen – Server und Freigabe prüfen</string>
+    <string name="add_source_smb_connected">Erfolgreich verbunden (%1$d Einträge, %2$d Audiodateien)</string>
+    <string name="add_source_webdav_connected">Erfolgreich verbunden (%1$d Einträge gefunden)</string>
+    <string name="add_source_webdav_test_failed">Verbindung fehlgeschlagen – URL und Zugangsdaten prüfen</string>
 
     <!-- About screen -->
     <string name="about_title">Über</string>
