@@ -53,7 +53,30 @@ object Migrations {
         }
     }
 
-    val all = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""
+                CREATE TABLE playlist_song_mapping_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    playlistId INTEGER NOT NULL,
+                    songId TEXT NOT NULL,
+                    orderIndex INTEGER NOT NULL,
+                    FOREIGN KEY (playlistId) REFERENCES playlists(id) ON DELETE CASCADE,
+                    FOREIGN KEY (songId) REFERENCES songs(id) ON DELETE CASCADE
+                )
+            """.trimIndent())
+            db.execSQL("""
+                INSERT INTO playlist_song_mapping_new (playlistId, songId, orderIndex)
+                SELECT playlistId, songId, orderIndex FROM playlist_song_mapping
+            """.trimIndent())
+            db.execSQL("DROP TABLE playlist_song_mapping")
+            db.execSQL("ALTER TABLE playlist_song_mapping_new RENAME TO playlist_song_mapping")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_playlist_song_mapping_songId ON playlist_song_mapping(songId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_playlist_song_mapping_playlistId ON playlist_song_mapping(playlistId)")
+        }
+    }
+
+    val all = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
 
     fun migrateCredentialsToEncryptedStore(context: Context, store: CredentialStore) {
         val dbPath = context.getDatabasePath("music_player_db")

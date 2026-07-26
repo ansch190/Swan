@@ -1,5 +1,7 @@
 package com.schwanitz.ui.components
 
+import android.content.Context
+import com.schwanitz.R
 import com.schwanitz.domain.model.Playlist
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.PlaylistRepository
@@ -17,7 +19,8 @@ class SelectionDelegate(
     private val playlistRepository: PlaylistRepository,
     private val scope: CoroutineScope,
     private val songsProvider: () -> List<Song>,
-    private val errorHolder: ErrorHolder = ErrorHolder()
+    private val errorHolder: ErrorHolder = ErrorHolder(),
+    private val context: Context
 ) {
     private val _isSelecting = MutableStateFlow(false)
     val isSelecting: StateFlow<Boolean> = _isSelecting
@@ -68,9 +71,18 @@ class SelectionDelegate(
         val selected = songsProvider().filter { it.id in ids }
         scope.launch {
             runCatching {
+                var duplicateCount = 0
                 val count = playlistRepository.getPlaylistSongCount(playlistId)
                 selected.forEachIndexed { index, song ->
-                    playlistRepository.addSongToPlaylist(playlistId, song.id, count + index)
+                    val added = playlistRepository.addSongToPlaylist(playlistId, song.id, count + index)
+                    if (!added) duplicateCount++
+                }
+                if (duplicateCount > 0) {
+                    errorHolder.emit(
+                        com.schwanitz.domain.error.AppError.Unknown(
+                            message = context.getString(R.string.playlist_songs_already_exist, duplicateCount)
+                        )
+                    )
                 }
             }.exceptionOrNull()?.let { errorHolder.emit(it) }
             exitSelection()

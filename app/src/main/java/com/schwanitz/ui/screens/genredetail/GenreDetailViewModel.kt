@@ -10,7 +10,9 @@ import com.schwanitz.player.MusicPlayerManager
 import com.schwanitz.ui.common.ArtistImageLoader
 import com.schwanitz.ui.common.ErrorHolder
 import com.schwanitz.ui.components.SelectionDelegate
+import android.content.Context
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -21,7 +23,8 @@ class GenreDetailViewModel @Inject constructor(
     private val songRepository: SongRepository,
     private val playerManager: MusicPlayerManager,
     private val artistImageLoader: ArtistImageLoader,
-    private val playlistRepository: PlaylistRepository
+    private val playlistRepository: PlaylistRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
@@ -64,7 +67,7 @@ class GenreDetailViewModel @Inject constructor(
         playerManager.play(song, songs.value)
     }
 
-    private val selection = SelectionDelegate(playerManager, playlistRepository, viewModelScope, { songs.value }, errorHolder)
+    private val selection = SelectionDelegate(playerManager, playlistRepository, viewModelScope, { songs.value }, errorHolder, context)
     val isSelecting: StateFlow<Boolean> = selection.isSelecting
     val selectedSongIds: StateFlow<Set<String>> = selection.selectedSongIds
     val playlists: StateFlow<List<com.schwanitz.domain.model.Playlist>> = selection.playlists

@@ -1,6 +1,7 @@
 ﻿package com.schwanitz.data.repository
 
 import com.schwanitz.data.local.dao.PlaylistDao
+import com.schwanitz.data.local.dao.PlaylistSongWithMapping
 import com.schwanitz.data.local.entity.PlaylistEntity
 import com.schwanitz.data.local.entity.PlaylistSongMapping
 import com.schwanitz.data.local.converter.toDomain
@@ -39,6 +40,10 @@ class PlaylistRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getPlaylistSongsWithMapping(playlistId: Long): Flow<List<PlaylistSongWithMapping>> {
+        return playlistDao.getPlaylistSongsOrderedWithMapping(playlistId)
+    }
+
     override suspend fun createPlaylist(name: String): Long {
         val entity = PlaylistEntity(name = name)
         return playlistDao.createPlaylist(entity)
@@ -56,25 +61,30 @@ class PlaylistRepositoryImpl @Inject constructor(
         return playlistDao.getPlaylistSongCount(playlistId)
     }
 
-    override suspend fun addSongToPlaylist(playlistId: Long, songId: String, order: Int) {
+    override suspend fun getSongCountInPlaylist(playlistId: Long, songId: String): Int {
+        return playlistDao.getSongCountInPlaylist(playlistId, songId)
+    }
+
+    override suspend fun addSongToPlaylist(playlistId: Long, songId: String, order: Int): Boolean {
+        val exists = playlistDao.getSongCountInPlaylist(playlistId, songId) > 0
         val crossRef = PlaylistSongMapping(
             playlistId = playlistId,
             songId = songId,
             orderIndex = order
         )
         playlistDao.addSongToPlaylist(crossRef)
+        return !exists
     }
 
-    override suspend fun reorderSongs(playlistId: Long, songIds: List<String>) {
-        playlistDao.reorderSongs(playlistId, songIds)
+    override suspend fun removeOneSongFromPlaylist(mappingId: Long) {
+        playlistDao.deleteByMappingId(mappingId)
     }
 
-    override suspend fun removeSongFromPlaylist(playlistId: Long, songId: String) {
-        val crossRef = PlaylistSongMapping(
-            playlistId = playlistId,
-            songId = songId,
-            orderIndex = 0
-        )
-        playlistDao.removeSongFromPlaylist(crossRef)
+    override suspend fun removeAllSongsFromPlaylist(playlistId: Long, songId: String) {
+        playlistDao.removeAllBySongId(playlistId, songId)
+    }
+
+    override suspend fun reorderSongs(mappingIds: List<Long>) {
+        playlistDao.reorderSongs(mappingIds)
     }
 }

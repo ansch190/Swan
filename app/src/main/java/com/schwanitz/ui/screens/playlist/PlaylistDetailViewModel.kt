@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.R
+import com.schwanitz.data.local.dao.PlaylistSongWithMapping
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.domain.repository.PlaylistRepository
@@ -18,6 +19,11 @@ import com.schwanitz.ui.common.toggleFavorite
 import javax.inject.Inject
 
 private const val FAVORITES_PLAYLIST_ID = -1L
+
+sealed class PendingRemoval {
+    data class RemoveOne(val mappingId: Long, val songId: String) : PendingRemoval()
+    data class RemoveAll(val songId: String) : PendingRemoval()
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -47,13 +53,41 @@ class PlaylistDetailViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), context.getString(R.string.playlist_default_name))
 
-    val songs: StateFlow<List<Song>> = _playlistId
+    val songs: StateFlow<List<PlaylistSongWithMapping>> = _playlistId
         .filterNotNull()
         .flatMapLatest { id ->
             if (id == FAVORITES_PLAYLIST_ID) {
-                songRepository.getFavoriteSongs()
+                songRepository.getFavoriteSongs().map { list ->
+                    list.mapIndexed { index, song ->
+                        PlaylistSongWithMapping(
+                            mappingId = -(index.toLong() + 1),
+                            id = song.id,
+                            title = song.title,
+                            artistId = song.artistId,
+                            artistName = song.artistName,
+                            albumId = song.albumId,
+                            albumName = song.albumName,
+                            albumArtistName = song.albumArtistName,
+                            durationMs = song.durationMs,
+                            albumArtUri = song.albumArtUri,
+                            albumArtUriLarge = song.albumArtUriLarge,
+                            sourceId = song.sourceId,
+                            isFavorite = song.isFavorite,
+                            isActive = song.isActive,
+                            discNumber = song.discNumber,
+                            trackNumber = song.trackNumber,
+                            year = song.year,
+                            genre = song.genre,
+                            mimeType = song.mimeType,
+                            sampleRate = song.sampleRate,
+                            bitrate = song.bitrate,
+                            fileSize = song.fileSize,
+                            tagVersion = song.tagVersion
+                        )
+                    }
+                }
             } else {
-                playlistRepository.getPlaylistSongs(id)
+                playlistRepository.getPlaylistSongsWithMapping(id)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -74,20 +108,51 @@ class PlaylistDetailViewModel @Inject constructor(
         }
     }
 
-    fun playSong(song: Song) {
-        playerManager.play(song, songs.value)
+    fun playSong(entry: PlaylistSongWithMapping) {
+        val allSongs = songs.value.map { it.toSong() }
+        playerManager.play(entry.toSong(), allSongs)
     }
 
-    fun toggleFavorite(song: Song) = toggleFavorite(song, songRepository, errorHolder)
+    fun toggleFavorite(entry: PlaylistSongWithMapping) = toggleFavorite(entry.toSong(), songRepository, errorHolder)
 
-    fun savePlaylistChanges(songIds: List<String>, deleteSongIds: List<String>) {
+    fun savePlaylistChanges(mappingIds: List<Long>, removals: List<PendingRemoval>) {
         viewModelScope.launch {
             runCatching {
                 val pid = _playlistId.value ?: return@launch
                 if (pid == FAVORITES_PLAYLIST_ID) return@launch
-                deleteSongIds.forEach { playlistRepository.removeSongFromPlaylist(pid, it) }
-                playlistRepository.reorderSongs(pid, songIds)
+                for (removal in removals) {
+                    when (removal) {
+                        is PendingRemoval.RemoveOne -> playlistRepository.removeOneSongFromPlaylist(removal.mappingId)
+                        is PendingRemoval.RemoveAll -> playlistRepository.removeAllSongsFromPlaylist(pid, removal.songId)
+                    }
+                }
+                playlistRepository.reorderSongs(mappingIds)
             }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }
+
+    private fun PlaylistSongWithMapping.toSong(): Song = Song(
+        id = id,
+        title = title,
+        artistId = artistId,
+        artistName = artistName ?: "",
+        albumId = albumId,
+        albumName = albumName ?: "",
+        albumArtistName = albumArtistName ?: "",
+        durationMs = durationMs,
+        albumArtUri = albumArtUri,
+        albumArtUriLarge = albumArtUriLarge,
+        sourceId = sourceId,
+        isFavorite = isFavorite,
+        isActive = isActive,
+        discNumber = discNumber,
+        trackNumber = trackNumber,
+        year = year,
+        genre = genre,
+        mimeType = mimeType,
+        sampleRate = sampleRate,
+        bitrate = bitrate,
+        fileSize = fileSize,
+        tagVersion = tagVersion
+    )
 }

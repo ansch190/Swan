@@ -263,4 +263,10 @@
     <string name="webdav_mailbox_hint">Mailbox.org Email</string>
     <string name="webdav_pcloud_note">WebDAV requires a paid plan; No 2FA possible</string>
     <string name="webdav_koofr_note">Separate app password required</string>
+
+    <!-- Playlist duplicate songs -->
+    <string name="playlist_remove_one_occurrence">Remove one</string>
+    <string name="playlist_remove_all_occurrences">Remove all (%d)</string>
+    <string name="playlist_remove_song_duplicate_message">This song appears %2$d times in this playlist:\n%1$s</string>
+    <string name="playlist_songs_already_exist">%d song(s) already in playlist</string>
 </resources>

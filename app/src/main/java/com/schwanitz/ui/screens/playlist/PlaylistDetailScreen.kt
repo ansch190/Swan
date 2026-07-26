@@ -22,11 +22,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.schwanitz.R
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.schwanitz.data.local.dao.PlaylistSongWithMapping
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
 import com.schwanitz.ui.navigation.LocalBottomBarHeight
 
-import com.schwanitz.domain.model.Song
 import com.schwanitz.ui.components.SongListItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import sh.calvin.reorderable.ReorderableItem
@@ -50,8 +50,8 @@ fun PlaylistDetailScreen(
     val isFavorites by viewModel.isFavoritesPlaylist.collectAsState()
     var localSongs by remember { mutableStateOf(songs) }
     var isEditing by rememberSaveable { mutableStateOf(false) }
-    var pendingDeletions by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var songToRemove by remember { mutableStateOf<Song?>(null) }
+    var pendingRemovals by remember { mutableStateOf<List<PendingRemoval>>(emptyList()) }
+    var songToRemove by remember { mutableStateOf<PlaylistSongWithMapping?>(null) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var renameText by remember(playlistName) { mutableStateOf(playlistName) }
     val focusRequester = remember { FocusRequester() }
@@ -62,28 +62,48 @@ fun PlaylistDetailScreen(
         }
     }
 
-    songToRemove?.let { song ->
-        AlertDialog(
-            onDismissRequest = { songToRemove = null },
-            title = { Text(stringResource(R.string.playlist_remove_song_title)) },
-            text = { Text(stringResource(R.string.playlist_remove_song_message, song.title)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        localSongs = localSongs.filter { it.id != song.id }
-                        pendingDeletions = pendingDeletions + song.id
-                        songToRemove = null
+    songToRemove?.let { entry ->
+        val duplicateCount = localSongs.count { it.id == entry.id }
+        if (duplicateCount > 1) {
+            DuplicateSongDialog(
+                songTitle = entry.title,
+                count = duplicateCount,
+                onRemoveOne = {
+                    localSongs = localSongs.filter { it.mappingId != entry.mappingId }
+                    pendingRemovals = pendingRemovals + PendingRemoval.RemoveOne(entry.mappingId, entry.id)
+                    songToRemove = null
+                },
+                onRemoveAll = {
+                    localSongs = localSongs.filter { it.id != entry.id }
+                    pendingRemovals = pendingRemovals.filter { it !is PendingRemoval.RemoveOne || it.songId != entry.id }
+                    pendingRemovals = pendingRemovals + PendingRemoval.RemoveAll(entry.id)
+                    songToRemove = null
+                },
+                onDismiss = { songToRemove = null }
+            )
+        } else {
+            AlertDialog(
+                onDismissRequest = { songToRemove = null },
+                title = { Text(stringResource(R.string.playlist_remove_song_title)) },
+                text = { Text(stringResource(R.string.playlist_remove_song_message, entry.title)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            localSongs = localSongs.filter { it.mappingId != entry.mappingId }
+                            pendingRemovals = pendingRemovals + PendingRemoval.RemoveOne(entry.mappingId, entry.id)
+                            songToRemove = null
+                        }
+                    ) {
+                        Text(stringResource(R.string.playlist_remove_confirm), color = MaterialTheme.colorScheme.error)
                     }
-                ) {
-                    Text(stringResource(R.string.playlist_remove_confirm), color = MaterialTheme.colorScheme.error)
+                },
+                dismissButton = {
+                    TextButton(onClick = { songToRemove = null }) {
+                        Text(stringResource(R.string.cancel))
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { songToRemove = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
+            )
+        }
     }
 
     LaunchedEffect(songs) {
@@ -116,10 +136,10 @@ fun PlaylistDetailScreen(
                     if (isEditing) {
                         IconButton(onClick = {
                             viewModel.savePlaylistChanges(
-                                songIds = localSongs.map { it.id },
-                                deleteSongIds = pendingDeletions.toList()
+                                mappingIds = localSongs.map { it.mappingId },
+                                removals = pendingRemovals
                             )
-                            pendingDeletions = emptySet()
+                            pendingRemovals = emptyList()
                             isEditing = false
                         }) {
                             Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.cd_edit_done))
@@ -152,25 +172,25 @@ fun PlaylistDetailScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = LocalBottomBarHeight.current)
             ) {
-                items(localSongs, key = { it.id }) { song ->
+                items(localSongs, key = { it.mappingId }) { entry ->
                     if (isEditing && !isFavorites) {
-                        ReorderableItem(reorderableState, key = song.id) { isDragging ->
+                        ReorderableItem(reorderableState, key = entry.mappingId) { isDragging ->
                             val alpha = if (isDragging) 0.7f else 1f
                             val dragHandle = Modifier.draggableHandle()
                             SongListItem(
-                                song = song,
-                                onClick = { viewModel.playSong(song) },
+                                song = entry.toSong(),
+                                onClick = { viewModel.playSong(entry) },
                                 showDragHandle = true,
-                                onRemoveClick = { songToRemove = song },
+                                onRemoveClick = { songToRemove = entry },
                                 dragHandleModifier = dragHandle,
                                 modifier = Modifier.alpha(alpha)
                             )
                         }
                     } else {
                         SongListItem(
-                            song = song,
-                            onClick = { viewModel.playSong(song) },
-                            onFavoriteClick = { viewModel.toggleFavorite(song) },
+                            song = entry.toSong(),
+                            onClick = { viewModel.playSong(entry) },
+                            onFavoriteClick = { viewModel.toggleFavorite(entry) },
                             modifier = Modifier
                         )
                     }
@@ -212,3 +232,58 @@ fun PlaylistDetailScreen(
         )
     }
 }
+
+@Composable
+private fun DuplicateSongDialog(
+    songTitle: String,
+    count: Int,
+    onRemoveOne: () -> Unit,
+    onRemoveAll: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.playlist_remove_song_title)) },
+        text = { Text(stringResource(R.string.playlist_remove_song_duplicate_message, songTitle, count)) },
+        confirmButton = {
+            TextButton(onClick = onRemoveAll) {
+                Text(stringResource(R.string.playlist_remove_all_occurrences, count), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
+                TextButton(onClick = onRemoveOne) {
+                    Text(stringResource(R.string.playlist_remove_one_occurrence), color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    )
+}
+
+private fun PlaylistSongWithMapping.toSong(): com.schwanitz.domain.model.Song = com.schwanitz.domain.model.Song(
+    id = id,
+    title = title,
+    artistId = artistId,
+    artistName = artistName ?: "",
+    albumId = albumId,
+    albumName = albumName ?: "",
+    albumArtistName = albumArtistName ?: "",
+    durationMs = durationMs,
+    albumArtUri = albumArtUri,
+    albumArtUriLarge = albumArtUriLarge,
+    sourceId = sourceId,
+    isFavorite = isFavorite,
+    isActive = isActive,
+    discNumber = discNumber,
+    trackNumber = trackNumber,
+    year = year,
+    genre = genre,
+    mimeType = mimeType,
+    sampleRate = sampleRate,
+    bitrate = bitrate,
+    fileSize = fileSize,
+    tagVersion = tagVersion
+)

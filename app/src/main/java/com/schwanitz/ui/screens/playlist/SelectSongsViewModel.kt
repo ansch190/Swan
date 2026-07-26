@@ -1,12 +1,15 @@
 ﻿package com.schwanitz.ui.screens.playlist
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.schwanitz.R
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -25,7 +28,8 @@ data class SelectSongsUiState(
 class SelectSongsViewModel @Inject constructor(
     private val songRepository: SongRepository,
     private val playlistRepository: PlaylistRepository,
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     val errorHolder = ErrorHolder()
@@ -70,9 +74,18 @@ class SelectSongsViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 val songIds = selectedSongIds.value.toList()
+                var duplicateCount = 0
                 val count = playlistRepository.getPlaylistSongCount(playlistId)
                 songIds.forEachIndexed { index, songId ->
-                    playlistRepository.addSongToPlaylist(playlistId, songId, count + index)
+                    val added = playlistRepository.addSongToPlaylist(playlistId, songId, count + index)
+                    if (!added) duplicateCount++
+                }
+                if (duplicateCount > 0) {
+                    errorHolder.emit(
+                        com.schwanitz.domain.error.AppError.Unknown(
+                            message = context.getString(R.string.playlist_songs_already_exist, duplicateCount)
+                        )
+                    )
                 }
                 onComplete()
             }.exceptionOrNull()?.let { errorHolder.emit(it) }
