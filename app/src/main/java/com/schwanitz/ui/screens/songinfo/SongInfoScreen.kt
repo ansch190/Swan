@@ -371,7 +371,7 @@ private fun InfoRow(
             style = MaterialTheme.typography.bodyLarge,
             color = if (onLabelClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
-                .width(120.dp)
+                .width(140.dp)
                 .then(if (onLabelClick != null) Modifier.clickable(onClick = onLabelClick) else Modifier)
         )
         Text(
