@@ -8,8 +8,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.schwanitz.R
 
@@ -26,6 +29,11 @@ fun YearListScreen(
 
     val years by viewModel.allYears.collectAsState()
 
+    val yearsByDecade = remember(years) {
+        years.groupBy { it / 10 }
+            .toSortedMap(compareByDescending { it })
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(stringResource(R.string.section_years)) },
@@ -37,11 +45,34 @@ fun YearListScreen(
         )
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(years) { year ->
-                ListItem(
-                    modifier = Modifier.clickable { onYearClick(year) },
-                    headlineContent = { Text(year.toString()) }
-                )
+            yearsByDecade.forEach { (decade, decadeYears) ->
+                stickyHeader {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ) {
+                        Text(
+                            text = stringResource(R.string.decade_format, decade * 10),
+                            style = MaterialTheme.typography.headlineSmall,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp)
+                        )
+                    }
+                }
+                items(decadeYears) { year ->
+                    ListItem(
+                        modifier = Modifier.clickable { onYearClick(year) },
+                        headlineContent = {
+                            Text(
+                                text = year.toString(),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    )
+                }
             }
         }
     }
