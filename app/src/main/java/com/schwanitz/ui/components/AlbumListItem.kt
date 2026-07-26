@@ -26,8 +26,12 @@ fun AlbumListItem(albumName: String, albumArtUri: String?, onClick: () -> Unit, 
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
         headlineContent = { Text(if (albumName.isBlank()) stringResource(R.string.album_no_album) else albumName) },
-        supportingContent = if (albumArtist.isNotBlank()) { { Text(albumArtist) } } else null,
-        overlineContent = if (year > 0) { { Text(year.toString()) } } else null,
+        supportingContent = {
+            val parts = mutableListOf<String>()
+            if (year > 0) parts.add(year.toString())
+            if (albumArtist.isNotBlank()) parts.add(albumArtist)
+            if (parts.isNotEmpty()) Text(parts.joinToString(" \u00B7 "))
+        },
         leadingContent = {
             if (albumArtUri != null) {
                 AsyncImage(
