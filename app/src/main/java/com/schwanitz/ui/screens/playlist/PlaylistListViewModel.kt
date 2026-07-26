@@ -67,11 +67,12 @@ class PlaylistListViewModel @Inject constructor(
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PlaylistListUiState())
 
-    fun createPlaylist(name: String) {
-        viewModelScope.launch {
-            runCatching {
-                playlistRepository.createPlaylist(name)
-            }.exceptionOrNull()?.let { errorHolder.emit(it) }
+    suspend fun createPlaylist(name: String): Long {
+        return runCatching {
+            playlistRepository.createPlaylist(name)
+        }.getOrElse {
+            errorHolder.emit(it)
+            -1L
         }
     }
 

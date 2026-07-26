@@ -116,10 +116,10 @@ fun PlaylistListScreen(
                         PlaylistListItem(
                             playlist = playlist,
                             onClick = { onPlaylistClick(playlist.id) },
-                            onExport = {
+                            onExport = if (playlist.songCount > 0) {{
                                 playlistToExport = playlist
                                 showExportFormat = true
-                            },
+                            }} else null,
                             onDelete = if (!playlist.isFavorite) {{ playlistToDelete = playlist }} else null
                         )
                     }
@@ -168,9 +168,13 @@ fun PlaylistListScreen(
                 TextButton(
                     onClick = {
                         if (newPlaylistName.isNotBlank()) {
-                            viewModel.createPlaylist(newPlaylistName)
+                            val name = newPlaylistName
                             showDialog = false
                             newPlaylistName = ""
+                            coroutineScope.launch {
+                                val newId = viewModel.createPlaylist(name)
+                                if (newId > 0) onPlaylistClick(newId)
+                            }
                         }
                     }
                 ) {
@@ -218,12 +222,14 @@ private fun PlaylistListItem(
                         )
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.export)) },
-                            onClick = { showMenu = false; onExport?.invoke() }
-                        )
+                        if (onExport != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.export)) },
+                                onClick = { showMenu = false; onExport() }
+                            )
+                        }
                         if (onDelete != null) {
-                            HorizontalDivider()
+                            if (onExport != null) HorizontalDivider()
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
                                 onClick = { showMenu = false; onDelete() }
