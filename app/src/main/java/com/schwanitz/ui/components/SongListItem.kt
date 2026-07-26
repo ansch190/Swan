@@ -36,7 +36,8 @@ fun SongListItem(
     showDragHandle: Boolean = false,
     dragHandleModifier: Modifier = Modifier,
     modifier: Modifier = Modifier,
-    selected: Boolean = false
+    selected: Boolean = false,
+    showAlbumInSubtitle: Boolean = true
 ) {
     val inactive = !song.isActive
 
@@ -77,9 +78,9 @@ fun SongListItem(
         },
         supportingContent = {
             val subtitle = when {
-                song.artistName.isNotBlank() && song.albumName.isNotBlank() -> "${song.artistName} \u2022 ${song.albumName}"
+                showAlbumInSubtitle && song.artistName.isNotBlank() && song.albumName.isNotBlank() -> "${song.artistName} \u2022 ${song.albumName}"
                 song.artistName.isNotBlank() -> song.artistName
-                song.albumName.isNotBlank() -> song.albumName
+                showAlbumInSubtitle && song.albumName.isNotBlank() -> song.albumName
                 else -> ""
             }
             if (subtitle.isNotEmpty()) {

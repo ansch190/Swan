@@ -124,6 +124,7 @@ fun AlbumDetailScreen(
                             onPlaySelection = { viewModel.playSelection() },
                             onAddToPlaylist = { showPlaylistPicker = true },
                             onAddToQueue = { viewModel.addSelectionToQueue() },
+                            showAlbumInSubtitle = false,
                             extraMenuItems = if (cdList.size > 1) {
                                 {
                                     DropdownMenuItem(

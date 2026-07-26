@@ -25,7 +25,8 @@ fun SelectableSongItem(
     onPlaySelection: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onAddToQueue: () -> Unit,
-    extraMenuItems: @Composable () -> Unit = {}
+    extraMenuItems: @Composable () -> Unit = {},
+    showAlbumInSubtitle: Boolean = true
 ) {
     var showNormalMenu by remember { mutableStateOf(false) }
     var showSelectionMenu by remember { mutableStateOf(false) }
@@ -41,7 +42,8 @@ fun SelectableSongItem(
                 if (isSelecting && isSelected) showSelectionMenu = true
                 else showNormalMenu = true
             },
-            selected = isSelecting && isSelected
+            selected = isSelecting && isSelected,
+            showAlbumInSubtitle = showAlbumInSubtitle
         )
 
         DropdownMenu(
