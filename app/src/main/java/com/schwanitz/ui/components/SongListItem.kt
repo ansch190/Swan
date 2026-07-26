@@ -83,10 +83,9 @@ fun SongListItem(
                 else -> ""
             }
             if (subtitle.isNotEmpty()) {
-                Text(
+                MarqueeText(
                     text = subtitle,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
