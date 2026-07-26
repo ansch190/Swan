@@ -22,10 +22,11 @@ import coil.compose.AsyncImage
 import com.schwanitz.R
 
 @Composable
-fun AlbumListItem(albumName: String, albumArtUri: String?, onClick: () -> Unit, year: Int = 0) {
+fun AlbumListItem(albumName: String, albumArtUri: String?, onClick: () -> Unit, year: Int = 0, albumArtist: String = "") {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
         headlineContent = { Text(if (albumName.isBlank()) stringResource(R.string.album_no_album) else albumName) },
+        supportingContent = if (albumArtist.isNotBlank()) { { Text(albumArtist) } } else null,
         overlineContent = if (year > 0) { { Text(year.toString()) } } else null,
         leadingContent = {
             if (albumArtUri != null) {
