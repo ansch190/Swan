@@ -67,6 +67,7 @@ fun SongDao.AlbumProjection.toDomain(): Album = Album(
     id = albumId,
     name = albumName,
     albumArtist = albumArtist ?: "",
+    year = albumYear,
     albumArtUri = albumArtUri
 )
 

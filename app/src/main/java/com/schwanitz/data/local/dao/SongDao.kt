@@ -12,7 +12,8 @@ interface SongDao {
         val albumId: Long,
         val albumName: String,
         val albumArtist: String?,
-        val albumArtUri: String?
+        val albumArtUri: String?,
+        val albumYear: Int
     )
 
     @Query("SELECT * FROM SongWithNames WHERE isActive = 1 ORDER BY title ASC")
@@ -28,7 +29,7 @@ interface SongDao {
     fun getSongsByArtistId(artistId: Long): Flow<List<SongWithNames>>
 
     @Query("""
-        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri
+        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri, al.year as albumYear
         FROM songs s
         INNER JOIN album_song_mapping asm ON s.id = asm.songId
         LEFT JOIN albums al ON asm.albumId = al.id
@@ -43,7 +44,7 @@ interface SongDao {
     fun getSongsByYear(year: Int): Flow<List<SongWithNames>>
 
     @Query("""
-        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri
+        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri, al.year as albumYear
         FROM songs s
         INNER JOIN album_song_mapping asm ON s.id = asm.songId
         LEFT JOIN albums al ON asm.albumId = al.id
@@ -58,7 +59,7 @@ interface SongDao {
     fun getSongsByGenre(genre: String): Flow<List<SongWithNames>>
 
     @Query("""
-        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri
+        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri, al.year as albumYear
         FROM songs s
         INNER JOIN album_song_mapping asm ON s.id = asm.songId
         LEFT JOIN albums al ON asm.albumId = al.id
@@ -104,7 +105,7 @@ interface SongDao {
     fun getSongsBySeries(seriesId: Long): Flow<List<SongWithNames>>
 
     @Query("""
-        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri
+        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri, al.year as albumYear
         FROM songs s
         INNER JOIN album_song_mapping asm ON s.id = asm.songId
         LEFT JOIN albums al ON asm.albumId = al.id
@@ -117,7 +118,7 @@ interface SongDao {
     fun getAlbumsInSeries(seriesId: Long): Flow<List<AlbumProjection>>
 
     @Query("""
-        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri
+        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri, al.year as albumYear
         FROM songs s
         INNER JOIN album_song_mapping asm ON s.id = asm.songId
         LEFT JOIN albums al ON asm.albumId = al.id
@@ -141,7 +142,7 @@ interface SongDao {
     fun getAllGenres(): Flow<List<String>>
 
     @Query("""
-        SELECT DISTINCT al.id as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri
+        SELECT DISTINCT al.id as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri, al.year as albumYear
         FROM albums al
         INNER JOIN album_song_mapping asm ON al.id = asm.albumId
         INNER JOIN songs s ON s.id = asm.songId
@@ -154,7 +155,7 @@ interface SongDao {
     fun getSongsWithNoArtist(): Flow<List<SongWithNames>>
 
     @Query("""
-        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri
+        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri, al.year as albumYear
         FROM songs s
         INNER JOIN album_song_mapping asm ON s.id = asm.songId
         LEFT JOIN albums al ON asm.albumId = al.id
@@ -190,14 +191,14 @@ interface SongDao {
     fun getSongsByAlbumArtistName(albumArtistName: String): Flow<List<SongWithNames>>
 
     @Query("""
-        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri
+        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri, al.year as albumYear
         FROM songs s
         INNER JOIN album_song_mapping asm ON s.id = asm.songId
         LEFT JOIN albums al ON asm.albumId = al.id
         LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
         WHERE al.albumArtist = :albumArtistName AND s.isActive = 1
         GROUP BY asm.albumId
-        ORDER BY al.name ASC
+        ORDER BY al.year DESC, al.name ASC
     """)
     fun getAlbumsByAlbumArtistName(albumArtistName: String): Flow<List<AlbumProjection>>
 
@@ -208,7 +209,7 @@ interface SongDao {
     fun getSongsWithNoAlbumArtist(): Flow<List<SongWithNames>>
 
     @Query("""
-        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri
+        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri, al.year as albumYear
         FROM songs s
         INNER JOIN album_song_mapping asm ON s.id = asm.songId
         LEFT JOIN albums al ON asm.albumId = al.id
