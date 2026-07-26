@@ -120,7 +120,8 @@ fun ArtistDetailScreen(
                             AlbumListItem(
                                 albumName = album.name,
                                 albumArtUri = album.albumArtUri,
-                                onClick = { onAlbumClick(album.name, artistName) }
+                                onClick = { onAlbumClick(album.name, artistName) },
+                                year = album.year
                             )
                         }
                     }
