@@ -10,6 +10,7 @@ import com.schwanitz.ui.screens.home.HomeScreen
 import com.schwanitz.ui.screens.nowplaying.NowPlayingScreen
 import com.schwanitz.ui.screens.playlist.PlaylistDetailScreen
 import com.schwanitz.ui.screens.playlist.PlaylistListScreen
+import com.schwanitz.ui.screens.playlist.PlaylistPickerScreen
 import com.schwanitz.ui.screens.playlist.SelectSongsScreen
 import com.schwanitz.ui.screens.settings.AboutScreen
 import com.schwanitz.ui.screens.settings.AddSourceScreen
@@ -87,6 +88,9 @@ fun NavGraph(navController: NavHostController) {
                 },
                 onAlbumClick = { album, albumArtist ->
                     navController.navigate(Routes.albumDetail(album, albumArtist))
+                },
+                onAddToPlaylist = { songIds ->
+                    navController.navigate(Routes.playlistPicker(songIds))
                 }
             )
         }
@@ -101,6 +105,9 @@ fun NavGraph(navController: NavHostController) {
                 onNavigateBack = { navController.popBackStack() },
                 onAlbumClick = { album, albumArtist ->
                     navController.navigate(Routes.albumDetail(album, albumArtist))
+                },
+                onAddToPlaylist = { songIds ->
+                    navController.navigate(Routes.playlistPicker(songIds))
                 }
             )
         }
@@ -118,6 +125,9 @@ fun NavGraph(navController: NavHostController) {
                 },
                 onAlbumClick = { album, albumArtist ->
                     navController.navigate(Routes.albumDetail(album, albumArtist))
+                },
+                onAddToPlaylist = { songIds ->
+                    navController.navigate(Routes.playlistPicker(songIds))
                 }
             )
         }
@@ -132,6 +142,9 @@ fun NavGraph(navController: NavHostController) {
                 onNavigateBack = { navController.popBackStack() },
                 onAlbumClick = { album, albumArtist ->
                     navController.navigate(Routes.albumDetail(album, albumArtist))
+                },
+                onAddToPlaylist = { songIds ->
+                    navController.navigate(Routes.playlistPicker(songIds))
                 }
             )
         }
@@ -199,6 +212,9 @@ fun NavGraph(navController: NavHostController) {
                 onNavigateBack = { navController.popBackStack() },
                 onSeriesClick = { seriesName ->
                     navController.navigate(Routes.seriesDetail(seriesName))
+                },
+                onAddToPlaylist = { songIds ->
+                    navController.navigate(Routes.playlistPicker(songIds))
                 }
             )
         }
@@ -213,6 +229,9 @@ fun NavGraph(navController: NavHostController) {
                 onNavigateBack = { navController.popBackStack() },
                 onAlbumClick = { album, albumArtist ->
                     navController.navigate(Routes.albumDetail(album, albumArtist))
+                },
+                onAddToPlaylist = { songIds ->
+                    navController.navigate(Routes.playlistPicker(songIds))
                 }
             )
         }
@@ -251,6 +270,19 @@ fun NavGraph(navController: NavHostController) {
         ) {
             SelectSongsScreen(
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "playlist_picker/{songIds}",
+            arguments = listOf(navArgument("songIds") { type = NavType.StringType })
+        ) {
+            PlaylistPickerScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onPlaylistSelected = { playlistId ->
+                    navController.popBackStack()
+                    navController.navigate(Routes.playlistDetail(playlistId))
+                }
             )
         }
 

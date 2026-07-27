@@ -26,7 +26,6 @@ import com.schwanitz.domain.model.AlbumArtwork
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
 import com.schwanitz.ui.components.MarqueeText
-import com.schwanitz.ui.components.PlaylistPickerDialog
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.components.SelectableSongItem
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
@@ -39,6 +38,7 @@ fun AlbumDetailScreen(
     albumArtistName: String,
     onNavigateBack: () -> Unit,
     onSeriesClick: (String) -> Unit = {},
+    onAddToPlaylist: (String) -> Unit = {},
     viewModel: AlbumDetailViewModel = hiltViewModel()
 ) {
     LaunchedEffect(albumName, albumArtistName) {
@@ -51,10 +51,8 @@ fun AlbumDetailScreen(
     val coroutineScope = rememberCoroutineScope()
     val isSelecting by viewModel.isSelecting.collectAsState()
     val selectedSongIds by viewModel.selectedSongIds.collectAsState()
-    val playlists by viewModel.playlists.collectAsState()
     val snackbarHostState = LocalSnackbarHostState.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
-    var showPlaylistPicker by remember { mutableStateOf(false) }
 
     val songsByCd = remember(songs, albumName) {
         if (albumName.isBlank()) {
@@ -122,7 +120,7 @@ fun AlbumDetailScreen(
                             onEnterSelection = { viewModel.enterSelection(song) },
                             onPlayAll = { viewModel.playAllFromSong(song, cdSongs) },
                             onPlaySelection = { viewModel.playSelection() },
-                            onAddToPlaylist = { showPlaylistPicker = true },
+                            onAddToPlaylist = { onAddToPlaylist(viewModel.getSelectedSongIds()) },
                             onAddToQueue = { viewModel.addSelectionToQueue() },
                             showAlbumInSubtitle = false,
                             extraMenuItems = if (cdList.size > 1) {
@@ -143,13 +141,6 @@ fun AlbumDetailScreen(
             }
         }
     }
-
-    PlaylistPickerDialog(
-        show = showPlaylistPicker,
-        playlists = playlists,
-        onDismiss = { showPlaylistPicker = false },
-        onPlaylistSelected = { viewModel.addSelectionToPlaylist(it) }
-    )
 }
 
 @Composable

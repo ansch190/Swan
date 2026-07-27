@@ -25,7 +25,6 @@ import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
 import com.schwanitz.ui.components.AlbumListItem
 import com.schwanitz.ui.components.MarqueeText
-import com.schwanitz.ui.components.PlaylistPickerDialog
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.components.SelectableSongItem
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
@@ -38,6 +37,7 @@ fun GenreDetailScreen(
     onNavigateBack: () -> Unit,
     onArtistClick: (String) -> Unit,
     onAlbumClick: (String, String) -> Unit,
+    onAddToPlaylist: (String) -> Unit = {},
     viewModel: GenreDetailViewModel = hiltViewModel()
 ) {
     val snackbarHostState = LocalSnackbarHostState.current
@@ -56,8 +56,6 @@ fun GenreDetailScreen(
     val pagerState = rememberPagerState(pageCount = { 3 })
     val isSelecting by viewModel.isSelecting.collectAsState()
     val selectedSongIds by viewModel.selectedSongIds.collectAsState()
-    val playlists by viewModel.playlists.collectAsState()
-    var showPlaylistPicker by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(stringResource(R.string.genre_title)) },
@@ -105,7 +103,7 @@ fun GenreDetailScreen(
                                 onEnterSelection = { viewModel.enterSelection(song) },
                                 onPlayAll = { viewModel.playAllFromSong(song) },
                                 onPlaySelection = { viewModel.playSelection() },
-                                onAddToPlaylist = { showPlaylistPicker = true },
+                                onAddToPlaylist = { onAddToPlaylist(viewModel.getSelectedSongIds()) },
                                 onAddToQueue = { viewModel.addSelectionToQueue() }
                             )
                         }
@@ -138,13 +136,6 @@ fun GenreDetailScreen(
             }
         }
     }
-
-    PlaylistPickerDialog(
-        show = showPlaylistPicker,
-        playlists = playlists,
-        onDismiss = { showPlaylistPicker = false },
-        onPlaylistSelected = { viewModel.addSelectionToPlaylist(it) }
-    )
 }
 
 @Composable

@@ -62,10 +62,9 @@ class SeriesDetailViewModel @Inject constructor(
     private val selection = SelectionDelegate(playerManager, playlistRepository, viewModelScope, { songs.value }, errorHolder, context)
     val isSelecting: StateFlow<Boolean> = selection.isSelecting
     val selectedSongIds: StateFlow<Set<String>> = selection.selectedSongIds
-    val playlists: StateFlow<List<com.schwanitz.domain.model.Playlist>> = selection.playlists
     fun enterSelection(song: Song) = selection.enterSelection(song)
     fun toggleSelection(songId: String) = selection.toggleSelection(songId)
     fun playSelection() = selection.playSelection()
     fun addSelectionToQueue() = selection.addSelectionToQueue()
-    fun addSelectionToPlaylist(playlistId: Long) = selection.addSelectionToPlaylist(playlistId)
+    fun getSelectedSongIds(): String = selection.getSelectedSongIds()
 }

@@ -33,6 +33,8 @@ object Routes {
 
     fun selectSongs(playlistId: Long) = "select_songs/$playlistId"
 
+    fun playlistPicker(songIds: String) = "playlist_picker/${Uri.encode(songIds)}"
+
     fun addSource(sourceId: String?) =
         if (sourceId != null) "add_source?sourceId=$sourceId" else ADD_SOURCE
 }

@@ -66,6 +66,8 @@ class SelectionDelegate(
         exitSelection()
     }
 
+    fun getSelectedSongIds(): String = _selectedSongIds.value.joinToString(",")
+
     fun addSelectionToPlaylist(playlistId: Long) {
         val ids = _selectedSongIds.value
         val selected = songsProvider().filter { it.id in ids }
