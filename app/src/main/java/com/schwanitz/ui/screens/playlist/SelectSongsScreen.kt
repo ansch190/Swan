@@ -13,8 +13,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.schwanitz.R
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.schwanitz.ui.common.CollectSnackbarErrors
-import com.schwanitz.ui.navigation.LocalSnackbarHostState
 import com.schwanitz.ui.navigation.LocalBottomBarHeight
 import com.schwanitz.ui.components.SongListItem
 
@@ -22,10 +20,9 @@ import com.schwanitz.ui.components.SongListItem
 @Composable
 fun SelectSongsScreen(
     onNavigateBack: () -> Unit,
+    onSongsSelected: (List<com.schwanitz.domain.model.Song>) -> Unit = { onNavigateBack() },
     viewModel: SelectSongsViewModel = hiltViewModel()
 ) {
-    val snackbarHostState = LocalSnackbarHostState.current
-    CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
     val uiState by viewModel.uiState.collectAsState()
     val selectedIds by viewModel.selectedSongIds.collectAsState()
 
@@ -48,7 +45,7 @@ fun SelectSongsScreen(
                 }
                 IconButton(
                     onClick = {
-                        viewModel.confirmSelection(onNavigateBack)
+                        viewModel.confirmSelection(onSongsSelected)
                     },
                     enabled = selectedIds.isNotEmpty()
                 ) {

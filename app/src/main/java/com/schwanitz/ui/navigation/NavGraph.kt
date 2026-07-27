@@ -1,6 +1,7 @@
 ﻿package com.schwanitz.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -267,9 +268,16 @@ fun NavGraph(navController: NavHostController) {
         composable(
             route = "select_songs/{playlistId}",
             arguments = listOf(navArgument("playlistId") { type = NavType.LongType })
-        ) {
+        ) { backStackEntry ->
+            val playlistId = backStackEntry.arguments?.getLong("playlistId") ?: return@composable
+            val playlistDetailBackStackEntry = navController.getBackStackEntry("playlist_detail/$playlistId")
+            val playlistDetailViewModel: com.schwanitz.ui.screens.playlist.PlaylistDetailViewModel = hiltViewModel(playlistDetailBackStackEntry)
             SelectSongsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onSongsSelected = { songs ->
+                    playlistDetailViewModel.queueSongAdditions(songs)
+                    navController.popBackStack()
+                }
             )
         }
 

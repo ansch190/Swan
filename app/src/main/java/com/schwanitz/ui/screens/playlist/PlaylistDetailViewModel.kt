@@ -115,7 +115,22 @@ class PlaylistDetailViewModel @Inject constructor(
 
     fun toggleFavorite(entry: PlaylistSongWithMapping) = toggleFavorite(entry.toSong(), songRepository, errorHolder)
 
-    fun savePlaylistChanges(mappingIds: List<Long>, removals: List<PendingRemoval>) {
+    private val _pendingSongAdditions = MutableStateFlow<List<Song>>(emptyList())
+    val pendingSongAdditions: StateFlow<List<Song>> = _pendingSongAdditions
+
+    fun queueSongAdditions(songs: List<Song>) {
+        _pendingSongAdditions.value = songs
+    }
+
+    fun clearPendingAdditions() {
+        _pendingSongAdditions.value = emptyList()
+    }
+
+    fun savePlaylistChanges(
+        orderedSongIds: List<String>,
+        removals: List<PendingRemoval>,
+        additions: List<String>
+    ) {
         viewModelScope.launch {
             runCatching {
                 val pid = _playlistId.value ?: return@launch
@@ -126,7 +141,16 @@ class PlaylistDetailViewModel @Inject constructor(
                         is PendingRemoval.RemoveAll -> playlistRepository.removeAllSongsFromPlaylist(pid, removal.songId)
                     }
                 }
-                playlistRepository.reorderSongs(mappingIds)
+                var order = playlistRepository.getPlaylistSongCount(pid) - additions.size
+                for (songId in additions) {
+                    playlistRepository.addSongToPlaylist(pid, songId, order)
+                    order++
+                }
+                val updatedSongs = playlistRepository.getPlaylistSongsWithMapping(pid).first()
+                val realMappingIds = orderedSongIds.mapNotNull { sid ->
+                    updatedSongs.find { it.id == sid }?.mappingId
+                }
+                playlistRepository.reorderSongs(realMappingIds)
             }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }
     }

@@ -48,7 +48,9 @@ fun PlaylistDetailScreen(
     val playlistName by viewModel.playlistName.collectAsState()
     val songs by viewModel.songs.collectAsState()
     val isFavorites by viewModel.isFavoritesPlaylist.collectAsState()
+    val pendingSongAdditions by viewModel.pendingSongAdditions.collectAsState()
     var localSongs by remember { mutableStateOf(songs) }
+    var addedSongIds by remember { mutableStateOf<List<String>>(emptyList()) }
     var isEditing by rememberSaveable { mutableStateOf(false) }
     var pendingRemovals by remember { mutableStateOf<List<PendingRemoval>>(emptyList()) }
     var songToRemove by remember { mutableStateOf<PlaylistSongWithMapping?>(null) }
@@ -110,6 +112,18 @@ fun PlaylistDetailScreen(
         localSongs = songs
     }
 
+    LaunchedEffect(pendingSongAdditions) {
+        if (pendingSongAdditions.isNotEmpty()) {
+            val maxMappingId = localSongs.maxOfOrNull { it.mappingId } ?: 0L
+            val newMappings = pendingSongAdditions.mapIndexed { index, song ->
+                song.toPlaylistSongMapping(mappingId = maxMappingId + index + 1)
+            }
+            localSongs = localSongs + newMappings
+            addedSongIds = addedSongIds + pendingSongAdditions.map { it.id }
+            viewModel.clearPendingAdditions()
+        }
+    }
+
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
         if (!isEditing) return@rememberReorderableLazyListState
@@ -136,10 +150,12 @@ fun PlaylistDetailScreen(
                     if (isEditing) {
                         IconButton(onClick = {
                             viewModel.savePlaylistChanges(
-                                mappingIds = localSongs.map { it.mappingId },
-                                removals = pendingRemovals
+                                orderedSongIds = localSongs.map { it.id },
+                                removals = pendingRemovals,
+                                additions = addedSongIds
                             )
                             pendingRemovals = emptyList()
+                            addedSongIds = emptyList()
                             isEditing = false
                         }) {
                             Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.cd_edit_done))
@@ -271,6 +287,32 @@ private fun PlaylistSongWithMapping.toSong(): com.schwanitz.domain.model.Song = 
     albumId = albumId,
     albumName = albumName ?: "",
     albumArtistName = albumArtistName ?: "",
+    durationMs = durationMs,
+    albumArtUri = albumArtUri,
+    albumArtUriLarge = albumArtUriLarge,
+    sourceId = sourceId,
+    isFavorite = isFavorite,
+    isActive = isActive,
+    discNumber = discNumber,
+    trackNumber = trackNumber,
+    year = year,
+    genre = genre,
+    mimeType = mimeType,
+    sampleRate = sampleRate,
+    bitrate = bitrate,
+    fileSize = fileSize,
+    tagVersion = tagVersion
+)
+
+private fun com.schwanitz.domain.model.Song.toPlaylistSongMapping(mappingId: Long): PlaylistSongWithMapping = PlaylistSongWithMapping(
+    mappingId = mappingId,
+    id = id,
+    title = title,
+    artistId = artistId,
+    artistName = artistName,
+    albumId = albumId,
+    albumName = albumName,
+    albumArtistName = albumArtistName,
     durationMs = durationMs,
     albumArtUri = albumArtUri,
     albumArtUriLarge = albumArtUriLarge,
