@@ -26,6 +26,9 @@ interface SongRepository {
     fun hasAlbumsWithNoAlbumArtist(): Flow<Boolean>
     fun getAllAlbums(): Flow<List<Album>>
     fun getAllYears(): Flow<List<Int>>
+    fun getSongsByDecade(startYear: Int, endYear: Int): Flow<List<Song>>
+    fun getAlbumsByDecade(startYear: Int, endYear: Int): Flow<List<Album>>
+    fun getAlbumArtistsByDecade(startYear: Int, endYear: Int): Flow<List<String>>
     fun getAllGenres(): Flow<List<String>>
     fun getSongsWithNoArtist(): Flow<List<Song>>
     fun getAlbumsWithNoArtist(): Flow<List<Album>>

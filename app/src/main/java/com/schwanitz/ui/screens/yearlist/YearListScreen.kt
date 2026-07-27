@@ -21,6 +21,7 @@ import com.schwanitz.R
 fun YearListScreen(
     onNavigateBack: () -> Unit,
     onYearClick: (Int) -> Unit,
+    onDecadeClick: (Int) -> Unit,
     viewModel: YearListViewModel = hiltViewModel()
 ) {
     LaunchedEffect(Unit) {
@@ -48,7 +49,9 @@ fun YearListScreen(
             yearsByDecade.forEach { (decade, decadeYears) ->
                 stickyHeader {
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onDecadeClick(decade * 10) },
                         color = MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
                         Text(

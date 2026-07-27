@@ -25,6 +25,8 @@ object Routes {
 
     fun yearDetail(year: Int) = "year_detail/$year"
 
+    fun decadeDetail(decade: Int) = "decade_detail/$decade"
+
     fun seriesDetail(seriesName: String) = "series_detail/${Uri.encode(seriesName)}"
 
     fun playlistDetail(playlistId: Long) = "playlist_detail/$playlistId"

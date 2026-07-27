@@ -66,7 +66,7 @@ interface SongDao {
         LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
         WHERE s.genre = :genre AND s.isActive = 1
         GROUP BY asm.albumId
-        ORDER BY al.name ASC
+        ORDER BY al.year DESC, al.name ASC
     """)
     fun getAlbumsByGenre(genre: String): Flow<List<AlbumProjection>>
 
@@ -219,4 +219,29 @@ interface SongDao {
         ORDER BY al.name ASC
     """)
     fun getAlbumsWithNoAlbumArtist(): Flow<List<AlbumProjection>>
+
+    @Query("SELECT * FROM SongWithNames WHERE year >= :startYear AND year <= :endYear AND isActive = 1 ORDER BY year ASC, albumId ASC, discNumber ASC, trackNumber ASC")
+    fun getSongsByDecade(startYear: Int, endYear: Int): Flow<List<SongWithNames>>
+
+    @Query("""
+        SELECT asm.albumId as albumId, al.name as albumName, al.albumArtist as albumArtist, aw.uriSmall as albumArtUri, al.year as albumYear
+        FROM songs s
+        INNER JOIN album_song_mapping asm ON s.id = asm.songId
+        LEFT JOIN albums al ON asm.albumId = al.id
+        LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
+        WHERE al.year >= :startYear AND al.year <= :endYear AND s.isActive = 1
+        GROUP BY asm.albumId
+        ORDER BY al.year DESC, al.name ASC
+    """)
+    fun getAlbumsByDecade(startYear: Int, endYear: Int): Flow<List<AlbumProjection>>
+
+    @Query("""
+        SELECT DISTINCT al.albumArtist FROM songs s
+        INNER JOIN album_song_mapping asm ON s.id = asm.songId
+        INNER JOIN albums al ON asm.albumId = al.id
+        WHERE al.year >= :startYear AND al.year <= :endYear AND s.isActive = 1
+          AND al.albumArtist != ''
+        ORDER BY al.albumArtist ASC
+    """)
+    fun getAlbumArtistsByDecade(startYear: Int, endYear: Int): Flow<List<String>>
 }

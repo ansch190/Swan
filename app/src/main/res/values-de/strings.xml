@@ -272,4 +272,5 @@
 
     <!-- Year list -->
     <string name="decade_format">%der</string>
+    <string name="decade_title">Jahrzehnt-Detail</string>
 </resources>

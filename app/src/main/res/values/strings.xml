@@ -272,4 +272,5 @@
 
     <!-- Year list -->
     <string name="decade_format">%ds</string>
+    <string name="decade_title">Decade Detail</string>
 </resources>

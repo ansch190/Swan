@@ -22,6 +22,7 @@ import com.schwanitz.ui.screens.artistdetail.ArtistDetailScreen
 import com.schwanitz.ui.screens.seriesdetail.SeriesDetailScreen
 import com.schwanitz.ui.screens.yeardetail.YearDetailScreen
 import com.schwanitz.ui.screens.genredetail.GenreDetailScreen
+import com.schwanitz.ui.screens.decadedetail.DecadeDetailScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -105,6 +106,23 @@ fun NavGraph(navController: NavHostController) {
         }
 
         composable(
+            route = "decade_detail/{decade}",
+            arguments = listOf(navArgument("decade") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val decade = backStackEntry.arguments?.getInt("decade") ?: 0
+            DecadeDetailScreen(
+                decade = decade,
+                onNavigateBack = { navController.popBackStack() },
+                onArtistClick = { artist ->
+                    navController.navigate(Routes.artistDetail(artist))
+                },
+                onAlbumClick = { album, albumArtist ->
+                    navController.navigate(Routes.albumDetail(album, albumArtist))
+                }
+            )
+        }
+
+        composable(
             route = "artist_detail/{artistName}",
             arguments = listOf(navArgument("artistName") { type = NavType.StringType })
         ) { backStackEntry ->
@@ -141,6 +159,9 @@ fun NavGraph(navController: NavHostController) {
                 onNavigateBack = { navController.popBackStack() },
                 onYearClick = { year ->
                     navController.navigate(Routes.yearDetail(year))
+                },
+                onDecadeClick = { decade ->
+                    navController.navigate(Routes.decadeDetail(decade))
                 }
             )
         }
