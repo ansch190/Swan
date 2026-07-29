@@ -37,6 +37,7 @@ fun YearDetailScreen(
     onNavigateBack: () -> Unit,
     onArtistClick: (String) -> Unit,
     onAlbumClick: (String, String) -> Unit,
+    onAllYearsClick: () -> Unit = {},
     onAddToPlaylist: (String) -> Unit = {},
     viewModel: YearDetailViewModel = hiltViewModel()
 ) {
@@ -63,6 +64,14 @@ fun YearDetailScreen(
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                }
+            },
+            actions = {
+                IconButton(onClick = onAllYearsClick) {
+                    Icon(
+                        imageVector = Icons.Filled.CalendarToday,
+                        contentDescription = stringResource(R.string.section_years)
+                    )
                 }
             }
         )

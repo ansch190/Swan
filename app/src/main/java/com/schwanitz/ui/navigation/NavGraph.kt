@@ -113,6 +113,7 @@ fun NavGraph(navController: NavHostController) {
                 onAlbumClick = { album, albumArtist ->
                     navController.navigate(Routes.albumDetail(album, albumArtist))
                 },
+                onAllYearsClick = { navController.navigate(Routes.ALL_YEARS) },
                 onAddToPlaylist = { songIds ->
                     navController.navigate(Routes.playlistPicker(songIds))
                 }
