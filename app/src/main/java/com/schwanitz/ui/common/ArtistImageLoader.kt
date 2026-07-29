@@ -22,7 +22,7 @@ class ArtistImageLoader @Inject constructor(
     suspend fun loadForArtists(artists: List<String>) {
         for (artist in artists) {
             try {
-                if (artist.isBlank()) {
+                if (artist.isBlank() || artist == "Various Artists") {
                     imageUris[artist] = null
                     _artistImageUris.value = imageUris.toMap()
                     continue

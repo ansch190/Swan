@@ -70,14 +70,16 @@ class ArtistDetailViewModel @Inject constructor(
                             _albums.value = it
                         }
                     }
-                    viewModelScope.launch {
-                        val artist = artistRepository.getArtistByName(artistName)
-                        if (artist != null) {
-                            launch {
-                                _artistImageUri.value = artistRepository.getArtistImageLarge(artist.id)
-                            }
-                            launch {
-                                _artistBiography.value = artistRepository.getArtistBiography(artist.id)
+                    if (artistName != "Various Artists") {
+                        viewModelScope.launch {
+                            val artist = artistRepository.getArtistByName(artistName)
+                            if (artist != null) {
+                                launch {
+                                    _artistImageUri.value = artistRepository.getArtistImageLarge(artist.id)
+                                }
+                                launch {
+                                    _artistBiography.value = artistRepository.getArtistBiography(artist.id)
+                                }
                             }
                         }
                     }
