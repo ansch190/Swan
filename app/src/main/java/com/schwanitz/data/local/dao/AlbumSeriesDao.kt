@@ -14,6 +14,12 @@ data class SeriesVolume(
     val volumeNumber: Int
 )
 
+data class AlbumSeriesWithCount(
+    val id: Long,
+    val name: String,
+    val albumCount: Int
+)
+
 data class SeriesInput(
     val seriesName: String,
     val volumes: List<SeriesVolume>
@@ -24,6 +30,15 @@ interface AlbumSeriesDao {
 
     @Query("SELECT * FROM album_series ORDER BY name ASC")
     fun getAllSeries(): Flow<List<AlbumSeriesEntity>>
+
+    @Query("""
+        SELECT ase.id, ase.name, COUNT(asm.albumId) AS albumCount
+        FROM album_series ase
+        INNER JOIN album_series_mapping asm ON ase.id = asm.seriesId
+        GROUP BY ase.id
+        ORDER BY ase.name ASC
+    """)
+    fun getAllSeriesWithCount(): Flow<List<AlbumSeriesWithCount>>
 
     @Query("SELECT * FROM album_series WHERE name = :name LIMIT 1")
     suspend fun getSeriesByName(name: String): AlbumSeriesEntity?

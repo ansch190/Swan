@@ -19,8 +19,8 @@ class SeriesRepositoryImpl @Inject constructor(
 ) : SeriesRepository {
 
     override fun getAlbumSeries(): Flow<List<AlbumSeries>> {
-        return albumSeriesDao.getAllSeries().map { entities ->
-            entities.map { AlbumSeries(it.id, it.name) }
+        return albumSeriesDao.getAllSeriesWithCount().map { projections ->
+            projections.map { AlbumSeries(it.id, it.name, it.albumCount) }
         }
     }
 

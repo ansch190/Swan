@@ -36,7 +36,12 @@ fun SeriesListScreen(
             items(series) { s ->
                 ListItem(
                     modifier = Modifier.clickable { onSeriesClick(s.name) },
-                    headlineContent = { Text(s.name.ifBlank { "-" }) }
+                    headlineContent = {
+                        Text(
+                            if (s.name.isBlank()) "-"
+                            else "${s.name} (${s.albumCount}x)"
+                        )
+                    }
                 )
             }
         }
