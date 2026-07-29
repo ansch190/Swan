@@ -15,6 +15,7 @@ import com.schwanitz.ui.screens.playlist.PlaylistPickerScreen
 import com.schwanitz.ui.screens.playlist.SelectSongsScreen
 import com.schwanitz.ui.screens.settings.AboutScreen
 import com.schwanitz.ui.screens.settings.AddSourceScreen
+import com.schwanitz.ui.screens.settings.BackupScreen
 import com.schwanitz.ui.screens.settings.ArtistDataSourceScreen
 import com.schwanitz.ui.screens.settings.GeneralSettingsScreen
 import com.schwanitz.ui.screens.settings.SettingsDashboardScreen
@@ -327,8 +328,15 @@ fun NavGraph(navController: NavHostController) {
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateSources = { navController.navigate(Routes.SOURCE_SETTINGS) },
                 onNavigateArtistData = { navController.navigate(Routes.ARTIST_DATA_SOURCE) },
+                onNavigateBackup = { navController.navigate(Routes.BACKUP) },
                 onNavigateAbout = { navController.navigate(Routes.ABOUT) },
                 onNavigateGeneral = { navController.navigate(Routes.GENERAL_SETTINGS) }
+            )
+        }
+
+        composable(Routes.BACKUP) {
+            BackupScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

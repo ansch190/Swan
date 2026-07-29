@@ -122,7 +122,17 @@
     <string name="settings_music_sources_desc">Lokale Ordner und Netzwerkquellen verwalten</string>
     <string name="settings_about">Über</string>
     <string name="settings_about_desc">App-Informationen und Version</string>
+    <string name="settings_backup">Backup &amp; Wiederherstellung</string>
+    <string name="settings_backup_desc">Daten exportieren, importieren und wiederherstellen</string>
     <string name="settings_artist_data">Metadaten &amp; API</string>
+
+    <!-- Backup &amp; Wiederherstellung -->
+    <string name="backup_export_title">Backup erstellen</string>
+    <string name="backup_export_desc">Alle Einstellungen und Zugangsdaten in einer Datei sichern</string>
+    <string name="backup_export_action">Backup</string>
+    <string name="backup_import_title">Backup wiederherstellen</string>
+    <string name="backup_import_desc">Einstellungen und Zugangsdaten aus einer Datei laden</string>
+    <string name="backup_import_action">Wiederherstellen</string>
     <string name="settings_artist_data_desc">Künstlerdaten-Quellen und API-Zugangsdaten</string>
 
     <!-- Metadaten & API Einstellungen -->

@@ -7,6 +7,7 @@ object Routes {
     const val GENERAL_SETTINGS = "general_settings"
     const val SOURCE_SETTINGS = "source_settings"
     const val ABOUT = "about"
+    const val BACKUP = "backup"
     const val ARTIST_DATA_SOURCE = "artist_data_source"
     const val ADD_SOURCE = "add_source"
     const val ALL_ARTISTS = "all_artists"
