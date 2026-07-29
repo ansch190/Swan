@@ -1,5 +1,6 @@
 package com.schwanitz.ui.screens.yeardetail
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,14 +10,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.res.stringResource
+import coil.compose.AsyncImage
 import com.schwanitz.R
 import com.schwanitz.ui.components.AlbumListItem
 import com.schwanitz.ui.components.MarqueeText
@@ -30,6 +35,7 @@ import kotlinx.coroutines.launch
 fun YearDetailScreen(
     year: Int,
     onNavigateBack: () -> Unit,
+    onArtistClick: (String) -> Unit,
     onAlbumClick: (String, String) -> Unit,
     onAddToPlaylist: (String) -> Unit = {},
     viewModel: YearDetailViewModel = hiltViewModel()
@@ -44,8 +50,10 @@ fun YearDetailScreen(
     val songs by viewModel.songs.collectAsState()
     val sortedSongs = remember(songs) { songs.sortedBy { it.title } }
     val albums by viewModel.albums.collectAsState()
+    val artists by viewModel.artists.collectAsState()
+    val artistImageUris by viewModel.artistImageUris.collectAsState()
     val coroutineScope = rememberCoroutineScope()
-    val pagerState = rememberPagerState(pageCount = { 2 })
+    val pagerState = rememberPagerState(pageCount = { 3 })
     val isSelecting by viewModel.isSelecting.collectAsState()
     val selectedSongIds by viewModel.selectedSongIds.collectAsState()
 
@@ -69,6 +77,11 @@ fun YearDetailScreen(
             }
             Tab(selected = pagerState.currentPage == 1, onClick = {
                 coroutineScope.launch { pagerState.animateScrollToPage(1) }
+            }) {
+                Text(stringResource(R.string.section_artists), modifier = Modifier.padding(12.dp))
+            }
+            Tab(selected = pagerState.currentPage == 2, onClick = {
+                coroutineScope.launch { pagerState.animateScrollToPage(2) }
             }) {
                 Text(stringResource(R.string.section_albums), modifier = Modifier.padding(12.dp))
             }
@@ -99,6 +112,17 @@ fun YearDetailScreen(
                 }
                 1 -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(artists) { artist ->
+                            YearArtistListItem(
+                                artistName = artist,
+                                imageUri = artistImageUris[artist],
+                                onClick = { onArtistClick(artist) }
+                            )
+                        }
+                    }
+                }
+                2 -> {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(albums) { album ->
                             AlbumListItem(
                                 albumName = album.name,
@@ -112,6 +136,41 @@ fun YearDetailScreen(
             }
         }
     }
+}
+
+@Composable
+private fun YearArtistListItem(artistName: String, imageUri: String?, onClick: () -> Unit) {
+    ListItem(
+        modifier = Modifier.clickable(onClick = onClick),
+        headlineContent = { Text(if (artistName.isBlank()) stringResource(R.string.artist_no_artist) else artistName) },
+        leadingContent = {
+            if (imageUri != null) {
+                AsyncImage(
+                    model = imageUri,
+                    contentDescription = stringResource(R.string.cd_artist_photo),
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(20.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Filled.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    )
 }
 
 @Composable

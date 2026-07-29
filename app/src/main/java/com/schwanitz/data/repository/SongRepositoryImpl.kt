@@ -143,6 +143,10 @@ class SongRepositoryImpl @Inject constructor(
         return songDao.getAlbumArtistsByDecade(startYear, endYear)
     }
 
+    override fun getAlbumArtistsByYear(year: Int): Flow<List<String>> {
+        return songDao.getAlbumArtistsByYear(year)
+    }
+
     override fun getAllGenres(): Flow<List<String>> {
         return songDao.getAllGenres()
     }

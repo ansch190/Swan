@@ -7,6 +7,7 @@ import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.player.MusicPlayerManager
+import com.schwanitz.ui.common.ArtistImageLoader
 import com.schwanitz.ui.common.ErrorHolder
 import com.schwanitz.ui.components.SelectionDelegate
 import android.content.Context
@@ -21,6 +22,7 @@ import javax.inject.Inject
 class YearDetailViewModel @Inject constructor(
     private val songRepository: SongRepository,
     private val playerManager: MusicPlayerManager,
+    private val artistImageLoader: ArtistImageLoader,
     private val playlistRepository: PlaylistRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -33,18 +35,25 @@ class YearDetailViewModel @Inject constructor(
     private val _albums = MutableStateFlow<List<Album>>(emptyList())
     val albums: StateFlow<List<Album>> = _albums
 
+    private val _artists = MutableStateFlow<List<String>>(emptyList())
+    val artists: StateFlow<List<String>> = _artists
+
+    val artistImageUris: StateFlow<Map<String, String?>> = artistImageLoader.artistImageUris
+
     fun loadYear(year: Int) {
         viewModelScope.launch {
             runCatching {
-                songRepository.getSongsByYear(year).collect {
-                    _songs.value = it
+                launch {
+                    songRepository.getSongsByYear(year).collect { _songs.value = it }
                 }
-            }.exceptionOrNull()?.let { errorHolder.emit(it) }
-        }
-        viewModelScope.launch {
-            runCatching {
-                songRepository.getAlbumsByYear(year).collect {
-                    _albums.value = it
+                launch {
+                    songRepository.getAlbumsByYear(year).collect { _albums.value = it }
+                }
+                launch {
+                    songRepository.getAlbumArtistsByYear(year).collect {
+                        _artists.value = it
+                        artistImageLoader.loadForArtists(it)
+                    }
                 }
             }.exceptionOrNull()?.let { errorHolder.emit(it) }
         }

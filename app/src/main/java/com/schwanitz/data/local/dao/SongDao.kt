@@ -187,6 +187,15 @@ interface SongDao {
     """)
     fun getAlbumArtistsByGenre(genre: String): Flow<List<String>>
 
+    @Query("""
+        SELECT DISTINCT al.albumArtist FROM songs s
+        INNER JOIN album_song_mapping asm ON s.id = asm.songId
+        INNER JOIN albums al ON asm.albumId = al.id
+        WHERE al.year = :year AND s.isActive = 1 AND al.albumArtist != ''
+        ORDER BY al.albumArtist ASC
+    """)
+    fun getAlbumArtistsByYear(year: Int): Flow<List<String>>
+
     @Query("SELECT * FROM SongWithNames WHERE albumArtistName = :albumArtistName AND isActive = 1 ORDER BY albumId ASC, discNumber ASC, trackNumber ASC")
     fun getSongsByAlbumArtistName(albumArtistName: String): Flow<List<SongWithNames>>
 

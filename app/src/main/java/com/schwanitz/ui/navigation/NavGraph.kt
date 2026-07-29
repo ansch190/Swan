@@ -107,6 +107,9 @@ fun NavGraph(navController: NavHostController) {
             YearDetailScreen(
                 year = year,
                 onNavigateBack = { navController.popBackStack() },
+                onArtistClick = { artist ->
+                    navController.navigate(Routes.artistDetail(artist))
+                },
                 onAlbumClick = { album, albumArtist ->
                     navController.navigate(Routes.albumDetail(album, albumArtist))
                 },
