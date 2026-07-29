@@ -1,6 +1,7 @@
 package com.schwanitz.ui.screens.albumdetail
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -40,6 +41,7 @@ fun AlbumDetailScreen(
     onNavigateBack: () -> Unit,
     onArtistClick: (String) -> Unit = {},
     onSeriesClick: (String) -> Unit = {},
+    onYearClick: (Int) -> Unit = {},
     onAddToPlaylist: (String) -> Unit = {},
     viewModel: AlbumDetailViewModel = hiltViewModel()
 ) {
@@ -50,6 +52,7 @@ fun AlbumDetailScreen(
     val songs by viewModel.songs.collectAsState()
     val artworks by viewModel.artworks.collectAsState()
     val series by viewModel.series.collectAsState()
+    val year by viewModel.year.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val isSelecting by viewModel.isSelecting.collectAsState()
     val selectedSongIds by viewModel.selectedSongIds.collectAsState()
@@ -95,7 +98,7 @@ fun AlbumDetailScreen(
             }
         )
 
-        AlbumHeader(albumName = albumName, artworks = artworks)
+        AlbumHeader(albumName = albumName, artworks = artworks, year = year, onYearClick = onYearClick)
 
         if (cdList.isNotEmpty()) {
             if (cdList.size > 1) {
@@ -153,7 +156,7 @@ fun AlbumDetailScreen(
 }
 
 @Composable
-private fun AlbumHeader(albumName: String, artworks: List<AlbumArtwork>) {
+private fun AlbumHeader(albumName: String, artworks: List<AlbumArtwork>, year: Int, onYearClick: (Int) -> Unit) {
     Column(
         modifier = Modifier.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -226,6 +229,17 @@ private fun AlbumHeader(albumName: String, artworks: List<AlbumArtwork>) {
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
+
+        if (year > 0) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = year.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.clickable { onYearClick(year) }
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

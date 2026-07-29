@@ -2,6 +2,7 @@ package com.schwanitz.ui.screens.albumdetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.AlbumSeries
 import com.schwanitz.domain.model.Song
@@ -40,12 +41,16 @@ class AlbumDetailViewModel @Inject constructor(
     private val _series = MutableStateFlow<AlbumSeries?>(null)
     val series: StateFlow<AlbumSeries?> = _series
 
+    private val _year = MutableStateFlow(0)
+    val year: StateFlow<Int> = _year
+
     val errorHolder = ErrorHolder()
 
     fun loadAlbum(albumName: String, albumArtistName: String) {
         viewModelScope.launch {
             runCatching {
                 val album = albumRepository.findAlbumByNameAndArtist(albumName, albumArtistName) ?: return@launch
+                _year.value = album.year
                 launch {
                     runCatching {
                         songRepository.getSongsByAlbumId(album.id).collect { albumSongs ->

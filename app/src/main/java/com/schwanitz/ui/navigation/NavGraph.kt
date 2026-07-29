@@ -239,6 +239,9 @@ fun NavGraph(navController: NavHostController) {
                 onSeriesClick = { seriesName ->
                     navController.navigate(Routes.seriesDetail(seriesName))
                 },
+                onYearClick = { year ->
+                    navController.navigate(Routes.yearDetail(year))
+                },
                 onAddToPlaylist = { songIds ->
                     navController.navigate(Routes.playlistPicker(songIds))
                 }
