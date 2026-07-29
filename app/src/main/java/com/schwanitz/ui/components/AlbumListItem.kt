@@ -2,6 +2,7 @@ package com.schwanitz.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -10,7 +11,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,17 +20,28 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.schwanitz.R
+import com.schwanitz.ui.components.MarqueeText
 
 @Composable
 fun AlbumListItem(albumName: String, albumArtUri: String?, onClick: () -> Unit, year: Int = 0, albumArtist: String = "") {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
-        headlineContent = { Text(if (albumName.isBlank()) stringResource(R.string.album_no_album) else albumName) },
+        headlineContent = {
+            MarqueeText(
+                text = if (albumName.isBlank()) stringResource(R.string.album_no_album) else albumName,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
         supportingContent = {
             val parts = mutableListOf<String>()
             if (year > 0) parts.add(year.toString())
             if (albumArtist.isNotBlank()) parts.add(albumArtist)
-            if (parts.isNotEmpty()) Text(parts.joinToString(" \u00B7 "))
+            if (parts.isNotEmpty()) {
+                MarqueeText(
+                    text = parts.joinToString(" \u00B7 "),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         },
         leadingContent = {
             if (albumArtUri != null) {
