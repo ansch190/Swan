@@ -336,7 +336,12 @@ fun NavGraph(navController: NavHostController) {
 
         composable(Routes.BACKUP) {
             BackupScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToSources = {
+                    navController.navigate(Routes.SOURCE_SETTINGS) {
+                        popUpTo(Routes.SETTINGS)
+                    }
+                }
             )
         }
 

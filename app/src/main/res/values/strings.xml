@@ -10,6 +10,7 @@
     <string name="back">Back</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
     <string name="delete">Delete</string>
     <string name="create">Create</string>
     <string name="done">Done</string>
@@ -133,6 +134,11 @@
     <string name="backup_import_title">Restore Backup</string>
     <string name="backup_import_desc">Load settings and credentials from a file</string>
     <string name="backup_import_action">Restore</string>
+    <string name="backup_password_title">Enter backup password</string>
+    <string name="backup_password_label">Password</string>
+    <string name="backup_password_confirm">Confirm password</string>
+    <string name="backup_password_too_short">Password must be at least 4 characters</string>
+    <string name="backup_password_mismatch">Passwords do not match</string>
     <string name="settings_artist_data_desc">Artist data sources and API credentials</string>
 
     <!-- Metadata & API settings -->

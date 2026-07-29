@@ -9,9 +9,13 @@ import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.crypto.AEADBadTagException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -28,15 +32,18 @@ class BackupViewModel @Inject constructor(
     private val _isExporting = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
     val isExporting: SharedFlow<Boolean> = _isExporting.asSharedFlow()
 
-    private val _isImporting = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
-    val isImporting: SharedFlow<Boolean> = _isImporting.asSharedFlow()
+    private val _isVerifying = MutableStateFlow(false)
+    val isVerifying: StateFlow<Boolean> = _isVerifying.asStateFlow()
 
-    fun exportTo(uri: Uri) {
+    private val _importError = MutableStateFlow<String?>(null)
+    val importError: StateFlow<String?> = _importError.asStateFlow()
+
+    fun exportTo(uri: Uri, password: String) {
         viewModelScope.launch {
             _isExporting.tryEmit(true)
             try {
                 val backup = backupManager.createBackup()
-                backupManager.exportTo(context.contentResolver, uri, backup)
+                backupManager.exportTo(context.contentResolver, uri, backup, password)
                 _successMessage.tryEmit(SUCCESS_EXPORT)
             } catch (e: Exception) {
                 errorHolder.emit(e, ERROR_EXPORT)
@@ -46,19 +53,26 @@ class BackupViewModel @Inject constructor(
         }
     }
 
-    fun importFrom(uri: Uri) {
+    fun importFrom(uri: Uri, password: String) {
         viewModelScope.launch {
-            _isImporting.tryEmit(true)
+            _isVerifying.value = true
+            _importError.value = null
             try {
-                val backup = backupManager.importFrom(context.contentResolver, uri)
+                val backup = backupManager.importFrom(context.contentResolver, uri, password)
                 backupManager.restore(backup)
                 _successMessage.tryEmit(SUCCESS_IMPORT)
+            } catch (e: AEADBadTagException) {
+                _importError.value = ERROR_WRONG_PASSWORD
             } catch (e: Exception) {
-                errorHolder.emit(e, ERROR_IMPORT)
+                _importError.value = ERROR_IMPORT
             } finally {
-                _isImporting.tryEmit(false)
+                _isVerifying.value = false
             }
         }
+    }
+
+    fun clearImportError() {
+        _importError.value = null
     }
 
     companion object {
@@ -66,5 +80,6 @@ class BackupViewModel @Inject constructor(
         const val SUCCESS_IMPORT = "Backup erfolgreich wiederhergestellt"
         const val ERROR_EXPORT = "Backup fehlgeschlagen"
         const val ERROR_IMPORT = "Wiederherstellung fehlgeschlagen"
+        const val ERROR_WRONG_PASSWORD = "Falsches Passwort"
     }
 }

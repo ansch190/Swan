@@ -1,5 +1,6 @@
 package com.schwanitz.ui.screens.settings
 
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -7,11 +8,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.schwanitz.R
@@ -22,17 +28,22 @@ import com.schwanitz.ui.navigation.LocalSnackbarHostState
 @Composable
 fun BackupScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToSources: () -> Unit = {},
     viewModel: BackupViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val snackbarHostState = LocalSnackbarHostState.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
 
     var isExporting by remember { mutableStateOf(false) }
-    var isImporting by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.successMessage.collect { message ->
-            snackbarHostState.showSnackbar(message)
+            if (message == BackupViewModel.SUCCESS_IMPORT) {
+                onNavigateToSources()
+            } else {
+                snackbarHostState.showSnackbar(message)
+            }
         }
     }
 
@@ -40,24 +51,220 @@ fun BackupScreen(
         viewModel.isExporting.collect { isExporting = it }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.isImporting.collect { isImporting = it }
+    val isVerifying by viewModel.isVerifying.collectAsState()
+    val importError by viewModel.importError.collectAsState()
+
+    var showExportPasswordDialog by remember { mutableStateOf(false) }
+    var showImportPasswordDialog by remember { mutableStateOf(false) }
+
+    var exportPassword by remember { mutableStateOf("") }
+    var exportPasswordConfirm by remember { mutableStateOf("") }
+    var exportPasswordError by remember { mutableStateOf<String?>(null) }
+    var exportPasswordVisible by remember { mutableStateOf(false) }
+    var exportPasswordConfirmVisible by remember { mutableStateOf(false) }
+
+    var importPassword by remember { mutableStateOf("") }
+    var importPasswordVisible by remember { mutableStateOf(false) }
+    var importUri by remember { mutableStateOf<Uri?>(null) }
+    var hasAttemptedImport by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isVerifying) {
+        if (hasAttemptedImport && !isVerifying) {
+            if (importError == null) {
+                showImportPasswordDialog = false
+                importPassword = ""
+                importUri = null
+            }
+            hasAttemptedImport = false
+        }
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
+        ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
         if (uri != null) {
-            viewModel.exportTo(uri)
+            viewModel.exportTo(uri, exportPassword)
         }
+        exportPassword = ""
+        exportPasswordConfirm = ""
     }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            viewModel.importFrom(uri)
+            importUri = uri
+            showImportPasswordDialog = true
+            hasAttemptedImport = false
         }
+    }
+
+    if (showExportPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showExportPasswordDialog = false
+                exportPassword = ""
+                exportPasswordConfirm = ""
+                exportPasswordError = null
+            },
+            title = { Text(stringResource(R.string.backup_password_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = exportPassword,
+                        onValueChange = {
+                            exportPassword = it
+                            exportPasswordError = null
+                        },
+                        label = { Text(stringResource(R.string.backup_password_label)) },
+                        visualTransformation = if (exportPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { exportPasswordVisible = !exportPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (exportPasswordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    contentDescription = null
+                                )
+                            }
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = exportPasswordConfirm,
+                        onValueChange = {
+                            exportPasswordConfirm = it
+                            exportPasswordError = null
+                        },
+                        label = { Text(stringResource(R.string.backup_password_confirm)) },
+                        visualTransformation = if (exportPasswordConfirmVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { exportPasswordConfirmVisible = !exportPasswordConfirmVisible }) {
+                                Icon(
+                                    imageVector = if (exportPasswordConfirmVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    contentDescription = null
+                                )
+                            }
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (exportPasswordError != null) {
+                        Text(
+                            text = exportPasswordError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (exportPassword.length < 4) {
+                            exportPasswordError = context.getString(R.string.backup_password_too_short)
+                        } else if (exportPassword != exportPasswordConfirm) {
+                            exportPasswordError = context.getString(R.string.backup_password_mismatch)
+                        } else {
+                            showExportPasswordDialog = false
+                            val datePart = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                            exportLauncher.launch("swan_backup_$datePart.swanbak")
+                        }
+                    }
+                ) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showExportPasswordDialog = false
+                    exportPassword = ""
+                    exportPasswordConfirm = ""
+                    exportPasswordError = null
+                }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    if (showImportPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showImportPasswordDialog = false
+                importPassword = ""
+                importUri = null
+                hasAttemptedImport = false
+                viewModel.clearImportError()
+            },
+            title = { Text(stringResource(R.string.backup_password_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = importPassword,
+                        onValueChange = {
+                            importPassword = it
+                            viewModel.clearImportError()
+                        },
+                        label = { Text(stringResource(R.string.backup_password_label)) },
+                        visualTransformation = if (importPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { importPasswordVisible = !importPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (importPasswordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    contentDescription = null
+                                )
+                            }
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (importError != null) {
+                        Text(
+                            text = importError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (importPassword.length < 4) {
+                            viewModel.clearImportError()
+                        } else if (importUri != null) {
+                            hasAttemptedImport = true
+                            viewModel.importFrom(importUri!!, importPassword)
+                        }
+                    },
+                    enabled = !isVerifying
+                ) {
+                    if (isVerifying) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text(stringResource(R.string.ok))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showImportPasswordDialog = false
+                        importPassword = ""
+                        importUri = null
+                        hasAttemptedImport = false
+                        viewModel.clearImportError()
+                    },
+                    enabled = !isVerifying
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -103,10 +310,7 @@ fun BackupScreen(
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Button(
-                        onClick = {
-                            val datePart = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
-                            exportLauncher.launch("swan_backup_$datePart.json")
-                        },
+                        onClick = { showExportPasswordDialog = true },
                         enabled = !isExporting
                     ) {
                         if (isExporting) {
@@ -149,10 +353,10 @@ fun BackupScreen(
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Button(
-                        onClick = { importLauncher.launch(arrayOf("application/json")) },
-                        enabled = !isImporting
+                        onClick = { importLauncher.launch(arrayOf("*/*")) },
+                        enabled = !isVerifying
                     ) {
-                        if (isImporting) {
+                        if (isVerifying) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
@@ -167,5 +371,3 @@ fun BackupScreen(
         }
     }
 }
-
-
