@@ -3,6 +3,7 @@ package com.schwanitz.ui.screens.settings
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -62,9 +63,11 @@ fun BackupScreen(
     var exportPasswordError by remember { mutableStateOf<String?>(null) }
     var exportPasswordVisible by remember { mutableStateOf(false) }
     var exportPasswordConfirmVisible by remember { mutableStateOf(false) }
+    var isSharedExport by remember { mutableStateOf(false) }
 
     var importPassword by remember { mutableStateOf("") }
     var importPasswordVisible by remember { mutableStateOf(false) }
+    var importPasswordError by remember { mutableStateOf<String?>(null) }
     var importUri by remember { mutableStateOf<Uri?>(null) }
     var hasAttemptedImport by remember { mutableStateOf(false) }
 
@@ -79,14 +82,21 @@ fun BackupScreen(
         }
     }
 
+    LaunchedEffect(importError) {
+        if (importError != null) {
+            importPasswordError = null
+        }
+    }
+
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
         if (uri != null) {
-            viewModel.exportTo(uri, exportPassword)
+            viewModel.exportTo(uri, exportPassword, isSharedExport)
         }
         exportPassword = ""
         exportPasswordConfirm = ""
+        isSharedExport = false
     }
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -106,6 +116,7 @@ fun BackupScreen(
                 exportPassword = ""
                 exportPasswordConfirm = ""
                 exportPasswordError = null
+                isSharedExport = false
             },
             title = { Text(stringResource(R.string.backup_password_title)) },
             text = {
@@ -148,6 +159,20 @@ fun BackupScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = isSharedExport,
+                            onCheckedChange = { isSharedExport = it }
+                        )
+                        Text(
+                            text = stringResource(R.string.backup_shared_checkbox),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.clickable { isSharedExport = !isSharedExport }
+                        )
+                    }
                     if (exportPasswordError != null) {
                         Text(
                             text = exportPasswordError!!,
@@ -167,7 +192,8 @@ fun BackupScreen(
                         } else {
                             showExportPasswordDialog = false
                             val datePart = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
-                            exportLauncher.launch("swan_backup_$datePart.swanbak")
+                            val shareSuffix = if (isSharedExport) "_share_" else "_"
+                            exportLauncher.launch("swan_backup$shareSuffix$datePart.swanbak")
                         }
                     }
                 ) {
@@ -180,6 +206,7 @@ fun BackupScreen(
                     exportPassword = ""
                     exportPasswordConfirm = ""
                     exportPasswordError = null
+                    isSharedExport = false
                 }) {
                     Text(stringResource(R.string.cancel))
                 }
@@ -192,6 +219,7 @@ fun BackupScreen(
             onDismissRequest = {
                 showImportPasswordDialog = false
                 importPassword = ""
+                importPasswordError = null
                 importUri = null
                 hasAttemptedImport = false
                 viewModel.clearImportError()
@@ -203,6 +231,7 @@ fun BackupScreen(
                         value = importPassword,
                         onValueChange = {
                             importPassword = it
+                            importPasswordError = null
                             viewModel.clearImportError()
                         },
                         label = { Text(stringResource(R.string.backup_password_label)) },
@@ -218,9 +247,10 @@ fun BackupScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    if (importError != null) {
+                    val displayError = importPasswordError ?: importError
+                    if (displayError != null) {
                         Text(
-                            text = importError!!,
+                            text = displayError,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -231,7 +261,7 @@ fun BackupScreen(
                 TextButton(
                     onClick = {
                         if (importPassword.length < 4) {
-                            viewModel.clearImportError()
+                            importPasswordError = context.getString(R.string.backup_password_too_short)
                         } else if (importUri != null) {
                             hasAttemptedImport = true
                             viewModel.importFrom(importUri!!, importPassword)
@@ -255,6 +285,7 @@ fun BackupScreen(
                     onClick = {
                         showImportPasswordDialog = false
                         importPassword = ""
+                        importPasswordError = null
                         importUri = null
                         hasAttemptedImport = false
                         viewModel.clearImportError()

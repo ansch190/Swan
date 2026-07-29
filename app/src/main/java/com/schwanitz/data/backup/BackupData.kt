@@ -10,7 +10,8 @@ data class BackupFile(
     val credentials: Map<String, BackupCredentials>,
     val apiKeys: BackupApiKeys,
     val languageCode: String,
-    val artistDataSource: BackupArtistDataSource
+    val artistDataSource: BackupArtistDataSource,
+    val isShared: Boolean = false
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("version", version)
@@ -20,6 +21,7 @@ data class BackupFile(
         put("apiKeys", apiKeys.toJson())
         put("languageCode", languageCode)
         put("artistDataSource", artistDataSource.toJson())
+        put("isShared", isShared)
     }
 
     companion object {
@@ -36,7 +38,8 @@ data class BackupFile(
             },
             apiKeys = BackupApiKeys.fromJson(json.getJSONObject("apiKeys")),
             languageCode = json.getString("languageCode"),
-            artistDataSource = BackupArtistDataSource.fromJson(json.getJSONObject("artistDataSource"))
+            artistDataSource = BackupArtistDataSource.fromJson(json.getJSONObject("artistDataSource")),
+            isShared = json.optBoolean("isShared", false)
         )
     }
 }

@@ -5,6 +5,7 @@ import android.net.Uri
 import com.schwanitz.data.local.ArtistDataSourcePreferences
 import com.schwanitz.data.local.CredentialStore
 import com.schwanitz.data.local.LanguagePreferences
+import com.schwanitz.data.local.SharedImportPreferences
 import com.schwanitz.data.local.dao.SourceConfigDao
 import com.schwanitz.data.local.entity.SourceConfigEntity
 import kotlinx.coroutines.flow.first
@@ -24,9 +25,10 @@ class BackupManager @Inject constructor(
     private val sourceConfigDao: SourceConfigDao,
     private val credentialStore: CredentialStore,
     private val languagePreferences: LanguagePreferences,
-    private val artistDataSourcePreferences: ArtistDataSourcePreferences
+    private val artistDataSourcePreferences: ArtistDataSourcePreferences,
+    private val sharedImportPreferences: SharedImportPreferences
 ) {
-    suspend fun createBackup(): BackupFile {
+    suspend fun createBackup(isShared: Boolean = false): BackupFile {
         val sourceEntities = sourceConfigDao.getAll().first()
         val allSourceIds = sourceEntities.map { it.id }
 
@@ -38,6 +40,7 @@ class BackupManager @Inject constructor(
         return BackupFile(
             sources = sourceEntities.map { it.toBackup() },
             credentials = credentials,
+            isShared = isShared,
             apiKeys = BackupApiKeys(
                 discogsKey = credentialStore.getApiDiscogsKey(),
                 discogsSecret = credentialStore.getApiDiscogsSecret(),
@@ -72,6 +75,14 @@ class BackupManager @Inject constructor(
 
         artistDataSourcePreferences.setSourceId(backup.artistDataSource.sourceId)
         artistDataSourcePreferences.setBasePath(backup.artistDataSource.basePath)
+
+        if (backup.isShared) {
+            sharedImportPreferences.setHiddenSourceIds(backup.credentials.keys.toSet())
+            sharedImportPreferences.setApiKeysHidden(true)
+        } else {
+            sharedImportPreferences.setHiddenSourceIds(emptySet())
+            sharedImportPreferences.setApiKeysHidden(false)
+        }
 
         Timber.d("Backup restored successfully, %d sources", backup.sources.size)
     }
@@ -125,7 +136,7 @@ class BackupManager @Inject constructor(
 
     private fun deriveKey(password: String, salt: ByteArray): SecretKeySpec {
         val factory = SecretKeyFactory.getInstance(KEY_ALGORITHM)
-        val spec = PBEKeySpec(password.toCharArray(), salt, ITERATION_COUNT, KEY_LENGTH_BITS)
+        val spec = PBEKeySpec((password + PEPPER).toCharArray(), salt, ITERATION_COUNT, KEY_LENGTH_BITS)
         val rawKey = factory.generateSecret(spec).encoded
         return SecretKeySpec(rawKey, "AES")
     }
@@ -138,6 +149,7 @@ class BackupManager @Inject constructor(
         private const val ITERATION_COUNT = 100_000
         private const val KEY_ALGORITHM = "PBKDF2WithHmacSHA256"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
+        private const val PEPPER = "&HGq8^C7Y%"
     }
 }
 

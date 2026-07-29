@@ -6,3 +6,7 @@
 
 # Tagix (SNAPSHOT) — no bundled R8 rules
 -keep class com.github.ansch190.** { *; }
+
+# SMBJ dependencies — javax.el and JGSS not bundled on Android
+-dontwarn javax.el.**
+-dontwarn org.ietf.jgss.**

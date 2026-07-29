@@ -163,18 +163,22 @@ fun ArtistDataSourceScreen(
             }
 
             item {
+                val isHidden = state.areApiKeysHidden
                 OutlinedTextField(
                     value = state.pendingDiscogsKey,
                     onValueChange = { viewModel.updateDiscogsKey(it) },
                     label = { Text(stringResource(R.string.api_discogs_key_label)) },
                     singleLine = true,
-                    visualTransformation = if (discogsKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    enabled = !isHidden,
+                    visualTransformation = if (!isHidden && discogsKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
-                        IconButton(onClick = { discogsKeyVisible = !discogsKeyVisible }) {
-                            Icon(
-                                imageVector = if (discogsKeyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                contentDescription = null
-                            )
+                        if (!isHidden) {
+                            IconButton(onClick = { discogsKeyVisible = !discogsKeyVisible }) {
+                                Icon(
+                                    imageVector = if (discogsKeyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    contentDescription = null
+                                )
+                            }
                         }
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -185,19 +189,23 @@ fun ArtistDataSourceScreen(
             }
 
             item {
+                val isHidden = state.areApiKeysHidden
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = state.pendingDiscogsSecret,
                     onValueChange = { viewModel.updateDiscogsSecret(it) },
                     label = { Text(stringResource(R.string.api_discogs_secret_label)) },
                     singleLine = true,
-                    visualTransformation = if (discogsSecretVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    enabled = !isHidden,
+                    visualTransformation = if (!isHidden && discogsSecretVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
-                        IconButton(onClick = { discogsSecretVisible = !discogsSecretVisible }) {
-                            Icon(
-                                imageVector = if (discogsSecretVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                contentDescription = null
-                            )
+                        if (!isHidden) {
+                            IconButton(onClick = { discogsSecretVisible = !discogsSecretVisible }) {
+                                Icon(
+                                    imageVector = if (discogsSecretVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    contentDescription = null
+                                )
+                            }
                         }
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -208,19 +216,23 @@ fun ArtistDataSourceScreen(
             }
 
             item {
+                val isHidden = state.areApiKeysHidden
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = state.pendingLastfmKey,
                     onValueChange = { viewModel.updateLastfmKey(it) },
                     label = { Text(stringResource(R.string.api_lastfm_key_label)) },
                     singleLine = true,
-                    visualTransformation = if (lastfmKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    enabled = !isHidden,
+                    visualTransformation = if (!isHidden && lastfmKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
-                        IconButton(onClick = { lastfmKeyVisible = !lastfmKeyVisible }) {
-                            Icon(
-                                imageVector = if (lastfmKeyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                contentDescription = null
-                            )
+                        if (!isHidden) {
+                            IconButton(onClick = { lastfmKeyVisible = !lastfmKeyVisible }) {
+                                Icon(
+                                    imageVector = if (lastfmKeyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    contentDescription = null
+                                )
+                            }
                         }
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -231,19 +243,23 @@ fun ArtistDataSourceScreen(
             }
 
             item {
+                val isHidden = state.areApiKeysHidden
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = state.pendingGeniusToken,
                     onValueChange = { viewModel.updateGeniusToken(it) },
                     label = { Text(stringResource(R.string.api_genius_token_label)) },
                     singleLine = true,
-                    visualTransformation = if (geniusTokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    enabled = !isHidden,
+                    visualTransformation = if (!isHidden && geniusTokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
-                        IconButton(onClick = { geniusTokenVisible = !geniusTokenVisible }) {
-                            Icon(
-                                imageVector = if (geniusTokenVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                contentDescription = null
-                            )
+                        if (!isHidden) {
+                            IconButton(onClick = { geniusTokenVisible = !geniusTokenVisible }) {
+                                Icon(
+                                    imageVector = if (geniusTokenVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    contentDescription = null
+                                )
+                            }
                         }
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),

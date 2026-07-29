@@ -38,11 +38,11 @@ class BackupViewModel @Inject constructor(
     private val _importError = MutableStateFlow<String?>(null)
     val importError: StateFlow<String?> = _importError.asStateFlow()
 
-    fun exportTo(uri: Uri, password: String) {
+    fun exportTo(uri: Uri, password: String, isShared: Boolean = false) {
         viewModelScope.launch {
             _isExporting.tryEmit(true)
             try {
-                val backup = backupManager.createBackup()
+                val backup = backupManager.createBackup(isShared = isShared)
                 backupManager.exportTo(context.contentResolver, uri, backup, password)
                 _successMessage.tryEmit(SUCCESS_EXPORT)
             } catch (e: Exception) {

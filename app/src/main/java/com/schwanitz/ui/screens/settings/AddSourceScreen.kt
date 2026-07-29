@@ -480,11 +480,13 @@ private fun WebDavSourceConfig(
         )
     }
 
+    val isHidden = username == AddSourceViewModel.MASKED
     OutlinedTextField(
         value = username,
         onValueChange = onUsernameChange,
         label = { Text(usernameLabel) },
         singleLine = true,
+        enabled = !isHidden,
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(usernameFocusRequester),
@@ -497,17 +499,20 @@ private fun WebDavSourceConfig(
         onValueChange = onPasswordChange,
         label = { Text(stringResource(R.string.add_source_password_label)) },
         singleLine = true,
+        enabled = !isHidden,
         modifier = Modifier.fillMaxWidth(),
-        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        visualTransformation = if (!isHidden && passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Password
         ),
         trailingIcon = {
-            IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                Icon(
-                    imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                    contentDescription = if (passwordVisible) stringResource(R.string.cd_hide_password) else stringResource(R.string.cd_show_password)
-                )
+            if (!isHidden) {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        contentDescription = if (passwordVisible) stringResource(R.string.cd_hide_password) else stringResource(R.string.cd_show_password)
+                    )
+                }
             }
         }
     )
@@ -589,6 +594,7 @@ private fun SmbSourceConfig(
     onPasswordChange: (String) -> Unit,
     onTestConnection: () -> Unit
 ) {
+    val isHidden = username == AddSourceViewModel.MASKED
     var passwordVisible by remember { mutableStateOf(false) }
     val serverFocusRequester = remember { FocusRequester() }
 
@@ -622,6 +628,7 @@ private fun SmbSourceConfig(
         onValueChange = onUsernameChange,
         label = { Text(stringResource(R.string.webdav_username_hint)) },
         singleLine = true,
+        enabled = !isHidden,
         modifier = Modifier.fillMaxWidth(),
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Ascii
@@ -632,17 +639,20 @@ private fun SmbSourceConfig(
         onValueChange = onPasswordChange,
         label = { Text(stringResource(R.string.add_source_password_label)) },
         singleLine = true,
+        enabled = !isHidden,
         modifier = Modifier.fillMaxWidth(),
-        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        visualTransformation = if (!isHidden && passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Password
         ),
         trailingIcon = {
-            IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                Icon(
-                    imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                    contentDescription = if (passwordVisible) stringResource(R.string.cd_hide_password) else stringResource(R.string.cd_show_password)
-                )
+            if (!isHidden) {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        contentDescription = if (passwordVisible) stringResource(R.string.cd_hide_password) else stringResource(R.string.cd_show_password)
+                    )
+                }
             }
         }
     )

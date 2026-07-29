@@ -6,6 +6,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.R
+import com.schwanitz.data.local.SharedImportPreferences
 import com.schwanitz.data.source.SmbMusicSource
 import com.schwanitz.data.source.WebDavMusicSource
 import com.schwanitz.domain.repository.SourceManager
@@ -39,7 +40,8 @@ data class AddSourceUiState(
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
     val error: String? = null,
-    val connectionTestState: ConnectionTestState = ConnectionTestState.Idle
+    val connectionTestState: ConnectionTestState = ConnectionTestState.Idle,
+    val isCredentialHidden: Boolean = false
 )
 
 enum class Step { SELECT_TYPE, CONFIGURE }
@@ -56,21 +58,31 @@ class AddSourceViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val webDavMusicSource: WebDavMusicSource,
     private val smbMusicSource: SmbMusicSource,
+    private val sharedImportPreferences: SharedImportPreferences,
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val editSourceId: String? = savedStateHandle.get<String>("sourceId")
+    private var realUsername: String? = null
+    private var realPassword: String? = null
 
     private val _uiState = MutableStateFlow(AddSourceUiState())
     val uiState: StateFlow<AddSourceUiState> = _uiState.asStateFlow()
     val errorHolder = ErrorHolder()
+
+    companion object {
+        const val MASKED = "••••••••"
+    }
 
     init {
         if (editSourceId != null) {
             viewModelScope.launch {
                 val source = sourceManager.sources.first().find { it.id == editSourceId }
                 if (source != null) {
+                    val isHidden = sharedImportPreferences.isSourceIdHidden(editSourceId!!)
+                    realUsername = source.username
+                    realPassword = source.password
                     _uiState.value = AddSourceUiState(
                         step = Step.CONFIGURE,
                         selectedType = source.type,
@@ -80,10 +92,11 @@ class AddSourceViewModel @Inject constructor(
                             Uri.decode(it.substringAfterLast('/')).substringAfter(':')
                         } ?: "",
                         url = source.url ?: "",
-                        username = source.username ?: "",
-                        password = source.password ?: "",
+                        username = if (isHidden) MASKED else (source.username ?: ""),
+                        password = if (isHidden) MASKED else (source.password ?: ""),
                         path = source.path ?: "/",
-                        isEditing = true
+                        isEditing = true,
+                        isCredentialHidden = isHidden
                     )
                 }
             }
@@ -128,10 +141,12 @@ class AddSourceViewModel @Inject constructor(
     }
 
     fun updateUsername(username: String) {
+        if (_uiState.value.isCredentialHidden) return
         _uiState.value = _uiState.value.copy(username = username, error = null, connectionTestState = ConnectionTestState.Idle)
     }
 
     fun updatePassword(password: String) {
+        if (_uiState.value.isCredentialHidden) return
         _uiState.value = _uiState.value.copy(password = password, error = null, connectionTestState = ConnectionTestState.Idle)
     }
 
@@ -150,14 +165,16 @@ class AddSourceViewModel @Inject constructor(
 
     fun testConnection() {
         val state = _uiState.value
+        val testUsername = if (state.isCredentialHidden && realUsername != null) realUsername!! else state.username
+        val testPassword = if (state.isCredentialHidden && realPassword != null) realPassword!! else state.password
         Timber.d("Testing connection to %s (type=%s)", state.url, state.selectedType)
         viewModelScope.launch {
             _uiState.value = state.copy(connectionTestState = ConnectionTestState.Testing)
             val result = when (state.selectedType) {
                 SourceType.WEBDAV -> webDavMusicSource.testConnection(
                     url = state.url,
-                    username = state.username,
-                    password = state.password,
+                    username = testUsername,
+                    password = testPassword,
                     path = state.path
                 )
                 SourceType.SMB -> {
@@ -166,8 +183,8 @@ class AddSourceViewModel @Inject constructor(
                     smbMusicSource.testConnection(
                         host = state.url,
                         shareName = shareName,
-                        username = state.username,
-                        password = state.password
+                        username = testUsername,
+                        password = testPassword
                     )
                 }
                 else -> Result.failure(Exception("Unsupported type"))
