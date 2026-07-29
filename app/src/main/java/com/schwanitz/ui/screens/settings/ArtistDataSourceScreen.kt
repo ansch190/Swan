@@ -2,14 +2,20 @@ package com.schwanitz.ui.screens.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.schwanitz.R
@@ -22,6 +28,10 @@ fun ArtistDataSourceScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var sourceExpanded by remember { mutableStateOf(false) }
+    var discogsKeyVisible by remember { mutableStateOf(false) }
+    var discogsSecretVisible by remember { mutableStateOf(false) }
+    var lastfmKeyVisible by remember { mutableStateOf(false) }
+    var geniusTokenVisible by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -44,10 +54,19 @@ fun ArtistDataSourceScreen(
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             item {
                 Text(
+                    text = stringResource(R.string.metadata_api_section_artist_data),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 12.dp)
+                )
+            }
+
+            item {
+                Text(
                     text = stringResource(R.string.artist_data_source_label),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 4.dp)
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)
                 )
             }
 
@@ -136,20 +155,106 @@ fun ArtistDataSourceScreen(
             item {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = stringResource(R.string.artist_data_folder_structure),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)
+                    text = stringResource(R.string.metadata_api_section_api),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 12.dp)
                 )
             }
 
             item {
-                Text(
-                    text = stringResource(R.string.artist_data_folder_structure_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                OutlinedTextField(
+                    value = state.pendingDiscogsKey,
+                    onValueChange = { viewModel.updateDiscogsKey(it) },
+                    label = { Text(stringResource(R.string.api_discogs_key_label)) },
+                    singleLine = true,
+                    visualTransformation = if (discogsKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { discogsKeyVisible = !discogsKeyVisible }) {
+                            Icon(
+                                imageVector = if (discogsKeyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
                 )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = state.pendingDiscogsSecret,
+                    onValueChange = { viewModel.updateDiscogsSecret(it) },
+                    label = { Text(stringResource(R.string.api_discogs_secret_label)) },
+                    singleLine = true,
+                    visualTransformation = if (discogsSecretVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { discogsSecretVisible = !discogsSecretVisible }) {
+                            Icon(
+                                imageVector = if (discogsSecretVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = state.pendingLastfmKey,
+                    onValueChange = { viewModel.updateLastfmKey(it) },
+                    label = { Text(stringResource(R.string.api_lastfm_key_label)) },
+                    singleLine = true,
+                    visualTransformation = if (lastfmKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { lastfmKeyVisible = !lastfmKeyVisible }) {
+                            Icon(
+                                imageVector = if (lastfmKeyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = state.pendingGeniusToken,
+                    onValueChange = { viewModel.updateGeniusToken(it) },
+                    label = { Text(stringResource(R.string.api_genius_token_label)) },
+                    singleLine = true,
+                    visualTransformation = if (geniusTokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { geniusTokenVisible = !geniusTokenVisible }) {
+                            Icon(
+                                imageVector = if (geniusTokenVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }

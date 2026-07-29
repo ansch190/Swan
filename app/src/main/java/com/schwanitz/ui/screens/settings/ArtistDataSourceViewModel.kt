@@ -3,6 +3,7 @@ package com.schwanitz.ui.screens.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.data.local.ArtistDataSourcePreferences
+import com.schwanitz.data.local.CredentialStore
 import com.schwanitz.domain.repository.ArtistRepository
 import com.schwanitz.domain.repository.SourceManager
 import com.schwanitz.domain.source.SourceConfig
@@ -22,33 +23,53 @@ data class ArtistDataSourceUiState(
     val selectedSourceId: String? = null,
     val basePath: String = ArtistDataSourcePreferences.DEFAULT_BASE_PATH,
     val pendingSourceId: String? = null,
-    val pendingBasePath: String = ArtistDataSourcePreferences.DEFAULT_BASE_PATH
+    val pendingBasePath: String = ArtistDataSourcePreferences.DEFAULT_BASE_PATH,
+    val pendingDiscogsKey: String = "",
+    val pendingDiscogsSecret: String = "",
+    val pendingLastfmKey: String = "",
+    val pendingGeniusToken: String = ""
 )
 
 @HiltViewModel
 class ArtistDataSourceViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val prefs: ArtistDataSourcePreferences,
+    private val credentialStore: CredentialStore,
     private val artistRepository: ArtistRepository,
     private val artistImageLoader: ArtistImageLoader
 ) : ViewModel() {
 
     private val _pendingSourceId = MutableStateFlow<String?>(null)
     private val _pendingBasePath = MutableStateFlow(ArtistDataSourcePreferences.DEFAULT_BASE_PATH)
+    private val _pendingDiscogsKey = MutableStateFlow("")
+    private val _pendingDiscogsSecret = MutableStateFlow("")
+    private val _pendingLastfmKey = MutableStateFlow("")
+    private val _pendingGeniusToken = MutableStateFlow("")
 
     val uiState: StateFlow<ArtistDataSourceUiState> = combine(
-        sourceManager.sources,
-        prefs.getSourceId(),
-        prefs.getBasePath(),
-        _pendingSourceId,
-        _pendingBasePath
-    ) { sources, sourceId, basePath, pendingId, pendingPath ->
+        listOf(
+            sourceManager.sources,
+            prefs.getSourceId(),
+            prefs.getBasePath(),
+            _pendingSourceId,
+            _pendingBasePath,
+            _pendingDiscogsKey,
+            _pendingDiscogsSecret,
+            _pendingLastfmKey,
+            _pendingGeniusToken
+        )
+    ) { array ->
+        @Suppress("UNCHECKED_CAST")
         ArtistDataSourceUiState(
-            sources = sources.filter { it.type == SourceType.WEBDAV },
-            selectedSourceId = sourceId,
-            basePath = basePath,
-            pendingSourceId = pendingId,
-            pendingBasePath = pendingPath
+            sources = (array[0] as List<SourceConfig>).filter { it.type == SourceType.WEBDAV },
+            selectedSourceId = array[1] as String?,
+            basePath = array[2] as String,
+            pendingSourceId = array[3] as String?,
+            pendingBasePath = array[4] as String,
+            pendingDiscogsKey = array[5] as String,
+            pendingDiscogsSecret = array[6] as String,
+            pendingLastfmKey = array[7] as String,
+            pendingGeniusToken = array[8] as String
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, ArtistDataSourceUiState())
 
@@ -56,6 +77,10 @@ class ArtistDataSourceViewModel @Inject constructor(
         viewModelScope.launch {
             _pendingSourceId.value = prefs.getSourceIdSync()
             _pendingBasePath.value = prefs.getBasePathSync()
+            _pendingDiscogsKey.value = credentialStore.getApiDiscogsKey() ?: ""
+            _pendingDiscogsSecret.value = credentialStore.getApiDiscogsSecret() ?: ""
+            _pendingLastfmKey.value = credentialStore.getApiLastfmKey() ?: ""
+            _pendingGeniusToken.value = credentialStore.getApiGeniusToken() ?: ""
         }
     }
 
@@ -67,13 +92,32 @@ class ArtistDataSourceViewModel @Inject constructor(
         _pendingBasePath.value = path
     }
 
+    fun updateDiscogsKey(key: String) {
+        _pendingDiscogsKey.value = key
+    }
+
+    fun updateDiscogsSecret(secret: String) {
+        _pendingDiscogsSecret.value = secret
+    }
+
+    fun updateLastfmKey(key: String) {
+        _pendingLastfmKey.value = key
+    }
+
+    fun updateGeniusToken(token: String) {
+        _pendingGeniusToken.value = token
+    }
+
     fun save() {
         viewModelScope.launch {
-            val sourceId = _pendingSourceId.value
-            val basePath = _pendingBasePath.value
-            prefs.setSourceId(sourceId)
-            prefs.setBasePath(basePath)
+            prefs.setSourceId(_pendingSourceId.value)
+            prefs.setBasePath(_pendingBasePath.value)
+            credentialStore.setApiDiscogsKey(_pendingDiscogsKey.value)
+            credentialStore.setApiDiscogsSecret(_pendingDiscogsSecret.value)
+            credentialStore.setApiLastfmKey(_pendingLastfmKey.value)
+            credentialStore.setApiGeniusToken(_pendingGeniusToken.value)
             artistImageLoader.clearCache()
+            val sourceId = _pendingSourceId.value
             if (sourceId != null) {
                 artistRepository.clearAllArtistImages()
                 artistRepository.clearAllArtistBiographies()

@@ -45,11 +45,27 @@ class CredentialStore @Inject constructor(
         Timber.d("Credentials deleted for source %s", sourceId)
     }
 
+    fun getApiDiscogsKey(): String? = prefs.getString(API_DISCOGS_KEY, null)
+    fun setApiDiscogsKey(value: String) = prefs.edit().putString(API_DISCOGS_KEY, value).apply()
+
+    fun getApiDiscogsSecret(): String? = prefs.getString(API_DISCOGS_SECRET, null)
+    fun setApiDiscogsSecret(value: String) = prefs.edit().putString(API_DISCOGS_SECRET, value).apply()
+
+    fun getApiLastfmKey(): String? = prefs.getString(API_LASTFM_KEY, null)
+    fun setApiLastfmKey(value: String) = prefs.edit().putString(API_LASTFM_KEY, value).apply()
+
+    fun getApiGeniusToken(): String? = prefs.getString(API_GENIUS_TOKEN, null)
+    fun setApiGeniusToken(value: String) = prefs.edit().putString(API_GENIUS_TOKEN, value).apply()
+
     private fun key(sourceId: String, field: String): String = "${sourceId}_$field"
 
     companion object {
         private const val FILENAME = "webdav_credentials"
         private const val FIELD_USERNAME = "username"
         private const val FIELD_PASSWORD = "password"
+        private const val API_DISCOGS_KEY = "api_discogs_key"
+        private const val API_DISCOGS_SECRET = "api_discogs_secret"
+        private const val API_LASTFM_KEY = "api_lastfm_key"
+        private const val API_GENIUS_TOKEN = "api_genius_token"
     }
 }

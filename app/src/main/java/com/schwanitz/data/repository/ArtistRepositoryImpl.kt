@@ -4,6 +4,7 @@ import android.content.Context
 import com.schwanitz.BuildConfig
 import com.schwanitz.data.discogs.DiscogsApiService
 import com.schwanitz.data.lastfm.LastFmApiService
+import com.schwanitz.data.local.CredentialStore
 import com.schwanitz.data.local.LanguagePreferences
 import com.schwanitz.data.local.dao.ArtistDao
 import com.schwanitz.data.local.dao.ArtistPicDao
@@ -30,6 +31,7 @@ class ArtistRepositoryImpl @Inject constructor(
     private val lastFmApiService: LastFmApiService,
     private val webDavArtistDataProvider: WebDavArtistDataProvider,
     private val languagePreferences: LanguagePreferences,
+    private val credentialStore: CredentialStore,
     @ApplicationContext private val context: Context
 ) : ArtistRepository {
 
@@ -80,7 +82,9 @@ class ArtistRepositoryImpl @Inject constructor(
             }
         }
 
-        if (BuildConfig.DISCOGS_CONSUMER_KEY.isBlank()) return null
+        val discogsKey = credentialStore.getApiDiscogsKey()?.takeIf { it.isNotBlank() }
+            ?: BuildConfig.DISCOGS_CONSUMER_KEY
+        if (discogsKey.isBlank()) return null
 
         Timber.d("Fetching artist image from Discogs for '%s'", artist.name)
 

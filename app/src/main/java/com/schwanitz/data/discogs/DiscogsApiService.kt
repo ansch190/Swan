@@ -1,6 +1,7 @@
 package com.schwanitz.data.discogs
 
 import com.schwanitz.BuildConfig
+import com.schwanitz.data.local.CredentialStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -17,20 +18,28 @@ import kotlin.time.Duration.Companion.milliseconds
 @Singleton
 class DiscogsApiService @Inject constructor(
     @DiscogsQualifier private val rateLimiter: RateLimiter,
-    private val client: OkHttpClient
+    private val client: OkHttpClient,
+    private val credentialStore: CredentialStore
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
     private val apiBase = "https://api.discogs.com"
-    private val authParams = "key=${BuildConfig.DISCOGS_CONSUMER_KEY}&secret=${BuildConfig.DISCOGS_CONSUMER_SECRET}"
+
+    private suspend fun authParams(): String {
+        val key = credentialStore.getApiDiscogsKey()?.takeIf { it.isNotBlank() }
+            ?: BuildConfig.DISCOGS_CONSUMER_KEY
+        val secret = credentialStore.getApiDiscogsSecret()?.takeIf { it.isNotBlank() }
+            ?: BuildConfig.DISCOGS_CONSUMER_SECRET
+        return "key=$key&secret=$secret"
+    }
 
     suspend fun searchArtist(name: String): DiscogsSearchResponse? {
-        val url = "$apiBase/database/search?type=artist&q=${java.net.URLEncoder.encode(name, "UTF-8")}&$authParams"
+        val url = "$apiBase/database/search?type=artist&q=${java.net.URLEncoder.encode(name, "UTF-8")}&${authParams()}"
         return get(url, "searchArtist($name)")
     }
 
     suspend fun getArtistDetail(artistId: Long): DiscogsArtistResponse? {
-        val url = "$apiBase/artists/$artistId?$authParams"
+        val url = "$apiBase/artists/$artistId?${authParams()}"
         return get(url, "getArtistDetail($artistId)")
     }
 

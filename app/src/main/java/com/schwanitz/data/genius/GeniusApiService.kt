@@ -1,6 +1,7 @@
 package com.schwanitz.data.genius
 
 import com.schwanitz.BuildConfig
+import com.schwanitz.data.local.CredentialStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -18,7 +19,8 @@ import kotlin.time.Duration.Companion.milliseconds
 @Singleton
 class GeniusApiService @Inject constructor(
     @GeniusQualifier private val rateLimiter: RateLimiter,
-    private val client: OkHttpClient
+    private val client: OkHttpClient,
+    private val credentialStore: CredentialStore
 ) {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -26,21 +28,23 @@ class GeniusApiService @Inject constructor(
     private val apiBase = "https://api.genius.com"
 
     suspend fun searchLyrics(title: String, artist: String): String? {
-        if (BuildConfig.GENIUS_ACCESS_TOKEN.isBlank()) {
+        val accessToken = credentialStore.getApiGeniusToken()?.takeIf { it.isNotBlank() }
+            ?: BuildConfig.GENIUS_ACCESS_TOKEN
+        if (accessToken.isBlank()) {
             Timber.e("GENIUS_ACCESS_TOKEN is empty")
             return null
         }
 
         val query1 = "$title - $artist"
         Timber.d("Search attempt 1: \"$query1\"")
-        val url1 = searchForSongOrNull(query1, title)
+        val url1 = searchForSongOrNull(query1, title, accessToken)
         if (url1 != null) return fetchLyricsFromPage(url1)
 
         val cleanTitle = title.replace(Regex("""\s*\([^)]*\)"""), "").trim()
         if (cleanTitle != title) {
             val query2 = "$cleanTitle - $artist"
             Timber.d("Search attempt 2: \"$query2\"")
-            val url2 = searchForSongOrNull(query2, cleanTitle)
+            val url2 = searchForSongOrNull(query2, cleanTitle, accessToken)
             if (url2 != null) return fetchLyricsFromPage(url2)
         }
 
@@ -48,7 +52,7 @@ class GeniusApiService @Inject constructor(
         return null
     }
 
-    private suspend fun searchForSongOrNull(rawQuery: String, checkTitle: String): String? {
+    private suspend fun searchForSongOrNull(rawQuery: String, checkTitle: String, accessToken: String): String? {
         val encoded = java.net.URLEncoder.encode(rawQuery, "UTF-8")
         return withTimeout(30_000.milliseconds) {
             withContext(Dispatchers.IO) {
@@ -56,7 +60,7 @@ class GeniusApiService @Inject constructor(
                     rateLimiter.acquire()
                     val request = Request.Builder()
                         .url("$apiBase/search?q=$encoded")
-                        .header("Authorization", "Bearer ${BuildConfig.GENIUS_ACCESS_TOKEN}")
+                        .header("Authorization", "Bearer $accessToken")
                         .header("User-Agent", "SwanMusicPlayer/1.0")
                         .build()
                     client.newCall(request).execute().use { response ->

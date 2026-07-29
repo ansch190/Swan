@@ -1,6 +1,7 @@
 package com.schwanitz.data.lastfm
 
 import com.schwanitz.BuildConfig
+import com.schwanitz.data.local.CredentialStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -17,7 +18,8 @@ import kotlin.time.Duration.Companion.milliseconds
 @Singleton
 class LastFmApiService @Inject constructor(
     @LastFmQualifier private val rateLimiter: RateLimiter,
-    private val client: OkHttpClient
+    private val client: OkHttpClient,
+    private val credentialStore: CredentialStore
 ) {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -25,8 +27,10 @@ class LastFmApiService @Inject constructor(
     private val apiBase = "https://ws.audioscrobbler.com/2.0/"
 
     suspend fun getArtistInfo(artistName: String): LastFmArtist? {
-        if (BuildConfig.LASTFM_API_KEY.isBlank()) {
-            Timber.e("LASTFM_API_KEY is empty - set lastfmKey in local.properties")
+        val apiKey = credentialStore.getApiLastfmKey()?.takeIf { it.isNotBlank() }
+            ?: BuildConfig.LASTFM_API_KEY
+        if (apiKey.isBlank()) {
+            Timber.e("LASTFM_API_KEY is empty - set lastfmKey in local.properties or in settings")
             return null
         }
 
@@ -34,7 +38,7 @@ class LastFmApiService @Inject constructor(
             append(apiBase)
             append("?method=artist.getInfo")
             append("&artist=${java.net.URLEncoder.encode(artistName, "UTF-8")}")
-            append("&api_key=${BuildConfig.LASTFM_API_KEY}")
+            append("&api_key=$apiKey")
             append("&format=json")
         }
 
