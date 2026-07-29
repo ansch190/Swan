@@ -24,6 +24,7 @@ Play music from your device and from network sources (WebDAV). Manage playlists,
 - **Series** — Browse album series (e.g. compilations); detail view with ordered albums
 - **Multiple album artworks** — Swipeable artwork carousel with dot indicators
 - **Multi-language UI** — Switch between System / Deutsch / English in Settings
+- **Backup & Recovery** — Encrypted backup of settings, sources, and API keys to a local `.swanbak` file with password protection (AES/GCM)
 - **Background playback** — Foreground service with media notification & lock screen controls
 - **Material 3 design** — Modern Compose UI with dynamic theming
 
@@ -42,6 +43,7 @@ Play music from your device and from network sources (WebDAV). Manage playlists,
 | Player        | Media3 ExoPlayer + MediaSession                                |
 | Images        | Coil                                                           |
 | HTML Parsing  | JSoup                                                          |
+| Encryption    | PBKDF2 + AES/GCM (Android Security Crypto)                     |
 | Serialization | kotlinx-serialization                                          |
 | Preferences   | DataStore Preferences                                          |
 | HTTP          | OkHttp (with digest auth for WebDAV)                           |
@@ -73,7 +75,7 @@ Play music from your device and from network sources (WebDAV). Manage playlists,
 ```
 app/src/main/java/com/schwanitz/
 ├── data/            # Room DB, DAOs, entities, migrations, repository implementations,
-│                    # music sources, external API clients (Discogs, Last.fm, Genius)
+│                    # backup & recovery, music sources, external API clients (Discogs, Last.fm, Genius)
 ├── domain/          # Models (Song, Playlist, Album, AlbumArtwork, Artist, AlbumSeries),
 │                    # repository interfaces, MusicSource interface
 ├── di/              # Hilt modules (AppModule, DatabaseModule, PlayerModule, RepositoryModule)

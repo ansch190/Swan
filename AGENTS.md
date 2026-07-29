@@ -7,7 +7,7 @@ Single-module Android music player app. Package: `com.schwanitz`, namespace: `co
 ```kotlin
 // Build config
 compileSdk = 37, minSdk = 31, targetSdk = 35
-versionName = "1.2", versionCode = 2
+versionName = "2.0", versionCode = 6
 Java 17, Kotlin 2.1.0, AGP 9.2.1
 ```
 
@@ -49,6 +49,7 @@ com.schwanitz/
 │   ├── repository/                   # MusicRepositoryImpl, PlaylistRepositoryImpl,
 │   │                                 # SourceManagerImpl, MusicSourceRegistry,
 │   │                                 # ArtistRepositoryImpl
+│   ├── backup/                       # BackupManager, BackupData (PBKDF2+AES/GCM)
 │   └── source/                       # LocalFolderMusicSource, WebDavMusicSource,
 │                                     # MetadataExtractor, AuthHttpDataSourceFactory,
 │                                     # ArtworkCache, ArtistImageCache, ContentUriDataSource,
@@ -108,7 +109,8 @@ Entrypoints: `MyApplication` (`@HiltAndroidApp`), `MainActivity` (`@AndroidEntry
 - **Discogs**: OAuth 1.0a for API auth, rate-limited (1 req/s via `DiscogsRateLimiter`), artist images cached to `artist_pics` table + local file cache.
 - **Last.fm**: API key (`api_key` param), artist biographies cached in `artists` table with 6-month TTL.
 - **Language**: `AppCompatDelegate.setApplicationLocales()` for locale switching (API 33+); requires `AppCompatActivity`, `android:localeConfig="@xml/locales_config"` in manifest, `NoActionBar` theme parent. Works on minSdk 31 via AppCompat compat.
-- **Strings**: ~180 strings in `res/values/strings.xml` (English) and `res/values-de/strings.xml` (German).
+- **Strings**: ~252 strings in `res/values/strings.xml` (English) and `res/values-de/strings.xml` (German).
 - **ProGuard/R8**: `app/proguard-rules.pro` keeps all `com.schwanitz.**` classes. Additional keep rules go in `app/src/main/keepRules/rules.keep`.
+- **Backup & Recovery**: Encrypted `.swanbak` files with PBKDF2WithHmacSHA256 (100k iterations) + AES/GCM. Password-entered export via SAF, import with inline error on wrong password. Restored data includes source configs, credentials, API keys, language preference, artist-data source config. No library data (songs/playlists/albums) included.
 - **Tests**: only auto-generated stubs exist, no real tests.
 - **No CI, no lint config, no formatter config** in the repo.
