@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +38,7 @@ fun AlbumDetailScreen(
     albumName: String,
     albumArtistName: String,
     onNavigateBack: () -> Unit,
+    onArtistClick: (String) -> Unit = {},
     onSeriesClick: (String) -> Unit = {},
     onAddToPlaylist: (String) -> Unit = {},
     viewModel: AlbumDetailViewModel = hiltViewModel()
@@ -75,11 +77,18 @@ fun AlbumDetailScreen(
                 }
             },
             actions = {
-                series?.let { s ->
-                    IconButton(onClick = { onSeriesClick(s.name) }) {
+                if (series != null) {
+                    IconButton(onClick = { onSeriesClick(series!!.name) }) {
                         Icon(
                             painter = painterResource(R.drawable.album_series),
                             contentDescription = stringResource(R.string.cd_series_icon)
+                        )
+                    }
+                } else {
+                    IconButton(onClick = { onArtistClick(albumArtistName) }) {
+                        Icon(
+                            imageVector = Icons.Filled.Person,
+                            contentDescription = stringResource(R.string.cd_artist_photo)
                         )
                     }
                 }

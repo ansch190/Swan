@@ -232,6 +232,9 @@ fun NavGraph(navController: NavHostController) {
                 albumName = albumName,
                 albumArtistName = albumArtistName,
                 onNavigateBack = { navController.popBackStack() },
+                onArtistClick = { artist ->
+                    navController.navigate(Routes.artistDetail(artist))
+                },
                 onSeriesClick = { seriesName ->
                     navController.navigate(Routes.seriesDetail(seriesName))
                 },
