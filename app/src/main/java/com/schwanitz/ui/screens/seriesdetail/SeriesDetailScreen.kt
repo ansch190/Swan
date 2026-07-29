@@ -103,6 +103,7 @@ fun SeriesDetailScreen(
                             AlbumListItem(
                                 albumName = album.name,
                                 albumArtUri = album.albumArtUri,
+                                year = album.year,
                                 onClick = { onAlbumClick(album.name, album.albumArtist) }
                             )
                         }
