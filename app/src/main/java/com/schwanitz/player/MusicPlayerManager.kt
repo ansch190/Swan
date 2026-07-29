@@ -18,10 +18,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -54,6 +57,9 @@ class MusicPlayerManager @Inject constructor(
 
     private val _playerState = MutableStateFlow(PlayerState())
     val playerState: StateFlow<PlayerState> = _playerState.asStateFlow()
+
+    private val _navigateToPlayer = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val navigateToPlayer: SharedFlow<Unit> = _navigateToPlayer.asSharedFlow()
 
     private var songQueue: List<Song> = emptyList()
 
@@ -124,6 +130,7 @@ class MusicPlayerManager @Inject constructor(
 
         player.prepare()
         player.play()
+        _navigateToPlayer.tryEmit(Unit)
 
         _playerState.value = _playerState.value.copy(
             currentSong = song,

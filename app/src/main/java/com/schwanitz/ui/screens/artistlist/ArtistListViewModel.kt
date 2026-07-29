@@ -6,8 +6,10 @@ import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.ui.common.ArtistImageLoader
 import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -25,8 +27,11 @@ class ArtistListViewModel @Inject constructor(
 
     val errorHolder = ErrorHolder()
 
+    private var loadJob: Job? = null
+
     fun loadArtists() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             runCatching {
                 combine(
                     songRepository.getAllAlbumArtistNames(),
@@ -37,7 +42,9 @@ class ArtistListViewModel @Inject constructor(
                     _allArtists.value = it
                     artistImageLoader.loadForArtists(it)
                 }
-            }.onFailure { errorHolder.emit(it) }
+            }.onFailure { e ->
+                if (e !is CancellationException) errorHolder.emit(e)
+            }
         }
     }
 }

@@ -15,12 +15,17 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.schwanitz.player.MusicPlayerManager
 
 val LocalSnackbarHostState = compositionLocalOf<SnackbarHostState> {
     error("No SnackbarHostState provided")
 }
 
 val LocalBottomBarHeight = compositionLocalOf<Dp> { 0.dp }
+
+val LocalMusicPlayerManager = staticCompositionLocalOf<MusicPlayerManager> {
+    error("No MusicPlayerManager provided")
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,6 +34,22 @@ fun MainScreen() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val snackbarHostState = remember { SnackbarHostState() }
+    val playerManager = LocalMusicPlayerManager.current
+
+    LaunchedEffect(Unit) {
+        playerManager.navigateToPlayer.collect {
+            val route = navController.currentBackStackEntry?.destination?.route
+            if (route != BottomNavItem.NowPlaying.route) {
+                navController.navigate(BottomNavItem.NowPlaying.route) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+        }
+    }
 
     val bottomBarVisible = currentDestination?.route in BottomNavItem.items.map { it.route }
 

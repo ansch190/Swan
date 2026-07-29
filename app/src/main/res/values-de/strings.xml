@@ -122,6 +122,18 @@
     <string name="settings_music_sources_desc">Lokale Ordner und Netzwerkquellen verwalten</string>
     <string name="settings_about">Über</string>
     <string name="settings_about_desc">App-Informationen und Version</string>
+    <string name="settings_artist_data">Künstlerdaten</string>
+    <string name="settings_artist_data_desc">Künstlerbilder und Biografien per WebDAV</string>
+
+    <!-- Artist data source settings -->
+    <string name="artist_data_source_label">WebDAV-Quelle</string>
+    <string name="artist_data_source_desc">Wähle eine WebDAV-Quelle mit dem Künstlerdaten-Ordner</string>
+    <string name="artist_data_path_label">Künstler-Pfad</string>
+    <string name="artist_data_path_desc">Basis-Pfad mit Künstlerordnern auf dem WebDAV-Server</string>
+    <string name="artist_data_path_placeholder">/Künstler</string>
+    <string name="artist_data_disabled">Deaktiviert</string>
+    <string name="artist_data_folder_structure">Ordnerstruktur</string>
+    <string name="artist_data_folder_structure_desc">Jeder Künstler braucht einen info/-Unterordner mit pic.jpg, bio_de.txt und bio_en.txt</string>
 
     <!-- Settings sources screen -->
     <string name="settings_sources_title">Quellen</string>
@@ -215,6 +227,8 @@
     <string name="songinfo_lyrics_title">Liedtext</string>
     <string name="songinfo_lyrics_dismiss">SCHLIESSEN</string>
     <string name="source_format">Quelle: %s</string>
+    <string name="biography_source_lastfm">Quelle: Last.fm</string>
+    <string name="biography_not_available">Keine Biografie verfügbar</string>
 
     <string name="about_attribution_header">Daten von Drittanbietern</string>
     <string name="about_discogs_attribution">Künstlerbilder: Discogs®</string>

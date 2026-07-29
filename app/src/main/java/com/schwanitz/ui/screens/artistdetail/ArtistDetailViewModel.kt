@@ -3,6 +3,7 @@ package com.schwanitz.ui.screens.artistdetail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.model.Album
+import com.schwanitz.domain.model.ArtistBiographyResult
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.ArtistRepository
 import com.schwanitz.domain.repository.SongRepository
@@ -37,8 +38,8 @@ class ArtistDetailViewModel @Inject constructor(
     private val _artistImageUri = MutableStateFlow<String?>(null)
     val artistImageUri: StateFlow<String?> = _artistImageUri
 
-    private val _artistBiography = MutableStateFlow<String?>(null)
-    val artistBiography: StateFlow<String?> = _artistBiography
+    private val _artistBiography = MutableStateFlow<ArtistBiographyResult?>(null)
+    val artistBiography: StateFlow<ArtistBiographyResult?> = _artistBiography
 
     val errorHolder = ErrorHolder()
 

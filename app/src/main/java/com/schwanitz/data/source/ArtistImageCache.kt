@@ -45,6 +45,10 @@ object ArtistImageCache {
         }
     }
 
+    fun clearAll(context: Context) {
+        cacheDir(context).deleteRecursively()
+    }
+
     fun deleteUnreferenced(context: Context, uris: Set<String>) {
         val filesToKeep = uris.mapNotNull { uri ->
             try { File(Uri.parse(uri).path ?: "").name } catch (_: Exception) { null }

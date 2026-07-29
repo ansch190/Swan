@@ -57,7 +57,7 @@ fun NowPlayingScreen(
     val playerState by viewModel.playerState.collectAsState()
     val snackbarHostState = LocalSnackbarHostState.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
-    var showQueue by rememberSaveable { mutableStateOf(true) }
+    var showQueue by rememberSaveable { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(

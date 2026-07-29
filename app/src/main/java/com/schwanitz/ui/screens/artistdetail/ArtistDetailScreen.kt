@@ -5,9 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
@@ -36,6 +34,7 @@ fun ArtistDetailScreen(
     artistName: String,
     onNavigateBack: () -> Unit,
     onAlbumClick: (String, String) -> Unit,
+    onBioClick: () -> Unit = {},
     onAddToPlaylist: (String) -> Unit = {},
     viewModel: ArtistDetailViewModel = hiltViewModel()
 ) {
@@ -51,12 +50,10 @@ fun ArtistDetailScreen(
     val albums by viewModel.albums.collectAsState()
     val artistImageUri by viewModel.artistImageUri.collectAsState()
     val artistBiography by viewModel.artistBiography.collectAsState()
-    var showBioDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
     val isSelecting by viewModel.isSelecting.collectAsState()
     val selectedSongIds by viewModel.selectedSongIds.collectAsState()
-
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(stringResource(R.string.artist_title)) },
@@ -67,7 +64,7 @@ fun ArtistDetailScreen(
             },
             actions = {
                 if (artistBiography != null) {
-                    IconButton(onClick = { showBioDialog = true }) {
+                    IconButton(onClick = onBioClick) {
                         Icon(Icons.Filled.Info, contentDescription = stringResource(R.string.cd_biography))
                     }
                 }
@@ -128,32 +125,6 @@ fun ArtistDetailScreen(
         }
     }
 
-    if (showBioDialog && artistBiography != null) {
-        AlertDialog(
-            onDismissRequest = { showBioDialog = false },
-            title = { Text(stringResource(R.string.artist_biography_title)) },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 400.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Text(text = artistBiography!!)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.source_format, "Last.fm"),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showBioDialog = false }) {
-                    Text(stringResource(R.string.artist_biography_dismiss))
-                }
-            }
-        )
-    }
 }
 
 @Composable

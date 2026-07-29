@@ -21,6 +21,9 @@ interface ArtistDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(artist: ArtistEntity): Long
 
+    @Query("UPDATE artists SET biography = NULL, biographyLastUpdated = 0")
+    suspend fun clearAllBiographies()
+
     @Query("""
         DELETE FROM artists WHERE id NOT IN (
             SELECT DISTINCT artistId FROM songs WHERE artistId IS NOT NULL

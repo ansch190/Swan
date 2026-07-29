@@ -14,6 +14,11 @@ class ArtistImageLoader @Inject constructor(
     val artistImageUris: StateFlow<Map<String, String?>> = _artistImageUris
     private val imageUris = mutableMapOf<String, String?>()
 
+    fun clearCache() {
+        imageUris.clear()
+        _artistImageUris.value = emptyMap()
+    }
+
     suspend fun loadForArtists(artists: List<String>) {
         for (artist in artists) {
             try {

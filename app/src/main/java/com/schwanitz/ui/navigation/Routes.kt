@@ -7,6 +7,7 @@ object Routes {
     const val GENERAL_SETTINGS = "general_settings"
     const val SOURCE_SETTINGS = "source_settings"
     const val ABOUT = "about"
+    const val ARTIST_DATA_SOURCE = "artist_data_source"
     const val ADD_SOURCE = "add_source"
     const val ALL_ARTISTS = "all_artists"
     const val ALL_ALBUMS = "all_albums"
@@ -28,6 +29,8 @@ object Routes {
     fun decadeDetail(decade: Int) = "decade_detail/$decade"
 
     fun seriesDetail(seriesName: String) = "series_detail/${Uri.encode(seriesName)}"
+
+    fun artistBiography(artistName: String) = "artist_biography/${Uri.encode(artistName)}"
 
     fun playlistDetail(playlistId: Long) = "playlist_detail/$playlistId"
 

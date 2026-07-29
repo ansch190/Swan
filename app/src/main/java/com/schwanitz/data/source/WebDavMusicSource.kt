@@ -59,6 +59,7 @@ class WebDavMusicSource @Inject constructor(
         const val DEFAULT_RANGE_LIMIT = 524287L
         const val MP3_HEADER_RANGE_LIMIT = 1023L
         const val MP3_HEADER_SIZE = 10
+        const val MAX_MP3_TAG_RANGE = 10 * 1024 * 1024 - 1
         const val MAX_DEPTH = 50
         const val PROPFIND_MAX_RETRIES = 3
         val PROPFIND_BACKOFF_MS = longArrayOf(1000, 2000, 4000)
@@ -485,7 +486,7 @@ class WebDavMusicSource @Inject constructor(
                         (headerBytes[8].toInt() and 0x7F shl 7) or
                         (headerBytes[9].toInt() and 0x7F)
                     val totalTagSize = MP3_HEADER_SIZE + synchsafeSize
-                    val rangeEnd = totalTagSize.coerceAtMost(1048575) - 1
+                    val rangeEnd = totalTagSize.coerceAtMost(MAX_MP3_TAG_RANGE) - 1
                     Timber.d("MP3 ID3v2 tag detected: %d bytes (range: 0-%d)", totalTagSize, rangeEnd)
                     "bytes=0-$rangeEnd"
                 } else {

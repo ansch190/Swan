@@ -15,12 +15,15 @@ import com.schwanitz.ui.screens.playlist.PlaylistPickerScreen
 import com.schwanitz.ui.screens.playlist.SelectSongsScreen
 import com.schwanitz.ui.screens.settings.AboutScreen
 import com.schwanitz.ui.screens.settings.AddSourceScreen
+import com.schwanitz.ui.screens.settings.ArtistDataSourceScreen
 import com.schwanitz.ui.screens.settings.GeneralSettingsScreen
 import com.schwanitz.ui.screens.settings.SettingsDashboardScreen
 import com.schwanitz.ui.screens.settings.SettingsScreen
 import com.schwanitz.ui.screens.songinfo.SongInfoScreen
 import com.schwanitz.ui.screens.albumdetail.AlbumDetailScreen
+import com.schwanitz.ui.screens.artistdetail.ArtistBiographyScreen
 import com.schwanitz.ui.screens.artistdetail.ArtistDetailScreen
+import com.schwanitz.ui.screens.artistdetail.ArtistDetailViewModel
 import com.schwanitz.ui.screens.seriesdetail.SeriesDetailScreen
 import com.schwanitz.ui.screens.yeardetail.YearDetailScreen
 import com.schwanitz.ui.screens.genredetail.GenreDetailScreen
@@ -144,9 +147,24 @@ fun NavGraph(navController: NavHostController) {
                 onAlbumClick = { album, albumArtist ->
                     navController.navigate(Routes.albumDetail(album, albumArtist))
                 },
+                onBioClick = { navController.navigate(Routes.artistBiography(artistName)) },
                 onAddToPlaylist = { songIds ->
                     navController.navigate(Routes.playlistPicker(songIds))
                 }
+            )
+        }
+
+        composable(
+            route = "artist_biography/{artistName}",
+            arguments = listOf(navArgument("artistName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val artistName = backStackEntry.arguments?.getString("artistName") ?: ""
+            val artistEntry = checkNotNull(navController.getBackStackEntry("artist_detail/$artistName"))
+            val artistVm: ArtistDetailViewModel = hiltViewModel(artistEntry)
+            ArtistBiographyScreen(
+                artistName = artistName,
+                onNavigateBack = { navController.popBackStack() },
+                viewModel = artistVm
             )
         }
 
@@ -298,6 +316,7 @@ fun NavGraph(navController: NavHostController) {
             SettingsDashboardScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateSources = { navController.navigate(Routes.SOURCE_SETTINGS) },
+                onNavigateArtistData = { navController.navigate(Routes.ARTIST_DATA_SOURCE) },
                 onNavigateAbout = { navController.navigate(Routes.ABOUT) },
                 onNavigateGeneral = { navController.navigate(Routes.GENERAL_SETTINGS) }
             )
@@ -305,6 +324,12 @@ fun NavGraph(navController: NavHostController) {
 
         composable(Routes.GENERAL_SETTINGS) {
             GeneralSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.ARTIST_DATA_SOURCE) {
+            ArtistDataSourceScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

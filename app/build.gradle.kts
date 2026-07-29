@@ -106,6 +106,7 @@ dependencies {
     implementation("androidx.documentfile:documentfile:1.1.0")
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.smbj)
+    implementation(libs.markdown.renderer.m3)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
