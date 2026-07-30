@@ -16,8 +16,8 @@ android {
         applicationId = "com.schwanitz"
         minSdk = 31
         targetSdk = 36
-        versionCode = 6
-        versionName = "2.0"
+        versionCode = 7
+        versionName = "2.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
