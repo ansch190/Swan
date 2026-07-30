@@ -20,11 +20,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -32,6 +36,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
@@ -49,6 +54,8 @@ import com.schwanitz.ui.components.ArtworkPager
 import com.schwanitz.ui.components.AlbumArtPlaceholder
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
+import sh.calvin.reorderable.rememberReorderableLazyListState
+import sh.calvin.reorderable.ReorderableItem
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -60,6 +67,8 @@ fun NowPlayingScreen(
     val snackbarHostState = LocalSnackbarHostState.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
     var showQueue by rememberSaveable { mutableStateOf(false) }
+    var isEditing by remember { mutableStateOf(false) }
+    LaunchedEffect(showQueue) { if (!showQueue) isEditing = false }
     var showLyricsDialog by remember { mutableStateOf(false) }
     val lyrics by viewModel.lyrics.collectAsState()
     val lyricsLoading by viewModel.lyricsLoading.collectAsState()
@@ -91,12 +100,12 @@ fun NowPlayingScreen(
                             contentDescription = stringResource(R.string.songinfo_title)
                         )
                     }
-                }
-                IconButton(onClick = { showQueue = !showQueue }) {
+                    IconButton(onClick = { showQueue = !showQueue }) {
                     Icon(
                         imageVector = if (showQueue) Icons.Filled.Image else Icons.AutoMirrored.Filled.List,
                         contentDescription = if (showQueue) stringResource(R.string.cd_show_album_art) else stringResource(R.string.cd_show_queue)
                     )
+                }
                 }
             }
         )
@@ -148,8 +157,12 @@ fun NowPlayingScreen(
                     queue = playerState.queue,
                     currentIdx = playerState.currentIndex,
                     favoriteIds = viewModel.favoriteIds.collectAsState().value,
+                    isEditing = isEditing,
                     onPlayFromIndex = { viewModel.onPlayFromIndex(it) },
-                    onToggleFavorite = { viewModel.toggleFavorite(it) }
+                    onToggleFavorite = { viewModel.toggleFavorite(it) },
+                    onMoveInQueue = { from, to -> viewModel.moveInQueue(from, to) },
+                    onRemoveFromQueue = { viewModel.removeFromQueue(it) },
+                    onToggleEdit = { isEditing = !isEditing }
                 )
             }
         } else {
@@ -274,14 +287,20 @@ private fun SongInfoSection(
     }
 }
 
+private data class QueueEditItem(val stableId: Long, val song: Song)
+
 @Composable
 private fun QueueSection(
     visible: Boolean,
     queue: List<Song>,
     currentIdx: Int,
     favoriteIds: Set<String>,
+    isEditing: Boolean,
     onPlayFromIndex: (Int) -> Unit,
     onToggleFavorite: (Song) -> Unit,
+    onMoveInQueue: (Int, Int) -> Unit,
+    onRemoveFromQueue: (Int) -> Unit,
+    onToggleEdit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     AnimatedVisibility(
@@ -293,17 +312,48 @@ private fun QueueSection(
         Column {
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
-            Text(
-                text = stringResource(R.string.nowplaying_queue_header),
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            var editItems by remember { mutableStateOf(listOf<QueueEditItem>()) }
+            var nextEditId by remember { mutableStateOf(0L) }
+
+            LaunchedEffect(isEditing) {
+                if (isEditing) {
+                    editItems = queue.map { QueueEditItem(nextEditId++, it) }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.nowplaying_queue_header),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 12.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                IconButton(onClick = onToggleEdit) {
+                    Icon(
+                        imageVector = if (isEditing) Icons.Filled.Check else Icons.Filled.Edit,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             val lazyListState = rememberLazyListState()
+            val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+                editItems = editItems.toMutableList().apply {
+                    add(to.index, removeAt(from.index))
+                }
+                onMoveInQueue(from.index, to.index)
+            }
 
-            LaunchedEffect(currentIdx) {
-                if (currentIdx >= 0) lazyListState.animateScrollToItem(currentIdx)
+            LaunchedEffect(currentIdx, isEditing) {
+                if (currentIdx >= 0 && !isEditing) lazyListState.animateScrollToItem(currentIdx)
             }
 
             LazyColumn(
@@ -311,64 +361,131 @@ private fun QueueSection(
                 modifier = Modifier.heightIn(max = 340.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) {
-                itemsIndexed(queue, key = { index, song -> "$index:${song.id}" }) { index, song ->
-                    val isCurrent = index == currentIdx
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onPlayFromIndex(index) }
-                            .padding(vertical = 6.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            color = if (isCurrent) MaterialTheme.colorScheme.primaryContainer
-                                    else MaterialTheme.colorScheme.surface,
-                            shape = MaterialTheme.shapes.small,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = if (isCurrent) Icons.Filled.PlayArrow
-                                                  else Icons.Filled.MusicNote,
-                                    contentDescription = null,
-                                    tint = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer
-                                           else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    MarqueeText(
-                                        text = song.title,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer
-                                                else MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    Text(
-                                        text = song.artistName,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                IconButton(onClick = { onToggleFavorite(song) }) {
-                                    Icon(
-                                        imageVector = if (song.id in favoriteIds) Icons.Filled.Favorite
-                                                      else Icons.Filled.FavoriteBorder,
-                                        contentDescription = if (song.id in favoriteIds) stringResource(R.string.cd_remove_from_favorites)
-                                                            else stringResource(R.string.cd_add_to_favorites),
-                                        tint = if (song.id in favoriteIds) MaterialTheme.colorScheme.primary
-                                               else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
+                if (isEditing) {
+                    itemsIndexed(editItems, key = { _, item -> item.stableId }) { index, item ->
+                        ReorderableItem(reorderableState, key = item.stableId) { isDragging ->
+                            val alpha = if (isDragging) 0.7f else 1f
+                            QueueRow(
+                                song = item.song,
+                                isCurrent = index == currentIdx,
+                                isEditing = true,
+                                favoriteIds = favoriteIds,
+                                alpha = alpha,
+                                dragHandleModifier = Modifier.draggableHandle(),
+                                onToggleFavorite = { onToggleFavorite(item.song) },
+                                onRemoveFromQueue = {
+                                    editItems = editItems.toMutableList().apply { removeAt(index) }
+                                    onRemoveFromQueue(index)
+                                },
+                                modifier = Modifier.alpha(alpha)
+                            )
                         }
+                    }
+                } else {
+                    itemsIndexed(queue, key = { index, song -> "$index:${song.id}" }) { index, song ->
+                        QueueRow(
+                            song = song,
+                            isCurrent = index == currentIdx,
+                            isEditing = false,
+                            favoriteIds = favoriteIds,
+                            alpha = 1f,
+                            dragHandleModifier = Modifier,
+                            onToggleFavorite = { onToggleFavorite(song) },
+                            onRemoveFromQueue = {},
+                            onClick = { onPlayFromIndex(index) },
+                            modifier = Modifier
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QueueRow(
+    song: Song,
+    isCurrent: Boolean,
+    isEditing: Boolean,
+    favoriteIds: Set<String>,
+    alpha: Float,
+    dragHandleModifier: Modifier,
+    onToggleFavorite: () -> Unit,
+    onRemoveFromQueue: () -> Unit,
+    onClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (!isEditing) Modifier.clickable { onClick() } else Modifier)
+            .padding(vertical = 6.dp, horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            color = if (isCurrent) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surface,
+            shape = MaterialTheme.shapes.small,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (isCurrent) Icons.Filled.PlayArrow
+                                  else Icons.Filled.MusicNote,
+                    contentDescription = null,
+                    tint = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer
+                           else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    MarqueeText(
+                        text = song.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        text = song.artistName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                if (isEditing) {
+                    IconButton(
+                        onClick = {},
+                        modifier = dragHandleModifier
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Menu,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onRemoveFromQueue) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                } else {
+                    IconButton(onClick = onToggleFavorite) {
+                        Icon(
+                            imageVector = if (song.id in favoriteIds) Icons.Filled.Favorite
+                                          else Icons.Filled.FavoriteBorder,
+                            contentDescription = null,
+                            tint = if (song.id in favoriteIds) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }

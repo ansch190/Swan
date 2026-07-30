@@ -95,4 +95,6 @@ class NowPlayingViewModel @Inject constructor(
     fun onRepeat() = playerManager.cycleRepeatMode()
     fun onSeek(positionMs: Long) = playerManager.seekTo(positionMs)
     fun onPlayFromIndex(index: Int) = playerManager.playFromIndex(index)
+    fun removeFromQueue(index: Int) = playerManager.removeFromQueue(index)
+    fun moveInQueue(fromIndex: Int, toIndex: Int) = playerManager.moveInQueue(fromIndex, toIndex)
 }

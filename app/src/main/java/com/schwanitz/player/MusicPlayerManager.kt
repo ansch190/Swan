@@ -172,6 +172,26 @@ class MusicPlayerManager @Inject constructor(
         }
     }
 
+    fun removeFromQueue(index: Int) {
+        if (index !in songQueue.indices) return
+        songQueue = songQueue.toMutableList().apply { removeAt(index) }
+        player.removeMediaItem(index)
+        if (songQueue.isEmpty()) {
+            player.stop()
+            player.clearMediaItems()
+            _playerState.value = PlayerState()
+        } else {
+            _playerState.update { it.copy(queue = songQueue) }
+        }
+    }
+
+    fun moveInQueue(fromIndex: Int, toIndex: Int) {
+        if (fromIndex !in songQueue.indices || toIndex !in songQueue.indices) return
+        songQueue = songQueue.toMutableList().apply { add(toIndex, removeAt(fromIndex)) }
+        player.moveMediaItem(fromIndex, toIndex)
+        _playerState.update { it.copy(queue = songQueue, currentIndex = player.currentMediaItemIndex) }
+    }
+
     private fun buildMediaItem(song: Song): MediaItem {
         return MediaItem.Builder()
             .setMediaId("${nextMediaItemId++}_${song.id}")
