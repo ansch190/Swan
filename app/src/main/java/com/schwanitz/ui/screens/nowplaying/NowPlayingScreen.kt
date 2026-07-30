@@ -311,7 +311,7 @@ private fun QueueSection(
                 modifier = Modifier.heightIn(max = 340.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) {
-                itemsIndexed(queue, key = { _, song -> song.id }) { index, song ->
+                itemsIndexed(queue, key = { index, song -> "$index:${song.id}" }) { index, song ->
                     val isCurrent = index == currentIdx
                     Row(
                         modifier = Modifier

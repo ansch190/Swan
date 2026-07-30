@@ -62,6 +62,7 @@ class MusicPlayerManager @Inject constructor(
     val navigateToPlayer: SharedFlow<Unit> = _navigateToPlayer.asSharedFlow()
 
     private var songQueue: List<Song> = emptyList()
+    private var nextMediaItemId = 0L
 
     init {
         scope.launch {
@@ -159,13 +160,21 @@ class MusicPlayerManager @Inject constructor(
         if (needsPrepare) {
             player.prepare()
             player.play()
+            _playerState.value = _playerState.value.copy(
+                currentSong = songs.first(),
+                currentIndex = 0,
+                isPlaying = true,
+                queue = songQueue
+            )
+            _navigateToPlayer.tryEmit(Unit)
+        } else {
+            _playerState.value = _playerState.value.copy(queue = songQueue)
         }
-        _playerState.value = _playerState.value.copy(queue = songQueue)
     }
 
     private fun buildMediaItem(song: Song): MediaItem {
         return MediaItem.Builder()
-            .setMediaId(song.id)
+            .setMediaId("${nextMediaItemId++}_${song.id}")
             .setUri(song.filePath)
             .setMediaMetadata(
                 MediaMetadata.Builder()
