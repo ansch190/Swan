@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import com.schwanitz.ui.common.ErrorHolder
 import com.schwanitz.ui.common.toggleFavorite
+import com.schwanitz.ui.components.SelectionDelegate
 import javax.inject.Inject
 
 private const val FAVORITES_PLAYLIST_ID = -1L
@@ -109,11 +110,26 @@ class PlaylistDetailViewModel @Inject constructor(
     }
 
     fun playSong(entry: PlaylistSongWithMapping) {
+        playerManager.play(entry.toSong(), listOf(entry.toSong()))
+    }
+
+    fun playAll() {
         val allSongs = songs.value.map { it.toSong() }
-        playerManager.play(entry.toSong(), allSongs)
+        val first = allSongs.firstOrNull() ?: return
+        playerManager.play(first, allSongs)
     }
 
     fun toggleFavorite(entry: PlaylistSongWithMapping) = toggleFavorite(entry.toSong(), songRepository, errorHolder)
+
+    private val selection = SelectionDelegate(playerManager, playlistRepository, viewModelScope, { songs.value.map { it.toSong() } }, errorHolder, context)
+    val isSelecting: StateFlow<Boolean> = selection.isSelecting
+    val selectedSongIds: StateFlow<Set<String>> = selection.selectedSongIds
+
+    fun enterSelection(entry: PlaylistSongWithMapping) = selection.enterSelection(entry.toSong())
+    fun toggleSelection(songId: String) = selection.toggleSelection(songId)
+    fun playSelection() = selection.playSelection()
+    fun addSelectionToQueue() = selection.addSelectionToQueue()
+    fun getSelectedSongIds(): String = selection.getSelectedSongIds()
 
     private val _pendingSongAdditions = MutableStateFlow<List<Song>>(emptyList())
     val pendingSongAdditions: StateFlow<List<Song>> = _pendingSongAdditions

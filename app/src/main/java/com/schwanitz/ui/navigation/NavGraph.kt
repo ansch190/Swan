@@ -291,7 +291,8 @@ fun NavGraph(navController: NavHostController) {
             PlaylistDetailScreen(
                 playlistId = playlistId,
                 onNavigateBack = { navController.popBackStack() },
-                onAddSongsClick = { navController.navigate(Routes.selectSongs(playlistId)) }
+                onAddSongsClick = { navController.navigate(Routes.selectSongs(playlistId)) },
+                onAddToPlaylist = { songIds -> navController.navigate(Routes.playlistPicker(songIds)) }
             )
         }
 

@@ -86,11 +86,14 @@ class AlbumDetailViewModel @Inject constructor(
     }
 
     fun playAllFromSong(song: Song, cdSongs: List<Song>) {
-        playerManager.play(song, cdSongs)
+        val first = cdSongs.firstOrNull() ?: return
+        playerManager.play(first, cdSongs)
     }
 
     fun playEntireAlbum(song: Song) {
-        playerManager.play(song, songs.value)
+        val allSongs = songs.value
+        val first = allSongs.firstOrNull() ?: return
+        playerManager.play(first, allSongs)
     }
 
     private val selection = SelectionDelegate(playerManager, playlistRepository, viewModelScope, { songs.value }, errorHolder, context)

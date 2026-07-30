@@ -56,7 +56,9 @@ class SeriesDetailViewModel @Inject constructor(
     }
 
     fun playAllFromSong(song: Song) {
-        playerManager.play(song, songs.value)
+        val allSongs = songs.value
+        val first = allSongs.firstOrNull() ?: return
+        playerManager.play(first, allSongs)
     }
 
     private val selection = SelectionDelegate(playerManager, playlistRepository, viewModelScope, { songs.value }, errorHolder, context)

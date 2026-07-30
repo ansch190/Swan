@@ -27,6 +27,7 @@ import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
 import com.schwanitz.ui.navigation.LocalBottomBarHeight
 
+import com.schwanitz.ui.components.SelectableSongItem
 import com.schwanitz.ui.components.SongListItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import sh.calvin.reorderable.ReorderableItem
@@ -37,6 +38,7 @@ fun PlaylistDetailScreen(
     playlistId: Long,
     onNavigateBack: () -> Unit,
     onAddSongsClick: () -> Unit = {},
+    onAddToPlaylist: (String) -> Unit = {},
     viewModel: PlaylistDetailViewModel = hiltViewModel()
 ) {
     val snackbarHostState = LocalSnackbarHostState.current
@@ -48,6 +50,8 @@ fun PlaylistDetailScreen(
     val playlistName by viewModel.playlistName.collectAsState()
     val songs by viewModel.songs.collectAsState()
     val isFavorites by viewModel.isFavoritesPlaylist.collectAsState()
+    val isSelecting by viewModel.isSelecting.collectAsState()
+    val selectedSongIds by viewModel.selectedSongIds.collectAsState()
     val pendingSongAdditions by viewModel.pendingSongAdditions.collectAsState()
     var localSongs by remember { mutableStateOf(songs) }
     var addedSongIds by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -146,7 +150,7 @@ fun PlaylistDetailScreen(
                 }
             },
             actions = {
-                if (!isFavorites) {
+                if (!isFavorites && !isSelecting) {
                     if (isEditing) {
                         IconButton(onClick = {
                             viewModel.savePlaylistChanges(
@@ -203,11 +207,18 @@ fun PlaylistDetailScreen(
                             )
                         }
                     } else {
-                        SongListItem(
+                        SelectableSongItem(
                             song = entry.toSong(),
-                            onClick = { viewModel.playSong(entry) },
-                            onFavoriteClick = { viewModel.toggleFavorite(entry) },
-                            modifier = Modifier
+                            isSelecting = isSelecting,
+                            isSelected = entry.id in selectedSongIds,
+                            onSongClick = { viewModel.playSong(entry) },
+                            onToggleSelection = { viewModel.toggleSelection(entry.id) },
+                            onEnterSelection = { viewModel.enterSelection(entry) },
+                            onPlayAll = { viewModel.playAll() },
+                            onPlaySelection = { viewModel.playSelection() },
+                            onAddToPlaylist = { onAddToPlaylist(viewModel.getSelectedSongIds()) },
+                            onAddToQueue = { viewModel.addSelectionToQueue() },
+                            onFavoriteClick = { viewModel.toggleFavorite(entry) }
                         )
                     }
                 }

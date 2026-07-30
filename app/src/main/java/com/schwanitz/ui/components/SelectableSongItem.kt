@@ -25,6 +25,7 @@ fun SelectableSongItem(
     onPlaySelection: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onAddToQueue: () -> Unit,
+    onFavoriteClick: (() -> Unit)? = null,
     extraMenuItems: @Composable () -> Unit = {},
     showAlbumInSubtitle: Boolean = true
 ) {
@@ -42,6 +43,7 @@ fun SelectableSongItem(
                 if (isSelecting && isSelected) showSelectionMenu = true
                 else showNormalMenu = true
             },
+            onFavoriteClick = onFavoriteClick,
             selected = isSelecting && isSelected,
             showAlbumInSubtitle = showAlbumInSubtitle
         )
