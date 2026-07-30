@@ -279,6 +279,9 @@ fun NavGraph(navController: NavHostController) {
             NowPlayingScreen(
                 onSongInfoClick = { songId ->
                     navController.navigate(Routes.songInfo(songId))
+                },
+                onAddToPlaylist = { songIds ->
+                    navController.navigate(Routes.playlistPicker(songIds))
                 }
             )
         }

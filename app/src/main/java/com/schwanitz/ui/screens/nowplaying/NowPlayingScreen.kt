@@ -61,6 +61,7 @@ import sh.calvin.reorderable.ReorderableItem
 @Composable
 fun NowPlayingScreen(
     onSongInfoClick: (String) -> Unit = {},
+    onAddToPlaylist: (String) -> Unit = {},
     viewModel: NowPlayingViewModel = hiltViewModel()
 ) {
     val playerState by viewModel.playerState.collectAsState()
@@ -69,6 +70,7 @@ fun NowPlayingScreen(
     var showQueue by rememberSaveable { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
     LaunchedEffect(showQueue) { if (!showQueue) isEditing = false }
+    var selectedSongIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showLyricsDialog by remember { mutableStateOf(false) }
     val lyrics by viewModel.lyrics.collectAsState()
     val lyricsLoading by viewModel.lyricsLoading.collectAsState()
@@ -158,11 +160,21 @@ fun NowPlayingScreen(
                     currentIdx = playerState.currentIndex,
                     favoriteIds = viewModel.favoriteIds.collectAsState().value,
                     isEditing = isEditing,
+                    selectedSongIds = selectedSongIds,
                     onPlayFromIndex = { viewModel.onPlayFromIndex(it) },
                     onToggleFavorite = { viewModel.toggleFavorite(it) },
                     onMoveInQueue = { from, to -> viewModel.moveInQueue(from, to) },
                     onRemoveFromQueue = { viewModel.removeFromQueue(it) },
-                    onToggleEdit = { isEditing = !isEditing }
+                    onToggleEdit = { isEditing = !isEditing },
+                    onToggleSelection = { songId ->
+                        selectedSongIds = selectedSongIds.let {
+                            if (songId in it) it - songId else it + songId
+                        }
+                    },
+                    onAddSelectedToPlaylist = {
+                        onAddToPlaylist(selectedSongIds.joinToString(","))
+                        selectedSongIds = emptySet()
+                    }
                 )
             }
         } else {
@@ -296,11 +308,14 @@ private fun QueueSection(
     currentIdx: Int,
     favoriteIds: Set<String>,
     isEditing: Boolean,
+    selectedSongIds: Set<String>,
     onPlayFromIndex: (Int) -> Unit,
     onToggleFavorite: (Song) -> Unit,
     onMoveInQueue: (Int, Int) -> Unit,
     onRemoveFromQueue: (Int) -> Unit,
     onToggleEdit: () -> Unit,
+    onToggleSelection: (String) -> Unit,
+    onAddSelectedToPlaylist: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     AnimatedVisibility(
@@ -335,12 +350,14 @@ private fun QueueSection(
                         .padding(start = 12.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                IconButton(onClick = onToggleEdit) {
-                    Icon(
-                        imageVector = if (isEditing) Icons.Filled.Check else Icons.Filled.Edit,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                if (selectedSongIds.isEmpty()) {
+                    IconButton(onClick = onToggleEdit) {
+                        Icon(
+                            imageVector = if (isEditing) Icons.Filled.Check else Icons.Filled.Edit,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -369,6 +386,8 @@ private fun QueueSection(
                                 song = item.song,
                                 isCurrent = index == currentIdx,
                                 isEditing = true,
+                                isSelecting = false,
+                                isSelected = false,
                                 favoriteIds = favoriteIds,
                                 alpha = alpha,
                                 dragHandleModifier = Modifier.draggableHandle(),
@@ -377,6 +396,10 @@ private fun QueueSection(
                                     editItems = editItems.toMutableList().apply { removeAt(index) }
                                     onRemoveFromQueue(index)
                                 },
+                                onPlayClick = {},
+                                onLongClick = {},
+                                onToggleSelection = {},
+                                onAddToPlaylist = {},
                                 modifier = Modifier.alpha(alpha)
                             )
                         }
@@ -387,12 +410,17 @@ private fun QueueSection(
                             song = song,
                             isCurrent = index == currentIdx,
                             isEditing = false,
+                            isSelecting = selectedSongIds.isNotEmpty(),
+                            isSelected = song.id in selectedSongIds,
                             favoriteIds = favoriteIds,
                             alpha = 1f,
                             dragHandleModifier = Modifier,
                             onToggleFavorite = { onToggleFavorite(song) },
                             onRemoveFromQueue = {},
-                            onClick = { onPlayFromIndex(index) },
+                            onPlayClick = { onPlayFromIndex(index) },
+                            onLongClick = { onToggleSelection(song.id) },
+                            onToggleSelection = { onToggleSelection(song.id) },
+                            onAddToPlaylist = onAddSelectedToPlaylist,
                             modifier = Modifier
                         )
                     }
@@ -402,93 +430,147 @@ private fun QueueSection(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun QueueRow(
     song: Song,
     isCurrent: Boolean,
     isEditing: Boolean,
+    isSelecting: Boolean,
+    isSelected: Boolean,
     favoriteIds: Set<String>,
     alpha: Float,
     dragHandleModifier: Modifier,
     onToggleFavorite: () -> Unit,
     onRemoveFromQueue: () -> Unit,
-    onClick: () -> Unit = {},
+    onPlayClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onToggleSelection: () -> Unit,
+    onAddToPlaylist: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(if (!isEditing) Modifier.clickable { onClick() } else Modifier)
-            .padding(vertical = 6.dp, horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Surface(
-            color = if (isCurrent) MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.surface,
-            shape = MaterialTheme.shapes.small,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = if (isCurrent) Icons.Filled.PlayArrow
-                                  else Icons.Filled.MusicNote,
-                    contentDescription = null,
-                    tint = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer
-                           else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .then(
+                    when {
+                        isEditing -> Modifier
+                        isSelecting -> Modifier.combinedClickable(
+                            onClick = { onToggleSelection() },
+                            onLongClick = {
+                                if (isSelected) showMenu = true
+                                else onToggleSelection()
+                            }
+                        )
+                        else -> Modifier.combinedClickable(
+                            onClick = onPlayClick,
+                            onLongClick = onLongClick
+                        )
+                    }
                 )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    MarqueeText(
-                        text = song.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.fillMaxWidth()
+                .padding(vertical = 6.dp, horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                color = when {
+                    isSelecting -> if (isSelected) MaterialTheme.colorScheme.secondaryContainer
+                                   else MaterialTheme.colorScheme.surface
+                    isCurrent -> MaterialTheme.colorScheme.primaryContainer
+                    else -> MaterialTheme.colorScheme.surface
+                },
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = when {
+                            isSelecting && isSelected -> Icons.Filled.Check
+                            isCurrent -> Icons.Filled.PlayArrow
+                            else -> Icons.Filled.MusicNote
+                        },
+                        contentDescription = null,
+                        tint = when {
+                            isSelecting && isSelected -> MaterialTheme.colorScheme.onSecondaryContainer
+                            isCurrent -> MaterialTheme.colorScheme.onPrimaryContainer
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.size(20.dp)
                     )
-                    Text(
-                        text = song.artistName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                if (isEditing) {
-                    IconButton(
-                        onClick = {},
-                        modifier = dragHandleModifier
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Menu,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        MarqueeText(
+                            text = song.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = when {
+                                isSelecting && isSelected -> MaterialTheme.colorScheme.onSecondaryContainer
+                                isCurrent -> MaterialTheme.colorScheme.onPrimaryContainer
+                                else -> MaterialTheme.colorScheme.onSurface
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = song.artistName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = when {
+                                isSelecting && isSelected -> MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                isCurrent -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                    IconButton(onClick = onRemoveFromQueue) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                } else {
-                    IconButton(onClick = onToggleFavorite) {
-                        Icon(
-                            imageVector = if (song.id in favoriteIds) Icons.Filled.Favorite
-                                          else Icons.Filled.FavoriteBorder,
-                            contentDescription = null,
-                            tint = if (song.id in favoriteIds) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    if (isEditing) {
+                        IconButton(
+                            onClick = {},
+                            modifier = dragHandleModifier
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Menu,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = onRemoveFromQueue) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    } else {
+                        IconButton(onClick = onToggleFavorite) {
+                            Icon(
+                                imageVector = if (song.id in favoriteIds) Icons.Filled.Favorite
+                                              else Icons.Filled.FavoriteBorder,
+                                contentDescription = null,
+                                tint = if (song.id in favoriteIds) MaterialTheme.colorScheme.primary
+                                       else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
+        }
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.context_add_to_playlist)) },
+                onClick = {
+                    showMenu = false
+                    onAddToPlaylist()
+                }
+            )
         }
     }
 }
