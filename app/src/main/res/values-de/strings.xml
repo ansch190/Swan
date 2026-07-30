@@ -247,6 +247,7 @@
     <string name="cd_lyrics">Liedtext anzeigen</string>
     <string name="songinfo_lyrics_title">Liedtext</string>
     <string name="songinfo_lyrics_dismiss">SCHLIESSEN</string>
+    <string name="songinfo_lyrics_not_found">Kein Liedtext gefunden</string>
     <string name="source_format">Quelle: %s</string>
     <string name="biography_source_lastfm">Quelle: Last.fm</string>
     <string name="biography_not_available">Keine Biografie verfügbar</string>

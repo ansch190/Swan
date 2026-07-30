@@ -247,6 +247,7 @@
     <string name="cd_lyrics">Show lyrics</string>
     <string name="songinfo_lyrics_title">Lyrics</string>
     <string name="songinfo_lyrics_dismiss">CLOSE</string>
+    <string name="songinfo_lyrics_not_found">No lyrics found</string>
     <string name="source_format">Source: %s</string>
     <string name="biography_source_lastfm">Source: Last.fm</string>
     <string name="biography_not_available">No biography available</string>

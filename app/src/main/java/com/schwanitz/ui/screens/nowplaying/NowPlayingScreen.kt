@@ -5,8 +5,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -48,7 +50,7 @@ import com.schwanitz.ui.components.AlbumArtPlaceholder
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun NowPlayingScreen(
     onSongInfoClick: (String) -> Unit = {},
@@ -58,6 +60,9 @@ fun NowPlayingScreen(
     val snackbarHostState = LocalSnackbarHostState.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
     var showQueue by rememberSaveable { mutableStateOf(false) }
+    var showLyricsDialog by remember { mutableStateOf(false) }
+    val lyrics by viewModel.lyrics.collectAsState()
+    val lyricsLoading by viewModel.lyricsLoading.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -65,7 +70,22 @@ fun NowPlayingScreen(
             actions = {
                 val currentSong = playerState.currentSong
                 if (currentSong != null) {
-                    IconButton(onClick = { onSongInfoClick(currentSong.id) }) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .combinedClickable(
+                                onClick = { onSongInfoClick(currentSong.id) },
+                                onLongClick = {
+                                    viewModel.loadLyrics(
+                                        currentSong.id,
+                                        currentSong.title,
+                                        currentSong.artistName
+                                    )
+                                    showLyricsDialog = true
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             imageVector = Icons.Filled.Info,
                             contentDescription = stringResource(R.string.songinfo_title)
@@ -134,6 +154,57 @@ fun NowPlayingScreen(
             }
         } else {
             EmptyNowPlayingState()
+        }
+
+        if (showLyricsDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showLyricsDialog = false
+                    viewModel.clearLyrics()
+                },
+                title = { Text(stringResource(R.string.songinfo_lyrics_title)) },
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .heightIn(max = 400.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        when {
+                            lyricsLoading -> {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+                            lyrics != null -> {
+                                Text(text = lyrics!!)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = stringResource(R.string.source_format, "Genius"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            else -> {
+                                Text(
+                                    text = stringResource(R.string.songinfo_lyrics_not_found),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showLyricsDialog = false
+                        viewModel.clearLyrics()
+                    }) {
+                        Text(stringResource(R.string.songinfo_lyrics_dismiss))
+                    }
+                }
+            )
         }
     }
 }
