@@ -262,7 +262,8 @@ fun NavGraph(navController: NavHostController) {
                 },
                 onAddToPlaylist = { songIds ->
                     navController.navigate(Routes.playlistPicker(songIds))
-                }
+                },
+                onAllSeriesClick = { navController.navigate(Routes.ALL_SERIES) }
             )
         }
 

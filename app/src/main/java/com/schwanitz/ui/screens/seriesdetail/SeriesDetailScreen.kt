@@ -32,6 +32,7 @@ fun SeriesDetailScreen(
     onNavigateBack: () -> Unit,
     onAlbumClick: (String, String) -> Unit,
     onAddToPlaylist: (String) -> Unit = {},
+    onAllSeriesClick: () -> Unit = {},
     viewModel: SeriesDetailViewModel = hiltViewModel()
 ) {
     val snackbarHostState = LocalSnackbarHostState.current
@@ -55,6 +56,14 @@ fun SeriesDetailScreen(
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                }
+            },
+            actions = {
+                IconButton(onClick = onAllSeriesClick) {
+                    Icon(
+                        painter = painterResource(R.drawable.album_series),
+                        contentDescription = stringResource(R.string.cd_series_icon)
+                    )
                 }
             }
         )
