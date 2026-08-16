@@ -62,24 +62,49 @@ fun NavGraph(navController: NavHostController) {
                 songId = songId,
                 onNavigateBack = { navController.popBackStack() },
                 onAlbumClick = { album, albumArtist, year ->
-                    navController.navigate(Routes.albumDetail(album, albumArtist, year))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Collection,
+                        Routes.albumDetail(album, albumArtist, year)
+                    )
                 },
-                onAllAlbumArtistsClick = { navController.navigate(Routes.ALL_ARTISTS) },
+                onAllAlbumArtistsClick = {
+                    navController.navigateToTopLevelDestination(BottomNavItem.Collection, Routes.ALL_ARTISTS)
+                },
                 onAlbumArtistClick = { artist ->
-                    navController.navigate(Routes.artistDetail(artist))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Collection,
+                        Routes.artistDetail(artist)
+                    )
                 },
-                onAllAlbumsClick = { navController.navigate(Routes.ALL_ALBUMS) },
-                onAllYearsClick = { navController.navigate(Routes.ALL_YEARS) },
-                onAllGenresClick = { navController.navigate(Routes.ALL_GENRES) },
-                onAllSeriesClick = { navController.navigate(Routes.ALL_SERIES) },
+                onAllAlbumsClick = {
+                    navController.navigateToTopLevelDestination(BottomNavItem.Collection, Routes.ALL_ALBUMS)
+                },
+                onAllYearsClick = {
+                    navController.navigateToTopLevelDestination(BottomNavItem.Collection, Routes.ALL_YEARS)
+                },
+                onAllGenresClick = {
+                    navController.navigateToTopLevelDestination(BottomNavItem.Collection, Routes.ALL_GENRES)
+                },
+                onAllSeriesClick = {
+                    navController.navigateToTopLevelDestination(BottomNavItem.Collection, Routes.ALL_SERIES)
+                },
                 onYearClick = { year ->
-                    navController.navigate(Routes.yearDetail(year))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Collection,
+                        Routes.yearDetail(year)
+                    )
                 },
                 onGenreClick = { genre ->
-                    navController.navigate(Routes.genreDetail(genre))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Collection,
+                        Routes.genreDetail(genre)
+                    )
                 },
                 onSeriesClick = { seriesName ->
-                    navController.navigate(Routes.seriesDetail(seriesName))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Collection,
+                        Routes.seriesDetail(seriesName)
+                    )
                 }
             )
         }
@@ -116,7 +141,10 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(Routes.albumDetail(album, albumArtist, year))
                 },
                 onAddToPlaylist = { songIds ->
-                    navController.navigate(Routes.playlistPicker(songIds))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Playlists,
+                        Routes.playlistPicker(songIds)
+                    )
                 }
             )
         }
@@ -137,7 +165,10 @@ fun NavGraph(navController: NavHostController) {
                 },
                 onAllYearsClick = { navController.navigate(Routes.ALL_YEARS) },
                 onAddToPlaylist = { songIds ->
-                    navController.navigate(Routes.playlistPicker(songIds))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Playlists,
+                        Routes.playlistPicker(songIds)
+                    )
                 }
             )
         }
@@ -157,7 +188,10 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(Routes.albumDetail(album, albumArtist, year))
                 },
                 onAddToPlaylist = { songIds ->
-                    navController.navigate(Routes.playlistPicker(songIds))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Playlists,
+                        Routes.playlistPicker(songIds)
+                    )
                 }
             )
         }
@@ -175,7 +209,10 @@ fun NavGraph(navController: NavHostController) {
                 },
                 onBioClick = { navController.navigate(Routes.artistBiography(artistName)) },
                 onAddToPlaylist = { songIds ->
-                    navController.navigate(Routes.playlistPicker(songIds))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Playlists,
+                        Routes.playlistPicker(songIds)
+                    )
                 }
             )
         }
@@ -270,7 +307,10 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(Routes.yearDetail(year))
                 },
                 onAddToPlaylist = { songIds ->
-                    navController.navigate(Routes.playlistPicker(songIds))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Playlists,
+                        Routes.playlistPicker(songIds)
+                    )
                 }
             )
         }
@@ -287,7 +327,10 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(Routes.albumDetail(album, albumArtist, year))
                 },
                 onAddToPlaylist = { songIds ->
-                    navController.navigate(Routes.playlistPicker(songIds))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Playlists,
+                        Routes.playlistPicker(songIds)
+                    )
                 },
                 onAllSeriesClick = { navController.navigate(Routes.ALL_SERIES) }
             )
@@ -315,7 +358,12 @@ fun NavGraph(navController: NavHostController) {
                 playlistId = playlistId,
                 onNavigateBack = { navController.popBackStack() },
                 onAddSongsClick = { navController.navigate(Routes.selectSongs(playlistId)) },
-                onAddToPlaylist = { songIds -> navController.navigate(Routes.playlistPicker(songIds)) }
+                onAddToPlaylist = { songIds ->
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Playlists,
+                        Routes.playlistPicker(songIds)
+                    )
+                }
             )
         }
 
@@ -358,10 +406,16 @@ fun NavGraph(navController: NavHostController) {
         composable(BottomNavItem.NowPlaying.startDestination) {
             NowPlayingScreen(
                 onSongInfoClick = { songId ->
-                    navController.navigate(Routes.songInfo(songId))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Songs,
+                        Routes.songInfo(songId)
+                    )
                 },
                 onAddToPlaylist = { songIds ->
-                    navController.navigate(Routes.playlistPicker(songIds))
+                    navController.navigateToTopLevelDestination(
+                        BottomNavItem.Playlists,
+                        Routes.playlistPicker(songIds)
+                    )
                 }
             )
         }

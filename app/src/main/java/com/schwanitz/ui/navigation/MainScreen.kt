@@ -7,9 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.navigation.NavHostController
 import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.schwanitz.player.MusicPlayerManager
@@ -68,30 +66,6 @@ fun MainScreen() {
                     NavGraph(navController = navController)
                 }
             }
-        }
-    }
-}
-
-private fun NavHostController.navigateToTopLevel(item: BottomNavItem) {
-    val alreadySelected = currentBackStackEntry?.destination?.hierarchy
-        ?.any { it.route == item.route } == true
-    if (alreadySelected) {
-        returnToRoot(item)
-        return
-    }
-    navigate(item.route) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
-        launchSingleTop = true
-        restoreState = true
-    }
-}
-
-private fun NavHostController.returnToRoot(item: BottomNavItem) {
-    if (currentDestination?.route == item.startDestination) return
-    if (!popBackStack(item.startDestination, inclusive = false)) {
-        navigate(item.startDestination) {
-            popUpTo(item.route) { inclusive = false }
-            launchSingleTop = true
         }
     }
 }
