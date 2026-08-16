@@ -21,10 +21,14 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.BufferedReader
+import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
+import java.io.FilterInputStream
+import java.io.InputStream
 import java.io.InputStreamReader
+import java.io.OutputStream
 import java.security.SecureRandom
 import java.util.UUID
 import java.util.zip.CRC32
@@ -105,23 +109,41 @@ class BackupManager @Inject constructor(
         }
     }
 
-    suspend fun importAndRestore(contentResolver: ContentResolver, uri: Uri, password: String) {
-        val first = contentResolver.openInputStream(uri)?.use { input -> ByteArray(MAGIC_V2.size).also { input.read(it) } }
-            ?: error("Cannot read backup file")
+    suspend fun importAndRestore(
+        contentResolver: ContentResolver,
+        uri: Uri,
+        password: String,
+        onProgress: (RestoreProgress) -> Unit = {}
+    ) = withContext(Dispatchers.IO) {
+        val reporter = RestoreProgressReporter(onProgress)
+        val sourceLength = runCatching {
+            contentResolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
+                descriptor.length.takeIf { it >= 0 }
+            }
+        }.getOrNull()
+        val first = contentResolver.openInputStream(uri)?.use { input ->
+            ByteArray(MAGIC_V2.size).also { DataInputStream(input).readFully(it) }
+        } ?: error("Cannot read backup file")
         if (first.contentEquals(MAGIC_V2)) {
-            importV2AndRestore(contentResolver, uri, password)
+            importV2AndRestore(contentResolver, uri, password, sourceLength, reporter)
         } else {
-            val backup = importV1(contentResolver, uri, password)
-            restoreConfiguration(backup, libraryZip = null)
+            val backup = importV1(contentResolver, uri, password, sourceLength, reporter)
+            restoreConfiguration(backup, libraryZip = null, reporter)
         }
     }
 
-    private suspend fun importV2AndRestore(contentResolver: ContentResolver, uri: Uri, password: String) =
-        withContext(Dispatchers.IO) {
+    private suspend fun importV2AndRestore(
+        contentResolver: ContentResolver,
+        uri: Uri,
+        password: String,
+        sourceLength: Long?,
+        reporter: RestoreProgressReporter
+    ) {
             val temp = File.createTempFile("swan-restore-", ".zip", context.cacheDir)
             try {
                 contentResolver.openInputStream(uri)?.use { raw ->
-                    val input = DataInputStream(raw)
+                    val counting = CountingInputStream(raw)
+                    val input = DataInputStream(counting)
                     require(ByteArray(MAGIC_V2.size).also(input::readFully).contentEquals(MAGIC_V2)) { "Invalid backup magic" }
                     require(input.readUnsignedByte() == FORMAT_VERSION) { "Unsupported backup format" }
                     require(input.readUnsignedByte() == KDF_VERSION) { "Unsupported backup KDF" }
@@ -129,47 +151,98 @@ class BackupManager @Inject constructor(
                     require(iterations in 100_000..2_000_000) { "Unsafe KDF iteration count" }
                     val salt = ByteArray(SALT_LENGTH).also(input::readFully)
                     val iv = ByteArray(IV_LENGTH).also(input::readFully)
+                    reporter.report(RestoreProgress(RestoreStage.PREPARING_KEY), force = true)
                     val cipher = newCipher(Cipher.DECRYPT_MODE, password, salt, iv, iterations, pepper = null)
+                    val encryptedOffset = counting.bytesRead
+                    val encryptedLength = sourceLength?.let { (it - encryptedOffset).coerceAtLeast(0) }
+                    counting.onCountChanged = { absoluteBytes ->
+                        reporter.report(
+                            RestoreProgress(
+                                stage = RestoreStage.DECRYPTING,
+                                completedBytes = (absoluteBytes - encryptedOffset).coerceAtLeast(0),
+                                totalBytes = encryptedLength
+                            )
+                        )
+                    }
+                    reporter.report(
+                        RestoreProgress(RestoreStage.DECRYPTING, totalBytes = encryptedLength),
+                        force = true
+                    )
                     try {
                         CipherInputStream(input, cipher).use { encrypted -> temp.outputStream().use(encrypted::copyTo) }
                     } catch (e: Exception) {
                         findBadTag(e)?.let { throw it }
                         throw e
                     }
+                    reporter.report(
+                        RestoreProgress(
+                            RestoreStage.DECRYPTING,
+                            completedBytes = encryptedLength ?: (counting.bytesRead - encryptedOffset),
+                            totalBytes = encryptedLength
+                        ),
+                        force = true
+                    )
                 } ?: error("Cannot read backup file")
-                validateContainer(temp)
+                validateContainer(temp, reporter)
                 ZipFile(temp).use { zip ->
                     val manifest = zip.getEntry(MANIFEST_ENTRY) ?: error("Backup manifest is missing")
                     val backup = zip.getInputStream(manifest).bufferedReader().use { BackupFile.fromJson(JSONObject(it.readText())) }
                     require(backup.version == FORMAT_VERSION) { "Manifest version does not match container" }
-                    restoreConfiguration(backup, if (backup.includeLibrary) zip else null)
+                    restoreConfiguration(backup, if (backup.includeLibrary) zip else null, reporter)
                 }
             } finally {
                 temp.delete()
             }
-        }
-
-    private fun importV1(contentResolver: ContentResolver, uri: Uri, password: String): BackupFile {
-        val encrypted = contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Cannot read backup file")
-        require(encrypted.size > SALT_LENGTH + IV_LENGTH) { "Invalid legacy backup" }
-        val salt = encrypted.copyOfRange(0, SALT_LENGTH)
-        val iv = encrypted.copyOfRange(SALT_LENGTH, SALT_LENGTH + IV_LENGTH)
-        val cipher = newCipher(Cipher.DECRYPT_MODE, password, salt, iv, V1_ITERATIONS, V1_PEPPER)
-        val json = cipher.doFinal(encrypted.copyOfRange(SALT_LENGTH + IV_LENGTH, encrypted.size))
-        return BackupFile.fromJson(JSONObject(json.toString(Charsets.UTF_8)))
     }
 
-    private suspend fun restoreConfiguration(backup: BackupFile, libraryZip: ZipFile?) {
+    private fun importV1(
+        contentResolver: ContentResolver,
+        uri: Uri,
+        password: String,
+        sourceLength: Long?,
+        reporter: RestoreProgressReporter
+    ): BackupFile {
+        val input = contentResolver.openInputStream(uri) ?: error("Cannot read backup file")
+        val decrypted = input.use { raw ->
+            val data = DataInputStream(raw)
+            val salt = ByteArray(SALT_LENGTH).also(data::readFully)
+            val iv = ByteArray(IV_LENGTH).also(data::readFully)
+            reporter.report(RestoreProgress(RestoreStage.PREPARING_KEY), force = true)
+            val cipher = newCipher(Cipher.DECRYPT_MODE, password, salt, iv, V1_ITERATIONS, V1_PEPPER)
+            val headerLength = SALT_LENGTH + IV_LENGTH
+            val encryptedLength = sourceLength?.let { (it - headerLength).coerceAtLeast(0) }
+            reporter.report(RestoreProgress(RestoreStage.DECRYPTING, totalBytes = encryptedLength), force = true)
+            val output = ByteArrayOutputStream()
+            copyWithProgress(data, output, encryptedLength) { bytes ->
+                reporter.report(RestoreProgress(RestoreStage.DECRYPTING, bytes, encryptedLength))
+            }
+            val encrypted = output.toByteArray()
+            require(encrypted.isNotEmpty()) { "Invalid legacy backup" }
+            reporter.report(
+                RestoreProgress(RestoreStage.DECRYPTING, encrypted.size.toLong(), encryptedLength),
+                force = false
+            )
+            cipher.doFinal(encrypted)
+        }
+        return BackupFile.fromJson(JSONObject(decrypted.toString(Charsets.UTF_8)))
+    }
+
+    private suspend fun restoreConfiguration(
+        backup: BackupFile,
+        libraryZip: ZipFile?,
+        reporter: RestoreProgressReporter
+    ) {
         val oldInternalAssets = collectInternalAssets(database.openHelper.readableDatabase).keys
-        val extractedAssets = if (libraryZip != null) extractAssets(libraryZip) else emptyMap()
+        val extractedAssets = if (libraryZip != null) extractAssets(libraryZip, reporter) else emptyMap()
         try {
             database.withTransaction {
                 val db = database.openHelper.writableDatabase
                 clearReplaceableData(db)
                 backup.sources.forEach { sourceConfigDao.upsert(it.toEntityForRestore()) }
-                if (libraryZip != null) restoreLibrary(db, libraryZip, extractedAssets)
+                if (libraryZip != null) restoreLibrary(db, libraryZip, extractedAssets, reporter)
             }
 
+            reporter.report(RestoreProgress(RestoreStage.APPLYING_SETTINGS), force = true)
             credentialStore.clear()
             backup.credentials.forEach { (sourceId, creds) ->
                 if (creds.username != null && creds.password != null) credentialStore.save(sourceId, creds.username, creds.password)
@@ -188,6 +261,7 @@ class BackupManager @Inject constructor(
             sharedImportPreferences.setLocalSourcesRequiringAuthorization(
                 backup.sources.filter { it.type == "LOCAL" }.map { it.id }.toSet()
             )
+            reporter.report(RestoreProgress(RestoreStage.FINALIZING), force = true)
             oldInternalAssets.forEach { oldUri ->
                 runCatching { File(Uri.parse(oldUri).path ?: oldUri).delete() }
             }
@@ -220,15 +294,56 @@ class BackupManager @Inject constructor(
         }
     }
 
-    private fun restoreLibrary(db: SupportSQLiteDatabase, zip: ZipFile, assetPaths: Map<String, String>) {
-        LIBRARY_TABLES.forEach { table ->
-            val entry = zip.getEntry("library/$table.jsonl") ?: error("Missing library table: $table")
-            zip.getInputStream(entry).bufferedReader().useLines { lines ->
+    private fun restoreLibrary(
+        db: SupportSQLiteDatabase,
+        zip: ZipFile,
+        assetPaths: Map<String, String>,
+        reporter: RestoreProgressReporter
+    ) {
+        val entries = LIBRARY_TABLES.map { table ->
+            table to (zip.getEntry("library/$table.jsonl") ?: error("Missing library table: $table"))
+        }
+        val totalBytes = entries.sumOf { (_, entry) -> entry.size.coerceAtLeast(0) }
+        var completedBytes = 0L
+        reporter.report(
+            RestoreProgress(
+                stage = RestoreStage.RESTORING_LIBRARY,
+                totalBytes = totalBytes,
+                completedItems = 0,
+                totalItems = entries.size
+            ),
+            force = true
+        )
+        entries.forEachIndexed { index, (table, entry) ->
+            val counting = CountingInputStream(zip.getInputStream(entry))
+            counting.onCountChanged = { currentEntryBytes ->
+                reporter.report(
+                    RestoreProgress(
+                        stage = RestoreStage.RESTORING_LIBRARY,
+                        completedBytes = completedBytes + currentEntryBytes,
+                        totalBytes = totalBytes,
+                        completedItems = index,
+                        totalItems = entries.size
+                    )
+                )
+            }
+            counting.bufferedReader().useLines { lines ->
                 lines.filter(String::isNotBlank).forEach { line ->
                     val values = jsonToValues(JSONObject(line), assetPaths)
                     check(db.insert(table, 0, values) != -1L) { "Could not restore table $table" }
                 }
             }
+            completedBytes += entry.size.coerceAtLeast(0)
+            reporter.report(
+                RestoreProgress(
+                    stage = RestoreStage.RESTORING_LIBRARY,
+                    completedBytes = completedBytes,
+                    totalBytes = totalBytes,
+                    completedItems = index + 1,
+                    totalItems = entries.size
+                ),
+                force = false
+            )
         }
     }
 
@@ -291,38 +406,154 @@ class BackupManager @Inject constructor(
         return result
     }
 
-    private fun extractAssets(zip: ZipFile): Map<String, String> {
+    private fun extractAssets(zip: ZipFile, reporter: RestoreProgressReporter): Map<String, String> {
         val mapEntry = zip.getEntry(ASSET_MAP_ENTRY) ?: return emptyMap()
         val mapping = zip.getInputStream(mapEntry).bufferedReader().use { JSONObject(it.readText()) }
         val outputDir = File(context.filesDir, "restored-cache/${UUID.randomUUID()}").apply { mkdirs() }
-        return mapping.keys().asSequence().associateWith { oldUri ->
+        val oldUris = mapping.keys().asSequence().toList()
+        val entries = oldUris.map { oldUri ->
             val entryName = mapping.getString(oldUri)
-            val entry = zip.getEntry(entryName) ?: error("Missing backup asset")
-            val target = File(outputDir, File(entryName).name)
-            zip.getInputStream(entry).use { input -> target.outputStream().use(input::copyTo) }
-            Uri.fromFile(target).toString()
+            oldUri to (zip.getEntry(entryName) ?: error("Missing backup asset"))
+        }
+        val totalBytes = entries.sumOf { (_, entry) -> entry.size.coerceAtLeast(0) }
+        var completedBytes = 0L
+        reporter.report(
+            RestoreProgress(
+                stage = RestoreStage.EXTRACTING_ASSETS,
+                totalBytes = totalBytes,
+                completedItems = 0,
+                totalItems = entries.size
+            ),
+            force = true
+        )
+        try {
+            return entries.mapIndexed { index, (oldUri, entry) ->
+                val entryName = mapping.getString(oldUri)
+                val target = File(outputDir, File(entryName).name)
+                zip.getInputStream(entry).use { input ->
+                    target.outputStream().use { output ->
+                        copyWithProgress(input, output, entry.size.takeIf { it >= 0 }) { entryBytes ->
+                            reporter.report(
+                                RestoreProgress(
+                                    stage = RestoreStage.EXTRACTING_ASSETS,
+                                    completedBytes = completedBytes + entryBytes,
+                                    totalBytes = totalBytes,
+                                    completedItems = index,
+                                    totalItems = entries.size
+                                )
+                            )
+                        }
+                    }
+                }
+                completedBytes += entry.size.coerceAtLeast(0)
+                reporter.report(
+                    RestoreProgress(
+                        stage = RestoreStage.EXTRACTING_ASSETS,
+                        completedBytes = completedBytes,
+                        totalBytes = totalBytes,
+                        completedItems = index + 1,
+                        totalItems = entries.size
+                    )
+                )
+                oldUri to Uri.fromFile(target).toString()
+            }.toMap()
+        } catch (error: Exception) {
+            outputDir.deleteRecursively()
+            throw error
         }
     }
 
-    private fun validateContainer(file: File) {
+    private fun validateContainer(file: File, reporter: RestoreProgressReporter) {
         ZipFile(file).use { zip ->
             val entries = zip.entries().asSequence().toList()
             require(entries.size <= MAX_ENTRIES) { "Backup contains too many entries" }
-            var total = 0L
-            entries.forEach { entry ->
-                require(!entry.name.startsWith('/') && !entry.name.contains("..") && !entry.name.contains('\\')) { "Unsafe backup path" }
+            val totalBytes = entries.fold(0L) { total, entry ->
                 require(entry.size >= 0) { "Backup entry has unknown size" }
-                total = Math.addExact(total, entry.size)
-                require(total <= MAX_UNPACKED_BYTES && total <= context.filesDir.usableSpace) { "Not enough space for backup" }
+                Math.addExact(total, entry.size)
+            }
+            require(totalBytes <= MAX_UNPACKED_BYTES && totalBytes <= context.filesDir.usableSpace) { "Not enough space for backup" }
+            var completedBytes = 0L
+            reporter.report(
+                RestoreProgress(
+                    stage = RestoreStage.VALIDATING,
+                    totalBytes = totalBytes,
+                    completedItems = 0,
+                    totalItems = entries.size
+                ),
+                force = true
+            )
+            entries.forEachIndexed { index, entry ->
+                require(!entry.name.startsWith('/') && !entry.name.contains("..") && !entry.name.contains('\\')) { "Unsafe backup path" }
                 zip.getInputStream(entry).use { input ->
                     val crc = CRC32()
                     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
                     var count: Int
-                    while (input.read(buffer).also { count = it } >= 0) crc.update(buffer, 0, count)
+                    var entryBytes = 0L
+                    while (input.read(buffer).also { count = it } >= 0) {
+                        crc.update(buffer, 0, count)
+                        entryBytes += count
+                        reporter.report(
+                            RestoreProgress(
+                                stage = RestoreStage.VALIDATING,
+                                completedBytes = completedBytes + entryBytes,
+                                totalBytes = totalBytes,
+                                completedItems = index,
+                                totalItems = entries.size
+                            )
+                        )
+                    }
                     require(entry.crc == -1L || crc.value == entry.crc) { "Corrupt backup entry" }
                 }
+                completedBytes += entry.size
+                reporter.report(
+                    RestoreProgress(
+                        stage = RestoreStage.VALIDATING,
+                        completedBytes = completedBytes,
+                        totalBytes = totalBytes,
+                        completedItems = index + 1,
+                        totalItems = entries.size
+                    ),
+                    force = false
+                )
             }
             require(entries.any { it.name == MANIFEST_ENTRY }) { "Backup manifest is missing" }
+        }
+    }
+
+    private fun copyWithProgress(
+        input: InputStream,
+        output: OutputStream,
+        totalBytes: Long?,
+        onProgress: (Long) -> Unit
+    ) {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var copied = 0L
+        var count: Int
+        while (input.read(buffer).also { count = it } >= 0) {
+            output.write(buffer, 0, count)
+            copied += count
+            onProgress(copied)
+        }
+        if (totalBytes != null) onProgress(totalBytes)
+    }
+
+    private class CountingInputStream(input: InputStream) : FilterInputStream(input) {
+        var bytesRead: Long = 0
+            private set
+        var onCountChanged: ((Long) -> Unit)? = null
+
+        override fun read(): Int = `in`.read().also { result ->
+            if (result >= 0) updateCount(1)
+        }
+
+        override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
+            `in`.read(buffer, offset, length).also { count ->
+                if (count > 0) updateCount(count)
+            }
+
+        private fun updateCount(count: Int) {
+            bytesRead += count
+            onCountChanged?.invoke(bytesRead)
         }
     }
 

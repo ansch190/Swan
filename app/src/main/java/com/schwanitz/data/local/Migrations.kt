@@ -25,30 +25,29 @@ object Migrations {
     val MIGRATION_3_4 = object : Migration(3, 4) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("""
-                CREATE VIEW IF NOT EXISTS `SongWithNames` AS
-                SELECT s.id, s.title, s.artistId, asm.albumId,
-                    s.durationMs, s.sourceId, s.isFavorite, s.isActive,
-                    asm.discNumber, asm.trackNumber,
-                    al.year, s.genre, s.tagVersion,
-                    sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
-                    a.name as artistName,
-                    al.name as albumName,
-                    aw.uriSmall as albumArtUri,
-                    aw.uriLarge as albumArtUriLarge,
-                    al.albumArtist as albumArtistName
-                FROM songs s
-                INNER JOIN album_song_mapping asm ON s.id = asm.songId
-                LEFT JOIN artists a ON s.artistId = a.id
-                LEFT JOIN albums al ON asm.albumId = al.id
-                LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
-                LEFT JOIN song_technical_info sti ON s.id = sti.songId
+                CREATE VIEW IF NOT EXISTS `SongWithNames` AS SELECT s.id, s.title, s.artistId, asm.albumId,
+                        s.durationMs, s.sourceId, s.isFavorite, s.isActive,
+                        asm.discNumber, asm.trackNumber,
+                        al.year, s.genre, s.tagVersion,
+                        sti.mimeType, sti.sampleRate, sti.bitrate, sti.fileSize,
+                        a.name as artistName,
+                        al.name as albumName,
+                        aw.uriSmall as albumArtUri,
+                        aw.uriLarge as albumArtUriLarge,
+                        al.albumArtist as albumArtistName
+                    FROM songs s
+                    INNER JOIN album_song_mapping asm ON s.id = asm.songId
+                    LEFT JOIN artists a ON s.artistId = a.id
+                    LEFT JOIN albums al ON asm.albumId = al.id
+                    LEFT JOIN album_artwork aw ON asm.albumId = aw.albumId AND aw.sortOrder = 0
+                    LEFT JOIN song_technical_info sti ON s.id = sti.songId
             """.trimIndent())
         }
     }
 
     val MIGRATION_4_5 = object : Migration(4, 5) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("DROP INDEX IF NOT EXISTS index_source_configs_url")
+            db.execSQL("DROP INDEX IF EXISTS index_source_configs_url")
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_source_configs_url_path ON source_configs(url, path)")
         }
     }

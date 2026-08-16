@@ -57,6 +57,10 @@ android {
         buildConfig = true
     }
 
+    sourceSets {
+        getByName("androidTest").assets.directories.add("$projectDir/schemas")
+    }
+
     lint {
         // AGP 9.2.1/Kotlin 2.1 crashes inside ExperimentalDetector while indexing
         // suspend functions with CompletableDeferred. Keep all other checks active.
