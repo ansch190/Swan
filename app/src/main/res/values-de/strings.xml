@@ -1,5 +1,11 @@
 <resources>
     <string name="app_name">Swan</string>
+    <string name="notification_channel_playback">Musikwiedergabe</string>
+    <string name="notification_shuffle">Zufallswiedergabe</string>
+    <string name="notification_previous">Zurück</string>
+    <string name="notification_play_pause">Wiedergabe/Pause</string>
+    <string name="notification_next">Weiter</string>
+    <string name="notification_repeat">Wiederholen</string>
 
     <!-- Bottom navigation -->
     <string name="bottom_songs">Lieder</string>
@@ -137,9 +143,12 @@
     <string name="backup_password_title">Backup-Passwort eingeben</string>
     <string name="backup_password_label">Passwort</string>
     <string name="backup_password_confirm">Passwort bestätigen</string>
-    <string name="backup_password_too_short">Passwort muss mindestens 4 Zeichen lang sein</string>
+    <string name="backup_password_too_short">Das Passwort muss mindestens 12 Zeichen lang sein</string>
     <string name="backup_password_mismatch">Passwörter stimmen nicht überein</string>
     <string name="backup_shared_checkbox">Für Freigabe (Credentials nach Wiederherstellung verstecken)</string>
+    <string name="backup_hide_credentials_checkbox">Zugangsdaten nach Wiederherstellung verstecken</string>
+    <string name="backup_hide_credentials_explanation">Zugangsdaten bleiben immer im verschlüsselten Backup und für Swan nutzbar. „Verstecken“ maskiert und sperrt nur die Eingabefelder nach dem Import; es ist keine zusätzliche Verschlüsselung.</string>
+    <string name="backup_include_library_checkbox">Musikbibliothek und zwischengespeicherte Bilder mitsichern (ohne Playlists und Favoriten)</string>
     <string name="settings_artist_data_desc">Künstlerdaten-Quellen und API-Zugangsdaten</string>
 
     <!-- Metadaten & API Einstellungen -->
@@ -158,6 +167,9 @@
 
     <!-- Settings sources screen -->
     <string name="settings_sources_title">Quellen</string>
+    <string name="settings_scan_success">„%1$s“ gescannt: %2$d Dateien.</string>
+    <string name="settings_scan_success_warnings">„%1$s“ gescannt: %2$d Dateien; bei %3$d nicht lesbaren Dateien blieben die bisherigen Daten erhalten.</string>
+    <string name="settings_scan_failed_retained">„%1$s“ konnte nicht gescannt werden. Der bisherige Bibliotheksbestand blieb unverändert.</string>
     <string name="settings_scanning">Scanne \"%1$s\": %2$d von %3$d</string>
     <string name="settings_local_section">Lokal</string>
     <string name="settings_network_section">Netzwerk</string>
@@ -165,6 +177,7 @@
     <string name="settings_delete_source_title">Quelle löschen</string>
     <string name="settings_delete_source_message">Quelle \"%s\" löschen?</string>
     <string name="settings_source_local">Lokaler Ordner</string>
+    <string name="settings_source_reauthorize">Ordnerzugriff erneut bestätigen</string>
     <string name="settings_source_webdav">WebDAV</string>
     <string name="settings_source_smb">SMB-Freigabe</string>
 

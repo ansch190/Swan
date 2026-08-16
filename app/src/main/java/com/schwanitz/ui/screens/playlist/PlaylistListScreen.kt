@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
@@ -52,6 +53,7 @@ fun PlaylistListScreen(
     var playlistToExport by remember { mutableStateOf<PlaylistListItemData?>(null) }
     var pendingExportFormat by remember { mutableStateOf(PlaylistListViewModel.PlaylistExportFormat.M3U) }
     val context = LocalContext.current
+    val resources = LocalResources.current
     val coroutineScope = rememberCoroutineScope()
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("*/*")
@@ -68,7 +70,7 @@ fun PlaylistListScreen(
                     context.contentResolver.openOutputStream(uri)?.use { out ->
                         out.write(content.toByteArray(Charsets.UTF_8))
                     }
-                    Toast.makeText(context, context.getString(R.string.export_success), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, resources.getString(R.string.export_success), Toast.LENGTH_SHORT).show()
                 } catch (_: Exception) { }
             }
         }

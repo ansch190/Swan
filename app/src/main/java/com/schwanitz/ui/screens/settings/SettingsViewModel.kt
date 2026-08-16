@@ -3,14 +3,19 @@
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.domain.repository.SourceLifecycleManager
+import com.schwanitz.data.local.SharedImportPreferences
+import com.schwanitz.domain.repository.SourceRefreshResult
 import com.schwanitz.domain.repository.SourceManager
 import com.schwanitz.domain.source.SourceConfig
 import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -24,14 +29,23 @@ data class ScanProgress(
     val isScanning: Boolean = false
 )
 
+sealed interface ScanFeedback {
+    data class Completed(val sourceName: String, val total: Int) : ScanFeedback
+    data class CompletedWithWarnings(val sourceName: String, val total: Int, val retainedFailures: Int) : ScanFeedback
+    data class FailedWithRetainedLibrary(val sourceName: String) : ScanFeedback
+}
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val sourceManager: SourceManager,
-    private val sourceLifecycleManager: SourceLifecycleManager
+    private val sourceLifecycleManager: SourceLifecycleManager,
+    sharedImportPreferences: SharedImportPreferences
 ) : ViewModel() {
 
     private val _scanProgress = MutableStateFlow(ScanProgress())
     val scanProgress: StateFlow<ScanProgress> = _scanProgress.asStateFlow()
+    private val _scanFeedback = MutableSharedFlow<ScanFeedback>(extraBufferCapacity = 8)
+    val scanFeedback: SharedFlow<ScanFeedback> = _scanFeedback.asSharedFlow()
 
     val errorHolder = ErrorHolder()
 
@@ -39,28 +53,33 @@ class SettingsViewModel @Inject constructor(
         sourceManager.sources
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val localSourcesRequiringAuthorization: StateFlow<Set<String>> =
+        sharedImportPreferences.localSourcesRequiringAuthorization
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
     init {
         viewModelScope.launch {
-            try {
-                var knownIds = sourceManager.sources.first().map { it.id }.toSet()
-                sourceManager.sources.collect { configs ->
+            var knownIds = sourceManager.sources.first().map { it.id }.toSet()
+            sourceManager.sources.collect { configs ->
+                try {
                     val currentIds = configs.map { it.id }.toSet()
                     val newIds = currentIds - knownIds
                     for (newId in newIds) {
                         val newConfig = configs.first { it.id == newId }
                         Timber.i("New source detected: '%s', starting scan", newConfig.name)
                         _scanProgress.value = ScanProgress(sourceName = newConfig.name, isScanning = true)
-                        sourceLifecycleManager.refreshSource(newId) { scanned, total ->
+                        val result = sourceLifecycleManager.refreshSource(newId) { scanned, total ->
                             _scanProgress.value = ScanProgress(sourceName = newConfig.name, scanned = scanned, total = total, isScanning = true)
                         }
+                        publishResult(newConfig.name, result)
                     }
                     _scanProgress.value = ScanProgress(isScanning = false)
                     knownIds = currentIds
+                } catch (e: Exception) {
+                    errorHolder.emit(e)
+                } finally {
+                    _scanProgress.value = ScanProgress()
                 }
-            } catch (e: Exception) {
-                errorHolder.emit(e)
-            } finally {
-                _scanProgress.value = ScanProgress()
             }
         }
     }
@@ -89,13 +108,31 @@ class SettingsViewModel @Inject constructor(
         Timber.i("Reloading all enabled sources")
         viewModelScope.launch {
             try {
-                sourceLifecycleManager.reloadEnabled { sourceName, scanned, total ->
+                val results = sourceLifecycleManager.reloadEnabled { sourceName, scanned, total ->
                     _scanProgress.value = ScanProgress(sourceName, scanned, total, isScanning = true)
                 }
+                val names = sources.value.associate { it.id to it.name }
+                results.forEach { (id, result) -> publishResult(names[id] ?: id, result) }
             } catch (e: Exception) {
                 errorHolder.emit(e)
             } finally {
                 _scanProgress.value = ScanProgress()
+            }
+        }
+    }
+
+    private fun publishResult(sourceName: String, result: SourceRefreshResult) {
+        when (result) {
+            is SourceRefreshResult.Success -> _scanFeedback.tryEmit(
+                if (result.retainedFailures > 0) {
+                    ScanFeedback.CompletedWithWarnings(sourceName, result.total, result.retainedFailures)
+                } else {
+                    ScanFeedback.Completed(sourceName, result.total)
+                }
+            )
+            is SourceRefreshResult.Failure -> {
+                _scanFeedback.tryEmit(ScanFeedback.FailedWithRetainedLibrary(sourceName))
+                errorHolder.emit(result.error)
             }
         }
     }

@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalResources
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
@@ -31,10 +32,31 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val snackbarHostState = LocalSnackbarHostState.current
+    val resources = LocalResources.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
     val sources by viewModel.sources.collectAsState()
     val scanProgress by viewModel.scanProgress.collectAsState()
+    val localSourcesRequiringAuthorization by viewModel.localSourcesRequiringAuthorization.collectAsState()
     var sourceToDelete by remember { mutableStateOf<SourceConfig?>(null) }
+
+    LaunchedEffect(viewModel, snackbarHostState) {
+        viewModel.scanFeedback.collect { feedback ->
+            val message = when (feedback) {
+                is ScanFeedback.Completed -> resources.getString(R.string.settings_scan_success, feedback.sourceName, feedback.total)
+                is ScanFeedback.CompletedWithWarnings -> resources.getString(
+                    R.string.settings_scan_success_warnings,
+                    feedback.sourceName,
+                    feedback.total,
+                    feedback.retainedFailures
+                )
+                is ScanFeedback.FailedWithRetainedLibrary -> resources.getString(
+                    R.string.settings_scan_failed_retained,
+                    feedback.sourceName
+                )
+            }
+            snackbarHostState.showSnackbar(message)
+        }
+    }
 
     val localSources = sources.filter { it.type == SourceType.LOCAL }
     val networkSources = sources.filter { it.type != SourceType.LOCAL }
@@ -81,6 +103,8 @@ fun SettingsScreen(
                 items(localSources, key = { it.id }) { source ->
                     SourceItem(
                         source = source,
+                        requiresLocalAuthorization = source.id in localSourcesRequiringAuthorization,
+                        onEditClick = { onEditSource(source.id) },
                         onToggle = { enabled -> viewModel.toggleSource(source.id, enabled) },
                         onDelete = { sourceToDelete = source }
                     )
@@ -156,6 +180,7 @@ private fun SectionHeader(title: String) {
 @Composable
 private fun SourceItem(
     source: SourceConfig,
+    requiresLocalAuthorization: Boolean = false,
     onEditClick: (() -> Unit)? = null,
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit
@@ -168,8 +193,12 @@ private fun SourceItem(
 
     val subtitle = when (source.type) {
         SourceType.LOCAL -> {
-            val raw = source.folderUri?.substringAfterLast('/')
-            if (raw != null) Uri.decode(raw).substringAfter(':') else stringResource(R.string.settings_source_local)
+            if (requiresLocalAuthorization) {
+                stringResource(R.string.settings_source_reauthorize)
+            } else {
+                val raw = source.folderUri?.substringAfterLast('/')
+                if (raw != null) Uri.decode(raw).substringAfter(':') else stringResource(R.string.settings_source_local)
+            }
         }
         SourceType.WEBDAV -> source.url ?: stringResource(R.string.settings_source_webdav)
         SourceType.SMB -> {
