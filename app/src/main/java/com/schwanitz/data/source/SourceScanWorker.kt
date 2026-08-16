@@ -19,11 +19,16 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CancellationException
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 class SourceScanWorker(
     appContext: Context,
     workerParameters: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParameters) {
+
+    private val lastNotificationUpdate = AtomicLong(0L)
+    private val highestScanned = AtomicInteger(0)
 
     private val dependencies = EntryPointAccessors.fromApplication(
         appContext,
@@ -36,11 +41,13 @@ class SourceScanWorker(
         val requestedAt = inputData.getLong(KEY_REQUESTED_AT, 0L)
 
         setProgress(progressData(sourceId, sourceName, requestedAt, 0, 0))
-        setForeground(createForegroundInfo(sourceId, sourceName))
+        setForeground(createForegroundInfo(sourceId, sourceName, 0, 0))
 
         return try {
             when (val result = dependencies.sourceLifecycleManager().refreshSource(sourceId) { scanned, total ->
-                setProgressAsync(progressData(sourceId, sourceName, requestedAt, scanned, total))
+                val displayedScanned = highestScanned.accumulateAndGet(scanned, ::maxOf)
+                setProgressAsync(progressData(sourceId, sourceName, requestedAt, displayedScanned, total))
+                updateForegroundProgress(sourceId, sourceName, displayedScanned, total)
             }) {
                 is SourceRefreshResult.Success -> Result.success(
                     workDataOf(
@@ -77,7 +84,26 @@ class SourceScanWorker(
         }
     }
 
-    private fun createForegroundInfo(sourceId: String, sourceName: String): ForegroundInfo {
+    private fun updateForegroundProgress(
+        sourceId: String,
+        sourceName: String,
+        scanned: Int,
+        total: Int,
+    ) {
+        val now = System.currentTimeMillis()
+        val previous = lastNotificationUpdate.get()
+        val isComplete = total > 0 && scanned >= total
+        if (!isComplete && now - previous < NOTIFICATION_UPDATE_INTERVAL_MS) return
+        if (!lastNotificationUpdate.compareAndSet(previous, now) && !isComplete) return
+        setForegroundAsync(createForegroundInfo(sourceId, sourceName, scanned, total))
+    }
+
+    private fun createForegroundInfo(
+        sourceId: String,
+        sourceName: String,
+        scanned: Int,
+        total: Int,
+    ): ForegroundInfo {
         val notificationManager = applicationContext.getSystemService(NotificationManager::class.java)
         notificationManager.createNotificationChannel(
             NotificationChannel(
@@ -89,10 +115,25 @@ class SourceScanWorker(
         val notification = NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setContentTitle(applicationContext.getString(R.string.scan_notification_title))
-            .setContentText(applicationContext.getString(R.string.scan_notification_text, sourceName))
+            .setContentText(
+                if (total > 0) {
+                    applicationContext.getString(
+                        R.string.scan_notification_progress,
+                        sourceName,
+                        scanned.coerceAtMost(total),
+                        total,
+                    )
+                } else {
+                    applicationContext.getString(R.string.scan_notification_text, sourceName)
+                }
+            )
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setProgress(0, 0, true)
+            .setProgress(
+                total.coerceAtLeast(0),
+                scanned.coerceIn(0, total.coerceAtLeast(0)),
+                total <= 0,
+            )
             .build()
         val notificationId = NOTIFICATION_ID_BASE + (sourceId.hashCode() and Int.MAX_VALUE) % 10_000
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -129,6 +170,7 @@ class SourceScanWorker(
         const val KEY_ERROR = "error"
         private const val NOTIFICATION_CHANNEL_ID = "library_scans"
         private const val NOTIFICATION_ID_BASE = 20_000
+        private const val NOTIFICATION_UPDATE_INTERVAL_MS = 500L
     }
 }
 
