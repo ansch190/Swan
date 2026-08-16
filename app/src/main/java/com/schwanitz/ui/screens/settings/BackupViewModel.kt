@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.schwanitz.data.backup.BackupManager
+import com.schwanitz.data.backup.BackupOptions
 import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -38,11 +39,11 @@ class BackupViewModel @Inject constructor(
     private val _importError = MutableStateFlow<String?>(null)
     val importError: StateFlow<String?> = _importError.asStateFlow()
 
-    fun exportTo(uri: Uri, password: String, isShared: Boolean = false) {
+    fun exportTo(uri: Uri, password: String, options: BackupOptions = BackupOptions()) {
         viewModelScope.launch {
             _isExporting.tryEmit(true)
             try {
-                val backup = backupManager.createBackup(isShared = isShared)
+                val backup = backupManager.createBackup(options)
                 backupManager.exportTo(context.contentResolver, uri, backup, password)
                 _successMessage.tryEmit(SUCCESS_EXPORT)
             } catch (e: Exception) {
@@ -58,8 +59,7 @@ class BackupViewModel @Inject constructor(
             _isVerifying.value = true
             _importError.value = null
             try {
-                val backup = backupManager.importFrom(context.contentResolver, uri, password)
-                backupManager.restore(backup)
+                backupManager.importAndRestore(context.contentResolver, uri, password)
                 _successMessage.tryEmit(SUCCESS_IMPORT)
             } catch (e: AEADBadTagException) {
                 _importError.value = ERROR_WRONG_PASSWORD

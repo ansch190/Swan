@@ -15,13 +15,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.schwanitz.R
+import com.schwanitz.data.backup.BackupOptions
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
 
@@ -32,7 +33,7 @@ fun BackupScreen(
     onNavigateToSources: () -> Unit = {},
     viewModel: BackupViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val snackbarHostState = LocalSnackbarHostState.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
 
@@ -63,7 +64,8 @@ fun BackupScreen(
     var exportPasswordError by remember { mutableStateOf<String?>(null) }
     var exportPasswordVisible by remember { mutableStateOf(false) }
     var exportPasswordConfirmVisible by remember { mutableStateOf(false) }
-    var isSharedExport by remember { mutableStateOf(false) }
+    var hideCredentialsAfterRestore by remember { mutableStateOf(false) }
+    var includeLibrary by remember { mutableStateOf(false) }
 
     var importPassword by remember { mutableStateOf("") }
     var importPasswordVisible by remember { mutableStateOf(false) }
@@ -92,11 +94,16 @@ fun BackupScreen(
         ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
         if (uri != null) {
-            viewModel.exportTo(uri, exportPassword, isSharedExport)
+            viewModel.exportTo(
+                uri,
+                exportPassword,
+                BackupOptions(hideCredentialsAfterRestore, includeLibrary)
+            )
         }
         exportPassword = ""
         exportPasswordConfirm = ""
-        isSharedExport = false
+        hideCredentialsAfterRestore = false
+        includeLibrary = false
     }
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -116,7 +123,8 @@ fun BackupScreen(
                 exportPassword = ""
                 exportPasswordConfirm = ""
                 exportPasswordError = null
-                isSharedExport = false
+                hideCredentialsAfterRestore = false
+                includeLibrary = false
             },
             title = { Text(stringResource(R.string.backup_password_title)) },
             text = {
@@ -164,13 +172,29 @@ fun BackupScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
-                            checked = isSharedExport,
-                            onCheckedChange = { isSharedExport = it }
+                            checked = hideCredentialsAfterRestore,
+                            onCheckedChange = { hideCredentialsAfterRestore = it }
                         )
                         Text(
-                            text = stringResource(R.string.backup_shared_checkbox),
+                            text = stringResource(R.string.backup_hide_credentials_checkbox),
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.clickable { isSharedExport = !isSharedExport }
+                            modifier = Modifier.clickable { hideCredentialsAfterRestore = !hideCredentialsAfterRestore }
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.backup_hide_credentials_explanation),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(checked = includeLibrary, onCheckedChange = { includeLibrary = it })
+                        Text(
+                            text = stringResource(R.string.backup_include_library_checkbox),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.clickable { includeLibrary = !includeLibrary }
                         )
                     }
                     if (exportPasswordError != null) {
@@ -185,15 +209,15 @@ fun BackupScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        if (exportPassword.length < 4) {
-                            exportPasswordError = context.getString(R.string.backup_password_too_short)
+                        if (exportPassword.length < 12) {
+                            exportPasswordError = resources.getString(R.string.backup_password_too_short)
                         } else if (exportPassword != exportPasswordConfirm) {
-                            exportPasswordError = context.getString(R.string.backup_password_mismatch)
+                            exportPasswordError = resources.getString(R.string.backup_password_mismatch)
                         } else {
                             showExportPasswordDialog = false
                             val datePart = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
-                            val shareSuffix = if (isSharedExport) "_share_" else "_"
-                            exportLauncher.launch("swan_backup$shareSuffix$datePart.swanbak")
+                            val suffix = if (includeLibrary) "_library_" else "_"
+                            exportLauncher.launch("swan_backup$suffix$datePart.swanbak")
                         }
                     }
                 ) {
@@ -206,7 +230,8 @@ fun BackupScreen(
                     exportPassword = ""
                     exportPasswordConfirm = ""
                     exportPasswordError = null
-                    isSharedExport = false
+                    hideCredentialsAfterRestore = false
+                    includeLibrary = false
                 }) {
                     Text(stringResource(R.string.cancel))
                 }
@@ -261,7 +286,7 @@ fun BackupScreen(
                 TextButton(
                     onClick = {
                         if (importPassword.length < 4) {
-                            importPasswordError = context.getString(R.string.backup_password_too_short)
+                            importPasswordError = resources.getString(R.string.backup_password_too_short)
                         } else if (importUri != null) {
                             hasAttemptedImport = true
                             viewModel.importFrom(importUri!!, importPassword)

@@ -280,6 +280,9 @@ class AddSourceViewModel @Inject constructor(
                     Timber.i("Adding source: '%s' (%s)", name, type)
                     sourceManager.addSource(config)
                 }
+                if (type == SourceType.LOCAL && state.folderUri != null) {
+                    sharedImportPreferences.clearLocalSourceAuthorizationRequirement(config.id)
+                }
             } catch (e: Exception) {
                 errorHolder.emit(e)
                 _uiState.value = _uiState.value.copy(isSaving = false)

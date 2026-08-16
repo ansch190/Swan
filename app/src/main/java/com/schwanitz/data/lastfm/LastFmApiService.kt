@@ -1,6 +1,5 @@
 package com.schwanitz.data.lastfm
 
-import com.schwanitz.BuildConfig
 import com.schwanitz.data.local.CredentialStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,10 +26,9 @@ class LastFmApiService @Inject constructor(
     private val apiBase = "https://ws.audioscrobbler.com/2.0/"
 
     suspend fun getArtistInfo(artistName: String): LastFmArtist? {
-        val apiKey = credentialStore.getApiLastfmKey()?.takeIf { it.isNotBlank() }
-            ?: BuildConfig.LASTFM_API_KEY
+        val apiKey = credentialStore.getApiLastfmKey()?.takeIf { it.isNotBlank() }.orEmpty()
         if (apiKey.isBlank()) {
-            Timber.e("LASTFM_API_KEY is empty - set lastfmKey in local.properties or in settings")
+            Timber.e("Last.fm API key is empty - enter it in settings")
             return null
         }
 

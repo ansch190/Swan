@@ -4,14 +4,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 data class BackupFile(
-    val version: Int = 1,
+    val version: Int = 2,
     val timestamp: Long = System.currentTimeMillis(),
     val sources: List<BackupSource>,
     val credentials: Map<String, BackupCredentials>,
     val apiKeys: BackupApiKeys,
     val languageCode: String,
     val artistDataSource: BackupArtistDataSource,
-    val isShared: Boolean = false
+    val hideCredentialsAfterRestore: Boolean = false,
+    val includeLibrary: Boolean = false
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("version", version)
@@ -21,7 +22,8 @@ data class BackupFile(
         put("apiKeys", apiKeys.toJson())
         put("languageCode", languageCode)
         put("artistDataSource", artistDataSource.toJson())
-        put("isShared", isShared)
+        put("hideCredentialsAfterRestore", hideCredentialsAfterRestore)
+        put("includeLibrary", includeLibrary)
     }
 
     companion object {
@@ -39,10 +41,19 @@ data class BackupFile(
             apiKeys = BackupApiKeys.fromJson(json.getJSONObject("apiKeys")),
             languageCode = json.getString("languageCode"),
             artistDataSource = BackupArtistDataSource.fromJson(json.getJSONObject("artistDataSource")),
-            isShared = json.optBoolean("isShared", false)
+            hideCredentialsAfterRestore = json.optBoolean(
+                "hideCredentialsAfterRestore",
+                json.optBoolean("isShared", false)
+            ),
+            includeLibrary = json.optBoolean("includeLibrary", false)
         )
     }
 }
+
+data class BackupOptions(
+    val hideCredentialsAfterRestore: Boolean = false,
+    val includeLibrary: Boolean = false
+)
 
 data class BackupSource(
     val id: String,

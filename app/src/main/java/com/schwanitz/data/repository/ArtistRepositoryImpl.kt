@@ -1,7 +1,6 @@
 package com.schwanitz.data.repository
 
 import android.content.Context
-import com.schwanitz.BuildConfig
 import com.schwanitz.data.discogs.DiscogsApiService
 import com.schwanitz.data.lastfm.LastFmApiService
 import com.schwanitz.data.local.CredentialStore
@@ -82,8 +81,7 @@ class ArtistRepositoryImpl @Inject constructor(
             }
         }
 
-        val discogsKey = credentialStore.getApiDiscogsKey()?.takeIf { it.isNotBlank() }
-            ?: BuildConfig.DISCOGS_CONSUMER_KEY
+        val discogsKey = credentialStore.getApiDiscogsKey()?.takeIf { it.isNotBlank() }.orEmpty()
         if (discogsKey.isBlank()) return null
 
         Timber.d("Fetching artist image from Discogs for '%s'", artist.name)

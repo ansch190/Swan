@@ -24,6 +24,9 @@ interface SourceConfigDao {
     @Delete
     suspend fun delete(config: SourceConfigEntity)
 
+    @Query("DELETE FROM source_configs")
+    suspend fun deleteAll()
+
     @Query("UPDATE source_configs SET isEnabled = :enabled WHERE id = :id")
     suspend fun setEnabled(id: String, enabled: Boolean)
 }

@@ -20,6 +20,7 @@ class SharedImportPreferences @Inject constructor(
 ) {
     private val hiddenSourceIdsKey = stringSetPreferencesKey("hidden_source_ids")
     private val apiKeysHiddenKey = booleanPreferencesKey("api_keys_hidden")
+    private val localReauthorizationKey = stringSetPreferencesKey("local_reauthorization_ids")
 
     val hiddenSourceIds: Flow<Set<String>> = context.dataStore.data.map { prefs ->
         prefs[hiddenSourceIdsKey] ?: emptySet()
@@ -27,6 +28,10 @@ class SharedImportPreferences @Inject constructor(
 
     val areApiKeysHidden: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[apiKeysHiddenKey] ?: false
+    }
+
+    val localSourcesRequiringAuthorization: Flow<Set<String>> = context.dataStore.data.map { prefs ->
+        prefs[localReauthorizationKey] ?: emptySet()
     }
 
     suspend fun setHiddenSourceIds(ids: Set<String>) {
@@ -41,10 +46,21 @@ class SharedImportPreferences @Inject constructor(
         }
     }
 
+    suspend fun setLocalSourcesRequiringAuthorization(ids: Set<String>) {
+        context.dataStore.edit { it[localReauthorizationKey] = ids }
+    }
+
+    suspend fun clearLocalSourceAuthorizationRequirement(sourceId: String) {
+        context.dataStore.edit { prefs ->
+            prefs[localReauthorizationKey] = (prefs[localReauthorizationKey] ?: emptySet()) - sourceId
+        }
+    }
+
     suspend fun clear() {
         context.dataStore.edit { prefs ->
             prefs.remove(hiddenSourceIdsKey)
             prefs.remove(apiKeysHiddenKey)
+            prefs.remove(localReauthorizationKey)
         }
     }
 

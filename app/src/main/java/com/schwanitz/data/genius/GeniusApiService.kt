@@ -1,6 +1,5 @@
 package com.schwanitz.data.genius
 
-import com.schwanitz.BuildConfig
 import com.schwanitz.data.local.CredentialStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,8 +27,7 @@ class GeniusApiService @Inject constructor(
     private val apiBase = "https://api.genius.com"
 
     suspend fun searchLyrics(title: String, artist: String): String? {
-        val accessToken = credentialStore.getApiGeniusToken()?.takeIf { it.isNotBlank() }
-            ?: BuildConfig.GENIUS_ACCESS_TOKEN
+        val accessToken = credentialStore.getApiGeniusToken()?.takeIf { it.isNotBlank() }.orEmpty()
         if (accessToken.isBlank()) {
             Timber.e("GENIUS_ACCESS_TOKEN is empty")
             return null

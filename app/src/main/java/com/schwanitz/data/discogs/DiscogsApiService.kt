@@ -1,6 +1,5 @@
 package com.schwanitz.data.discogs
 
-import com.schwanitz.BuildConfig
 import com.schwanitz.data.local.CredentialStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,10 +25,8 @@ class DiscogsApiService @Inject constructor(
     private val apiBase = "https://api.discogs.com"
 
     private suspend fun authParams(): String {
-        val key = credentialStore.getApiDiscogsKey()?.takeIf { it.isNotBlank() }
-            ?: BuildConfig.DISCOGS_CONSUMER_KEY
-        val secret = credentialStore.getApiDiscogsSecret()?.takeIf { it.isNotBlank() }
-            ?: BuildConfig.DISCOGS_CONSUMER_SECRET
+        val key = credentialStore.getApiDiscogsKey()?.takeIf { it.isNotBlank() }.orEmpty()
+        val secret = credentialStore.getApiDiscogsSecret()?.takeIf { it.isNotBlank() }.orEmpty()
         return "key=$key&secret=$secret"
     }
 
