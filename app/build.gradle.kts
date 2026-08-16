@@ -1,5 +1,3 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -21,20 +19,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val localProps = Properties().apply {
-            val f = project.rootProject.file("local.properties")
-            if (f.exists()) load(f.inputStream())
-        }
-        fun envOrLocal(envKey: String, localKey: String): String =
-            System.getenv(envKey) ?: localProps.getProperty(localKey) ?: ""
-        val discogsKey = envOrLocal("DISCOGS_CONSUMER_KEY", "discogsKey")
-        val discogsSecret = envOrLocal("DISCOGS_CONSUMER_SECRET", "discogsSecret")
-        buildConfigField("String", "DISCOGS_CONSUMER_KEY", "\"$discogsKey\"")
-        buildConfigField("String", "DISCOGS_CONSUMER_SECRET", "\"$discogsSecret\"")
-        val lastfmKey = envOrLocal("LASTFM_API_KEY", "lastfmKey")
-        buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmKey\"")
-        val geniusAccessToken = envOrLocal("GENIUS_ACCESS_TOKEN", "geniusAccessToken")
-        buildConfigField("String", "GENIUS_ACCESS_TOKEN", "\"$geniusAccessToken\"")
     }
 
     buildTypes {
@@ -45,6 +29,15 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            val keystorePath = System.getenv("SWAN_KEYSTORE_PATH")
+            if (!keystorePath.isNullOrBlank()) {
+                signingConfig = signingConfigs.create("releaseFromEnvironment") {
+                    storeFile = file(keystorePath)
+                    storePassword = System.getenv("SWAN_KEYSTORE_PASSWORD")
+                    keyAlias = System.getenv("SWAN_KEY_ALIAS")
+                    keyPassword = System.getenv("SWAN_KEY_PASSWORD")
+                }
+            }
         }
     }
 
@@ -62,6 +55,15 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    lint {
+        // AGP 9.2.1/Kotlin 2.1 crashes inside ExperimentalDetector while indexing
+        // suspend functions with CompletableDeferred. Keep all other checks active.
+        disable += setOf("UnsafeOptInUsageError", "UnsafeOptInUsageWarning")
+        // Android lint's Kotlin 2.1 FIR crashes while resolving instrumented test
+        // classes. Production sources remain fully linted; tests compile in CI.
+        checkTestSources = false
     }
 }
 
@@ -98,12 +100,12 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.reorderable)
-    implementation("com.github.ansch190:Tagix:android-SNAPSHOT")
-    implementation("org.slf4j:slf4j-android:1.7.36")
+    implementation(libs.tagix)
+    implementation(libs.slf4j.android)
     implementation(libs.jsoup)
     implementation(libs.timber)
     implementation(libs.security.crypto)
-    implementation("androidx.documentfile:documentfile:1.1.0")
+    implementation(libs.androidx.documentfile)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.smbj)
     implementation(libs.markdown.renderer.m3)
@@ -114,6 +116,7 @@ dependencies {
     testImplementation(libs.turbine)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.room.testing)
 }
 
 ksp {

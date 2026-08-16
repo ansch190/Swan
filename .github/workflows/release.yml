@@ -2,6 +2,7 @@ name: Release
 on:
   push:
     tags: ['v*']
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -15,7 +16,21 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v5
       - run: chmod +x gradlew
-      - run: ./gradlew assembleDebug
+      - name: Decode signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SWAN_KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/swan-release.jks"
+      - name: Build signed minified release
+        env:
+          SWAN_KEYSTORE_PATH: ${{ runner.temp }}/swan-release.jks
+          SWAN_KEYSTORE_PASSWORD: ${{ secrets.SWAN_KEYSTORE_PASSWORD }}
+          SWAN_KEY_ALIAS: ${{ secrets.SWAN_KEY_ALIAS }}
+          SWAN_KEY_PASSWORD: ${{ secrets.SWAN_KEY_PASSWORD }}
+        run: ./gradlew testDebugUnitTest lintRelease assembleRelease
+      - name: Create checksum
+        run: sha256sum app/build/outputs/apk/release/app-release.apk > app/build/outputs/apk/release/app-release.apk.sha256
       - uses: softprops/action-gh-release@v3
         with:
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/release/app-release.apk.sha256
