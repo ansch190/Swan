@@ -175,6 +175,8 @@
     <string name="scan_notification_title">Scanning music source</string>
     <string name="scan_notification_text">Scanning \"%1$s\" in the background</string>
     <string name="scan_notification_progress">Scanning \"%1$s\": %2$d of %3$d</string>
+    <string name="scan_notification_cancel">Cancel scan</string>
+    <string name="settings_cancel_scan">Cancel scan</string>
     <string name="settings_local_section">Local</string>
     <string name="settings_network_section">Network</string>
     <string name="settings_reload_all">Reload All</string>

@@ -175,6 +175,8 @@
     <string name="scan_notification_title">Musikquelle wird gescannt</string>
     <string name="scan_notification_text">„%1$s“ wird im Hintergrund gescannt</string>
     <string name="scan_notification_progress">Scanne „%1$s“: %2$d von %3$d</string>
+    <string name="scan_notification_cancel">Scan abbrechen</string>
+    <string name="settings_cancel_scan">Scan abbrechen</string>
     <string name="settings_local_section">Lokal</string>
     <string name="settings_network_section">Netzwerk</string>
     <string name="settings_reload_all">Alle neu laden</string>

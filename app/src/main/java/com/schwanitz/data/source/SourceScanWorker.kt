@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.schwanitz.R
@@ -129,6 +130,11 @@ class SourceScanWorker(
             )
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                applicationContext.getString(R.string.scan_notification_cancel),
+                WorkManager.getInstance(applicationContext).createCancelPendingIntent(id),
+            )
             .setProgress(
                 total.coerceAtLeast(0),
                 scanned.coerceIn(0, total.coerceAtLeast(0)),

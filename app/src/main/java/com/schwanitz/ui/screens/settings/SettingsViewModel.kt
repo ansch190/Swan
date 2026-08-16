@@ -22,6 +22,7 @@ import timber.log.Timber
 import javax.inject.Inject
 
 data class ScanProgress(
+    val sourceId: String = "",
     val sourceName: String = "",
     val scanned: Int = 0,
     val total: Int = 0,
@@ -63,6 +64,7 @@ class SettingsViewModel @Inject constructor(
             ScanProgress()
         } else {
             ScanProgress(
+                sourceId = active.sourceId,
                 sourceName = active.sourceName.ifBlank {
                     configs.firstOrNull { it.id == active.sourceId }?.name ?: active.sourceId
                 },
@@ -144,6 +146,14 @@ class SettingsViewModel @Inject constructor(
             runCatching { sourceScanCoordinator.enqueueEnabled() }
                 .exceptionOrNull()
                 ?.let { errorHolder.emit(it) }
+        }
+    }
+
+    fun cancelCurrentScan() {
+        val sourceId = scanProgress.value.sourceId
+        if (sourceId.isNotBlank()) {
+            Timber.i("Cancelling scan for source %s", sourceId)
+            sourceScanCoordinator.cancel(sourceId)
         }
     }
 }
