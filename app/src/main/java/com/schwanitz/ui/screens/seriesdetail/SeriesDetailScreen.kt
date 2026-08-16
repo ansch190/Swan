@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
 fun SeriesDetailScreen(
     seriesName: String,
     onNavigateBack: () -> Unit,
-    onAlbumClick: (String, String) -> Unit,
+    onAlbumClick: (String, String, Int) -> Unit,
     onAddToPlaylist: (String) -> Unit = {},
     onAllSeriesClick: () -> Unit = {},
     viewModel: SeriesDetailViewModel = hiltViewModel()
@@ -113,7 +113,7 @@ fun SeriesDetailScreen(
                                 albumName = album.name,
                                 albumArtUri = album.albumArtUri,
                                 year = album.year,
-                                onClick = { onAlbumClick(album.name, album.albumArtist) }
+                                onClick = { onAlbumClick(album.name, album.albumArtist, album.year) }
                             )
                         }
                     }

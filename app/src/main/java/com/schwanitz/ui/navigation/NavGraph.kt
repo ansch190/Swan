@@ -1,6 +1,7 @@
 ﻿package com.schwanitz.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -53,8 +54,8 @@ fun NavGraph(navController: NavHostController) {
             SongInfoScreen(
                 songId = songId,
                 onNavigateBack = { navController.popBackStack() },
-                onAlbumClick = { album, albumArtist ->
-                    navController.navigate(Routes.albumDetail(album, albumArtist))
+                onAlbumClick = { album, albumArtist, year ->
+                    navController.navigate(Routes.albumDetail(album, albumArtist, year))
                 },
                 onArtistClick = { artist ->
                     navController.navigate(Routes.artistDetail(artist))
@@ -91,8 +92,8 @@ fun NavGraph(navController: NavHostController) {
                 onArtistClick = { artist ->
                     navController.navigate(Routes.artistDetail(artist))
                 },
-                onAlbumClick = { album, albumArtist ->
-                    navController.navigate(Routes.albumDetail(album, albumArtist))
+                onAlbumClick = { album, albumArtist, year ->
+                    navController.navigate(Routes.albumDetail(album, albumArtist, year))
                 },
                 onAddToPlaylist = { songIds ->
                     navController.navigate(Routes.playlistPicker(songIds))
@@ -111,8 +112,8 @@ fun NavGraph(navController: NavHostController) {
                 onArtistClick = { artist ->
                     navController.navigate(Routes.artistDetail(artist))
                 },
-                onAlbumClick = { album, albumArtist ->
-                    navController.navigate(Routes.albumDetail(album, albumArtist))
+                onAlbumClick = { album, albumArtist, albumYear ->
+                    navController.navigate(Routes.albumDetail(album, albumArtist, albumYear))
                 },
                 onAllYearsClick = { navController.navigate(Routes.ALL_YEARS) },
                 onAddToPlaylist = { songIds ->
@@ -132,8 +133,8 @@ fun NavGraph(navController: NavHostController) {
                 onArtistClick = { artist ->
                     navController.navigate(Routes.artistDetail(artist))
                 },
-                onAlbumClick = { album, albumArtist ->
-                    navController.navigate(Routes.albumDetail(album, albumArtist))
+                onAlbumClick = { album, albumArtist, year ->
+                    navController.navigate(Routes.albumDetail(album, albumArtist, year))
                 },
                 onAddToPlaylist = { songIds ->
                     navController.navigate(Routes.playlistPicker(songIds))
@@ -149,8 +150,8 @@ fun NavGraph(navController: NavHostController) {
             ArtistDetailScreen(
                 artistName = artistName,
                 onNavigateBack = { navController.popBackStack() },
-                onAlbumClick = { album, albumArtist ->
-                    navController.navigate(Routes.albumDetail(album, albumArtist))
+                onAlbumClick = { album, albumArtist, year ->
+                    navController.navigate(Routes.albumDetail(album, albumArtist, year))
                 },
                 onBioClick = { navController.navigate(Routes.artistBiography(artistName)) },
                 onAddToPlaylist = { songIds ->
@@ -164,7 +165,9 @@ fun NavGraph(navController: NavHostController) {
             arguments = listOf(navArgument("artistName") { type = NavType.StringType })
         ) { backStackEntry ->
             val artistName = backStackEntry.arguments?.getString("artistName") ?: ""
-            val artistEntry = checkNotNull(navController.getBackStackEntry("artist_detail/$artistName"))
+            val artistEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("artist_detail/$artistName")
+            }
             val artistVm: ArtistDetailViewModel = hiltViewModel(artistEntry)
             ArtistBiographyScreen(
                 artistName = artistName,
@@ -185,8 +188,8 @@ fun NavGraph(navController: NavHostController) {
         composable(Routes.ALL_ALBUMS) {
             com.schwanitz.ui.screens.albumlist.AlbumListScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onAlbumClick = { albumName, albumArtist ->
-                    navController.navigate(Routes.albumDetail(albumName, albumArtist))
+                onAlbumClick = { albumName, albumArtist, year ->
+                    navController.navigate(Routes.albumDetail(albumName, albumArtist, year))
                 }
             )
         }
@@ -222,17 +225,20 @@ fun NavGraph(navController: NavHostController) {
         }
 
         composable(
-            route = "album_detail/{albumName}/{albumArtistName}",
+            route = "album_detail/{albumName}/{albumArtistName}/{albumYear}",
             arguments = listOf(
                 navArgument("albumName") { type = NavType.StringType },
-                navArgument("albumArtistName") { type = NavType.StringType }
+                navArgument("albumArtistName") { type = NavType.StringType },
+                navArgument("albumYear") { type = NavType.IntType }
             )
         ) { backStackEntry ->
             val albumName = backStackEntry.arguments?.getString("albumName") ?: ""
             val albumArtistName = backStackEntry.arguments?.getString("albumArtistName") ?: ""
+            val albumYear = backStackEntry.arguments?.getInt("albumYear") ?: 0
             AlbumDetailScreen(
                 albumName = albumName,
                 albumArtistName = albumArtistName,
+                albumYear = albumYear,
                 onNavigateBack = { navController.popBackStack() },
                 onArtistClick = { artist ->
                     navController.navigate(Routes.artistDetail(artist))
@@ -257,8 +263,8 @@ fun NavGraph(navController: NavHostController) {
             SeriesDetailScreen(
                 seriesName = seriesName,
                 onNavigateBack = { navController.popBackStack() },
-                onAlbumClick = { album, albumArtist ->
-                    navController.navigate(Routes.albumDetail(album, albumArtist))
+                onAlbumClick = { album, albumArtist, year ->
+                    navController.navigate(Routes.albumDetail(album, albumArtist, year))
                 },
                 onAddToPlaylist = { songIds ->
                     navController.navigate(Routes.playlistPicker(songIds))
@@ -304,7 +310,9 @@ fun NavGraph(navController: NavHostController) {
             arguments = listOf(navArgument("playlistId") { type = NavType.LongType })
         ) { backStackEntry ->
             val playlistId = backStackEntry.arguments?.getLong("playlistId") ?: return@composable
-            val playlistDetailBackStackEntry = navController.getBackStackEntry("playlist_detail/$playlistId")
+            val playlistDetailBackStackEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("playlist_detail/$playlistId")
+            }
             val playlistDetailViewModel: com.schwanitz.ui.screens.playlist.PlaylistDetailViewModel = hiltViewModel(playlistDetailBackStackEntry)
             SelectSongsScreen(
                 onNavigateBack = { navController.popBackStack() },

@@ -36,7 +36,7 @@ fun DecadeDetailScreen(
     decade: Int,
     onNavigateBack: () -> Unit,
     onArtistClick: (String) -> Unit,
-    onAlbumClick: (String, String) -> Unit,
+    onAlbumClick: (String, String, Int) -> Unit,
     onAddToPlaylist: (String) -> Unit = {},
     viewModel: DecadeDetailViewModel = hiltViewModel()
 ) {
@@ -127,7 +127,7 @@ fun DecadeDetailScreen(
                             AlbumListItem(
                                 albumName = album.name,
                                 albumArtUri = album.albumArtUri,
-                                onClick = { onAlbumClick(album.name, album.albumArtist) },
+                                onClick = { onAlbumClick(album.name, album.albumArtist, album.year) },
                                 year = album.year,
                                 albumArtist = album.albumArtist
                             )

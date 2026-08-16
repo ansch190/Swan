@@ -29,8 +29,8 @@ class AlbumRepositoryImpl @Inject constructor(
         return albumSongDao.getDiscTotal(albumId)
     }
 
-    override suspend fun findAlbumByNameAndArtist(name: String, albumArtist: String): Album? {
-        return albumDao.findByNameAndAlbumArtist(name, albumArtist)?.let {
+    override suspend fun findAlbum(name: String, albumArtist: String, year: Int): Album? {
+        return albumDao.findByIdentity(name, albumArtist, year)?.let {
             Album(id = it.id, name = it.name, albumArtist = it.albumArtist, year = it.year)
         }
     }

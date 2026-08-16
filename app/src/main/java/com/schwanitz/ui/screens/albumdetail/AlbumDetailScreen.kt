@@ -38,6 +38,7 @@ import kotlinx.coroutines.launch
 fun AlbumDetailScreen(
     albumName: String,
     albumArtistName: String,
+    albumYear: Int,
     onNavigateBack: () -> Unit,
     onArtistClick: (String) -> Unit = {},
     onSeriesClick: (String) -> Unit = {},
@@ -45,8 +46,8 @@ fun AlbumDetailScreen(
     onAddToPlaylist: (String) -> Unit = {},
     viewModel: AlbumDetailViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(albumName, albumArtistName) {
-        viewModel.loadAlbum(albumName, albumArtistName)
+    LaunchedEffect(albumName, albumArtistName, albumYear) {
+        viewModel.loadAlbum(albumName, albumArtistName, albumYear)
     }
 
     val songs by viewModel.songs.collectAsState()

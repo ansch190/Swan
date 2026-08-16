@@ -18,7 +18,7 @@ import com.schwanitz.ui.components.AlbumListItem
 @Composable
 fun AlbumListScreen(
     onNavigateBack: () -> Unit,
-    onAlbumClick: (String, String) -> Unit,
+    onAlbumClick: (String, String, Int) -> Unit,
     viewModel: AlbumListViewModel = hiltViewModel()
 ) {
     LaunchedEffect(Unit) {
@@ -44,10 +44,9 @@ fun AlbumListScreen(
                     albumArtUri = album.albumArtUri,
                     year = album.year,
                     albumArtist = album.albumArtist,
-                    onClick = { onAlbumClick(album.name, album.albumArtist) }
+                    onClick = { onAlbumClick(album.name, album.albumArtist, album.year) }
                 )
             }
         }
     }
 }
-

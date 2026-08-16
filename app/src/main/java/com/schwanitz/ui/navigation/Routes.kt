@@ -18,8 +18,8 @@ object Routes {
 
     fun songInfo(songId: String) = "song_info/${Uri.encode(songId)}"
 
-    fun albumDetail(albumName: String, albumArtistName: String) =
-        "album_detail/${Uri.encode(albumName)}/${Uri.encode(albumArtistName)}"
+    fun albumDetail(albumName: String, albumArtistName: String, year: Int) =
+        "album_detail/${Uri.encode(albumName)}/${Uri.encode(albumArtistName)}/$year"
 
     fun artistDetail(artistName: String) = "artist_detail/${Uri.encode(artistName)}"
 

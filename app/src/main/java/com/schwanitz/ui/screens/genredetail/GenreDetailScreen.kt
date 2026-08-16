@@ -36,7 +36,7 @@ fun GenreDetailScreen(
     genre: String,
     onNavigateBack: () -> Unit,
     onArtistClick: (String) -> Unit,
-    onAlbumClick: (String, String) -> Unit,
+    onAlbumClick: (String, String, Int) -> Unit,
     onAddToPlaylist: (String) -> Unit = {},
     viewModel: GenreDetailViewModel = hiltViewModel()
 ) {
@@ -126,7 +126,7 @@ fun GenreDetailScreen(
                             AlbumListItem(
                                 albumName = album.name,
                                 albumArtUri = album.albumArtUri,
-                                onClick = { onAlbumClick(album.name, album.albumArtist) },
+                                onClick = { onAlbumClick(album.name, album.albumArtist, album.year) },
                                 year = album.year,
                                 albumArtist = album.albumArtist
                             )

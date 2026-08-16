@@ -36,7 +36,7 @@ fun YearDetailScreen(
     year: Int,
     onNavigateBack: () -> Unit,
     onArtistClick: (String) -> Unit,
-    onAlbumClick: (String, String) -> Unit,
+    onAlbumClick: (String, String, Int) -> Unit,
     onAllYearsClick: () -> Unit = {},
     onAddToPlaylist: (String) -> Unit = {},
     viewModel: YearDetailViewModel = hiltViewModel()
@@ -136,7 +136,7 @@ fun YearDetailScreen(
                             AlbumListItem(
                                 albumName = album.name,
                                 albumArtUri = album.albumArtUri,
-                                onClick = { onAlbumClick(album.name, album.albumArtist) },
+                                onClick = { onAlbumClick(album.name, album.albumArtist, album.year) },
                                 albumArtist = album.albumArtist
                             )
                         }

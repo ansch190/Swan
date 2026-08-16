@@ -48,7 +48,7 @@ import kotlinx.coroutines.launch
 fun SongInfoScreen(
     songId: String,
     onNavigateBack: () -> Unit,
-    onAlbumClick: (String, String) -> Unit,
+    onAlbumClick: (String, String, Int) -> Unit,
     onArtistClick: (String) -> Unit,
     onAllArtistsClick: () -> Unit,
     onAllAlbumArtistsClick: () -> Unit,
@@ -247,7 +247,7 @@ private fun MetadataTab(
     trackTotal: Int,
     discTotal: Int,
     series: com.schwanitz.domain.model.AlbumSeries?,
-    onAlbumClick: (String, String) -> Unit,
+    onAlbumClick: (String, String, Int) -> Unit,
     onArtistClick: (String) -> Unit,
     onAllArtistsClick: () -> Unit,
     onAllAlbumArtistsClick: () -> Unit,
@@ -275,7 +275,7 @@ private fun MetadataTab(
             value = song.albumName.ifBlank { "-" },
             onLabelClick = onAllAlbumsClick,
             onValueClick = {
-                onAlbumClick(song.albumName, song.albumArtistName)
+                onAlbumClick(song.albumName, song.albumArtistName, song.year)
             }
         )
         if (series != null) {

@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
 fun ArtistDetailScreen(
     artistName: String,
     onNavigateBack: () -> Unit,
-    onAlbumClick: (String, String) -> Unit,
+    onAlbumClick: (String, String, Int) -> Unit,
     onBioClick: () -> Unit = {},
     onAddToPlaylist: (String) -> Unit = {},
     viewModel: ArtistDetailViewModel = hiltViewModel()
@@ -115,7 +115,7 @@ fun ArtistDetailScreen(
                             AlbumListItem(
                                 albumName = album.name,
                                 albumArtUri = album.albumArtUri,
-                                onClick = { onAlbumClick(album.name, artistName) },
+                                onClick = { onAlbumClick(album.name, album.albumArtist, album.year) },
                                 year = album.year
                             )
                         }

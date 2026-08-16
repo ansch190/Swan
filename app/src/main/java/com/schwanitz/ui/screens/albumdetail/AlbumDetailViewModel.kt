@@ -46,10 +46,10 @@ class AlbumDetailViewModel @Inject constructor(
 
     val errorHolder = ErrorHolder()
 
-    fun loadAlbum(albumName: String, albumArtistName: String) {
+    fun loadAlbum(albumName: String, albumArtistName: String, albumYear: Int) {
         viewModelScope.launch {
             runCatching {
-                val album = albumRepository.findAlbumByNameAndArtist(albumName, albumArtistName) ?: return@launch
+                val album = albumRepository.findAlbum(albumName, albumArtistName, albumYear) ?: return@launch
                 _year.value = album.year
                 launch {
                     runCatching {

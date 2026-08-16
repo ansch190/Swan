@@ -9,7 +9,7 @@ import com.schwanitz.data.local.entity.ArtistEntity
 @Dao
 interface ArtistDao {
 
-    @Query("SELECT * FROM artists WHERE name LIKE :name LIMIT 1")
+    @Query("SELECT * FROM artists WHERE name = :name COLLATE NOCASE LIMIT 1")
     suspend fun findByName(name: String): ArtistEntity?
 
     @Query("SELECT * FROM artists WHERE id = :id")
