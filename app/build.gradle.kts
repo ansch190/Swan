@@ -106,6 +106,7 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.security.crypto)
     implementation(libs.androidx.documentfile)
+    implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.smbj)
     implementation(libs.markdown.renderer.m3)

@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.schwanitz.R
 import com.schwanitz.data.local.SharedImportPreferences
 import com.schwanitz.data.source.SmbMusicSource
+import com.schwanitz.data.source.SourceScanCoordinator
 import com.schwanitz.data.source.WebDavMusicSource
 import com.schwanitz.domain.repository.SourceManager
 import com.schwanitz.domain.error.AppError
@@ -56,6 +57,7 @@ sealed class ConnectionTestState {
 @HiltViewModel
 class AddSourceViewModel @Inject constructor(
     private val sourceManager: SourceManager,
+    private val sourceScanCoordinator: SourceScanCoordinator,
     private val webDavMusicSource: WebDavMusicSource,
     private val smbMusicSource: SmbMusicSource,
     private val sharedImportPreferences: SharedImportPreferences,
@@ -279,6 +281,7 @@ class AddSourceViewModel @Inject constructor(
                 } else {
                     Timber.i("Adding source: '%s' (%s)", name, type)
                     sourceManager.addSource(config)
+                    sourceScanCoordinator.enqueue(config.id)
                 }
                 if (type == SourceType.LOCAL && state.folderUri != null) {
                     sharedImportPreferences.clearLocalSourceAuthorizationRequirement(config.id)

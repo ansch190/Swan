@@ -2,21 +2,20 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.schwanitz.domain.repository.SourceLifecycleManager
+import androidx.work.WorkInfo
 import com.schwanitz.data.local.SharedImportPreferences
-import com.schwanitz.domain.repository.SourceRefreshResult
+import com.schwanitz.data.source.SourceScanCoordinator
+import com.schwanitz.domain.repository.SourceLifecycleManager
 import com.schwanitz.domain.repository.SourceManager
 import com.schwanitz.domain.source.SourceConfig
 import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -39,11 +38,10 @@ sealed interface ScanFeedback {
 class SettingsViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val sourceLifecycleManager: SourceLifecycleManager,
+    private val sourceScanCoordinator: SourceScanCoordinator,
     sharedImportPreferences: SharedImportPreferences
 ) : ViewModel() {
 
-    private val _scanProgress = MutableStateFlow(ScanProgress())
-    val scanProgress: StateFlow<ScanProgress> = _scanProgress.asStateFlow()
     private val _scanFeedback = MutableSharedFlow<ScanFeedback>(extraBufferCapacity = 8)
     val scanFeedback: SharedFlow<ScanFeedback> = _scanFeedback.asSharedFlow()
 
@@ -53,33 +51,68 @@ class SettingsViewModel @Inject constructor(
         sourceManager.sources
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val scanProgress: StateFlow<ScanProgress> = combine(
+        sourceScanCoordinator.workStates,
+        sources,
+    ) { workStates, configs ->
+        val active = workStates.firstOrNull { it.state == WorkInfo.State.RUNNING }
+            ?: workStates.firstOrNull {
+                it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED
+            }
+        if (active == null) {
+            ScanProgress()
+        } else {
+            ScanProgress(
+                sourceName = active.sourceName.ifBlank {
+                    configs.firstOrNull { it.id == active.sourceId }?.name ?: active.sourceId
+                },
+                scanned = active.scanned,
+                total = active.total,
+                isScanning = true,
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ScanProgress())
+
     val localSourcesRequiringAuthorization: StateFlow<Set<String>> =
         sharedImportPreferences.localSourcesRequiringAuthorization
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     init {
         viewModelScope.launch {
-            var knownIds = sourceManager.sources.first().map { it.id }.toSet()
-            sourceManager.sources.collect { configs ->
-                try {
-                    val currentIds = configs.map { it.id }.toSet()
-                    val newIds = currentIds - knownIds
-                    for (newId in newIds) {
-                        val newConfig = configs.first { it.id == newId }
-                        Timber.i("New source detected: '%s', starting scan", newConfig.name)
-                        _scanProgress.value = ScanProgress(sourceName = newConfig.name, isScanning = true)
-                        val result = sourceLifecycleManager.refreshSource(newId) { scanned, total ->
-                            _scanProgress.value = ScanProgress(sourceName = newConfig.name, scanned = scanned, total = total, isScanning = true)
-                        }
-                        publishResult(newConfig.name, result)
-                    }
-                    _scanProgress.value = ScanProgress(isScanning = false)
-                    knownIds = currentIds
-                } catch (e: Exception) {
-                    errorHolder.emit(e)
-                } finally {
-                    _scanProgress.value = ScanProgress()
+            val handledTerminalWork = mutableSetOf<String>()
+            var initialSnapshot = true
+            sourceScanCoordinator.workStates.collect { states ->
+                if (initialSnapshot) {
+                    handledTerminalWork += states.filter { it.state.isFinished }.map { it.workId }
+                    initialSnapshot = false
+                    return@collect
                 }
+                states.filter { it.state.isFinished && handledTerminalWork.add(it.workId) }
+                    .forEach { state ->
+                        val sourceName = state.sourceName.ifBlank {
+                            sources.value.firstOrNull { it.id == state.sourceId }?.name ?: state.sourceId
+                        }
+                        when (state.state) {
+                            WorkInfo.State.SUCCEEDED -> _scanFeedback.emit(
+                                if (state.retainedFailures > 0) {
+                                    ScanFeedback.CompletedWithWarnings(
+                                        sourceName,
+                                        state.total,
+                                        state.retainedFailures,
+                                    )
+                                } else {
+                                    ScanFeedback.Completed(sourceName, state.total)
+                                }
+                            )
+
+                            WorkInfo.State.FAILED -> {
+                                _scanFeedback.emit(ScanFeedback.FailedWithRetainedLibrary(sourceName))
+                                state.error?.let { errorHolder.emit(IllegalStateException(it)) }
+                            }
+
+                            else -> Unit
+                        }
+                    }
             }
         }
     }
@@ -96,6 +129,7 @@ class SettingsViewModel @Inject constructor(
 
     fun deleteSource(sourceId: String) {
         Timber.i("Deleting source %s", sourceId)
+        sourceScanCoordinator.cancel(sourceId)
         viewModelScope.launch {
             runCatching {
                 sourceLifecycleManager.deleteBySource(sourceId)
@@ -107,33 +141,9 @@ class SettingsViewModel @Inject constructor(
     fun reloadAll() {
         Timber.i("Reloading all enabled sources")
         viewModelScope.launch {
-            try {
-                val results = sourceLifecycleManager.reloadEnabled { sourceName, scanned, total ->
-                    _scanProgress.value = ScanProgress(sourceName, scanned, total, isScanning = true)
-                }
-                val names = sources.value.associate { it.id to it.name }
-                results.forEach { (id, result) -> publishResult(names[id] ?: id, result) }
-            } catch (e: Exception) {
-                errorHolder.emit(e)
-            } finally {
-                _scanProgress.value = ScanProgress()
-            }
-        }
-    }
-
-    private fun publishResult(sourceName: String, result: SourceRefreshResult) {
-        when (result) {
-            is SourceRefreshResult.Success -> _scanFeedback.tryEmit(
-                if (result.retainedFailures > 0) {
-                    ScanFeedback.CompletedWithWarnings(sourceName, result.total, result.retainedFailures)
-                } else {
-                    ScanFeedback.Completed(sourceName, result.total)
-                }
-            )
-            is SourceRefreshResult.Failure -> {
-                _scanFeedback.tryEmit(ScanFeedback.FailedWithRetainedLibrary(sourceName))
-                errorHolder.emit(result.error)
-            }
+            runCatching { sourceScanCoordinator.enqueueEnabled() }
+                .exceptionOrNull()
+                ?.let { errorHolder.emit(it) }
         }
     }
 }

@@ -98,7 +98,9 @@ app/src/main/java/com/schwanitz/
 
 Sources can be enabled or disabled individually, and all sources can be rescanned with a single "Reload All" button.
 
-Rescans use persistent staging tables. A fatal error or cancellation keeps the previous source library unchanged; unreadable individual files retain their previous metadata. Only a successfully enumerated scan removes files that are actually gone.
+Rescans run as unique, foreground WorkManager jobs per source and therefore continue while navigating through the app or while the app is in the background. Android can restart an interrupted job after process termination. Progress is restored when the Sources screen is opened again, and duplicate requests for the same source are coalesced.
+
+Scans use persistent staging tables. A fatal error or cancellation keeps the previous source library unchanged; unreadable individual files retain their previous metadata. Only a successfully enumerated scan removes files that are actually gone. Explicitly force-stopping the app pauses Android background work until the app is opened again.
 
 ## Backup and restore
 

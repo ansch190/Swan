@@ -171,6 +171,9 @@
     <string name="settings_scan_success_warnings">Scanned "%1$s": %2$d files; %3$d unreadable files kept their previous data.</string>
     <string name="settings_scan_failed_retained">Could not scan "%1$s". Its existing library was kept unchanged.</string>
     <string name="settings_scanning">Scanning \"%1$s\": %2$d of %3$d</string>
+    <string name="scan_notification_channel">Library scans</string>
+    <string name="scan_notification_title">Scanning music source</string>
+    <string name="scan_notification_text">Scanning \"%1$s\" in the background</string>
     <string name="settings_local_section">Local</string>
     <string name="settings_network_section">Network</string>
     <string name="settings_reload_all">Reload All</string>
