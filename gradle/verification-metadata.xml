@@ -3,6 +3,11 @@
    <configuration>
       <verify-metadata>true</verify-metadata>
       <verify-signatures>false</verify-signatures>
+      <trusted-artifacts>
+         <!-- Android Studio resolves IDE-only source attachments through detached
+              configurations. They are not placed on any build or runtime classpath. -->
+         <trust file=".*-sources\.jar" regex="true" reason="IDE source attachment; non-executable build input"/>
+      </trusted-artifacts>
    </configuration>
    <components>
       <component group="androidx.activity" name="activity" version="1.13.0">
