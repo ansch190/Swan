@@ -93,6 +93,12 @@ interface SongDao {
     @Query("DELETE FROM songs WHERE sourceId = :sourceId")
     suspend fun deleteBySource(sourceId: String)
 
+    @Query("SELECT * FROM songs WHERE sourceId = :sourceId")
+    suspend fun getEntitiesBySource(sourceId: String): List<com.schwanitz.data.local.entity.SongEntity>
+
+    @Query("DELETE FROM songs WHERE id IN (:songIds)")
+    suspend fun deleteByIds(songIds: List<String>)
+
     @Query("UPDATE songs SET isActive = :active WHERE sourceId = :sourceId")
     suspend fun setActiveBySource(sourceId: String, active: Boolean)
 

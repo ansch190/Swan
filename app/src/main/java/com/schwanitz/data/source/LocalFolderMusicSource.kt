@@ -6,7 +6,10 @@ import androidx.documentfile.provider.DocumentFile
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.source.LoadSongsResult
+import com.schwanitz.domain.source.AlbumKey
+import com.schwanitz.domain.source.ScanBatch
+import com.schwanitz.domain.source.ScanEvent
+import com.schwanitz.domain.source.ScanSummary
 import com.schwanitz.domain.source.MusicSource
 import com.schwanitz.domain.source.SourceConfig
 import com.schwanitz.domain.source.SourceType
@@ -27,22 +30,27 @@ class LocalFolderMusicSource @Inject constructor(
     override suspend fun loadSongs(
         config: SourceConfig,
         onProgress: (Int, Int) -> Unit,
-        onBatch: suspend (LoadSongsResult) -> Unit
-    ): LoadSongsResult = withContext(Dispatchers.IO) {
-        val treeUri = Uri.parse(config.folderUri ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap()))
-        val documentFile = DocumentFile.fromTreeUri(context, treeUri) ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
+        onEvent: suspend (ScanEvent) -> Unit
+    ): ScanSummary = withContext(Dispatchers.IO) {
+        val treeUri = Uri.parse(requireNotNull(config.folderUri) { "Local source has no folder URI" })
+        val documentFile = requireNotNull(DocumentFile.fromTreeUri(context, treeUri)) { "Cannot access local source folder" }
+        require(documentFile.canRead()) { "Local source folder is not readable" }
 
         val audioUris = mutableListOf<Uri>()
         collectAudioFiles(documentFile, audioUris)
+        val uniqueAudioUris = audioUris.distinctBy(Uri::toString)
+        uniqueAudioUris.map(Uri::toString).chunked(BATCH_SIZE).forEach {
+            onEvent(ScanEvent.Discovered(it))
+        }
 
-        val total = audioUris.size
+        val total = uniqueAudioUris.size
         val songs = mutableListOf<Song>()
-        val albumMap = mutableMapOf<String, Album>()
-        val albumArtworkMap = mutableMapOf<String, MutableList<AlbumArtwork>>()
+        val albumMap = mutableMapOf<AlbumKey, Album>()
+        val albumArtworkMap = mutableMapOf<AlbumKey, MutableList<AlbumArtwork>>()
         val albumArtworkCache = mutableMapOf<String, List<ArtworkResult>>()
 
         Timber.d("Starting scan: %d files", total)
-        audioUris.forEachIndexed { index, uri ->
+        uniqueAudioUris.forEachIndexed { index, uri ->
             val t0 = System.currentTimeMillis()
             onProgress(index + 1, total)
 
@@ -65,7 +73,7 @@ class LocalFolderMusicSource @Inject constructor(
                     if (result.song != null) {
                         Timber.d("[%d/%d] '%s' OK (%dms)", index + 1, total, result.song.title, totalMs)
 
-                        val albumKey = "${result.song.albumArtistName}|${result.song.albumName}|${result.song.year}"
+                        val albumKey = AlbumKey(result.song.albumName, result.song.albumArtistName, result.song.year)
                         if (albumKey !in albumMap) {
                             val albumEntry = Album(
                                 name = result.song.albumName,
@@ -107,9 +115,18 @@ class LocalFolderMusicSource @Inject constructor(
         val albums = albumMap.values.toList()
         val allArtworks = albumArtworkMap.toMap()
         Timber.d("Scan complete: %d/%d songs, %d albums, %d artworks", songs.size, total, albums.size, allArtworks.values.sumOf { it.size })
-
-        LoadSongsResult(songs, albums, allArtworks)
+        songs.chunked(BATCH_SIZE).forEach { songBatch ->
+            val keys = songBatch.map { AlbumKey(it.albumName, it.albumArtistName, it.year) }.toSet()
+            onEvent(ScanEvent.Parsed(ScanBatch(
+                songs = songBatch,
+                albums = keys.mapNotNull(albumMap::get),
+                artworks = allArtworks.filterKeys { it in keys }
+            )))
+        }
+        ScanSummary(total, songs.size, uniqueAudioUris.map(Uri::toString).toSet() - songs.map { it.id }.toSet())
     }
+
+    private companion object { const val BATCH_SIZE = 100 }
 
     private fun collectAudioFiles(dir: DocumentFile, result: MutableList<Uri>) {
         val files = dir.listFiles()

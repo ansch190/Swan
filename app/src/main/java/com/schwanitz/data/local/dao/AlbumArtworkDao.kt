@@ -14,6 +14,9 @@ interface AlbumArtworkDao {
     @Upsert
     suspend fun upsertAll(artworks: List<AlbumArtworkEntity>)
 
+    @Query("DELETE FROM album_artwork WHERE albumId IN (:albumIds)")
+    suspend fun deleteByAlbumIds(albumIds: List<Long>)
+
     @Query("SELECT uriLarge FROM album_artwork")
     suspend fun getAllLargeUris(): List<String>
 

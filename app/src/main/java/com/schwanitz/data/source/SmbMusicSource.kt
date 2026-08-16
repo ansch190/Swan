@@ -10,7 +10,10 @@ import com.schwanitz.data.source.smb.SmbConnectionManager
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.source.LoadSongsResult
+import com.schwanitz.domain.source.AlbumKey
+import com.schwanitz.domain.source.ScanBatch
+import com.schwanitz.domain.source.ScanEvent
+import com.schwanitz.domain.source.ScanSummary
 import com.schwanitz.domain.source.MusicSource
 import com.schwanitz.domain.source.SourceConfig
 import com.schwanitz.domain.source.SourceType
@@ -55,39 +58,37 @@ class SmbMusicSource @Inject constructor(
     override suspend fun loadSongs(
         config: SourceConfig,
         onProgress: (Int, Int) -> Unit,
-        onBatch: suspend (LoadSongsResult) -> Unit
-    ): LoadSongsResult = withContext(Dispatchers.IO) {
+        onEvent: suspend (ScanEvent) -> Unit
+    ): ScanSummary = withContext(Dispatchers.IO) {
         val host = config.url?.trimEnd('/')
-            ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
+            ?: error("SMB source has no host")
         val sharePath = config.path?.trim('/')
-            ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
+            ?: error("SMB source has no share path")
         val shareName = sharePath.substringBefore('/')
         val subPath = sharePath.substringAfter('/', "").let { if (it.isNotEmpty()) "/$it" else "" }
         val username = config.username ?: ""
         val password = config.password ?: ""
 
-        val audioEntries = try {
-            collectAudioFiles(host, shareName, subPath, username, password)
-        } catch (e: Exception) {
-            Timber.e(e, "SMB enumeration failed for %s/%s", host, sharePath)
-            emptyList()
+        val audioEntries = collectAudioFiles(host, shareName, subPath, username, password).distinctBy { it.smbUri }
+        audioEntries.map { it.smbUri }.chunked(BATCH_SIZE).forEach {
+            onEvent(ScanEvent.Discovered(it))
         }
         val total = audioEntries.size
         Timber.i("SMB enumeration complete: %d audio files found", total)
 
         if (audioEntries.isEmpty()) {
             connectionManager.closeAll()
-            return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
+            return@withContext ScanSummary(0, 0)
         }
 
         val albumArtworkCache = ConcurrentHashMap<String, List<ArtworkResult>>()
         var batchSongs = mutableListOf<Song>()
-        var batchAlbums = mutableMapOf<String, Album>()
-        var batchArtworks = mutableMapOf<String, MutableList<AlbumArtwork>>()
+        var batchAlbums = mutableMapOf<AlbumKey, Album>()
+        var batchArtworks = mutableMapOf<AlbumKey, MutableList<AlbumArtwork>>()
         val semaphore = Semaphore(CONCURRENCY)
 
         Timber.i("Starting metadata extraction for %d files (concurrency=%d)", total, CONCURRENCY)
-        val failedPaths = mutableSetOf<String>()
+        val failedPaths = ConcurrentHashMap.newKeySet<String>()
 
         var results = coroutineScope {
             audioEntries.mapIndexed { index, entry ->
@@ -136,7 +137,7 @@ class SmbMusicSource @Inject constructor(
         for (result in results) {
             if (result.song != null) {
                 successCount++
-                val albumKey = "${result.song.albumArtistName}|${result.song.albumName}"
+                val albumKey = AlbumKey(result.song.albumName, result.song.albumArtistName, result.song.year)
                 if (albumKey !in batchAlbums) {
                     batchAlbums[albumKey] = Album(
                         name = result.song.albumName,
@@ -164,7 +165,7 @@ class SmbMusicSource @Inject constructor(
 
                 if (successCount % BATCH_SIZE == 0 && batchSongs.isNotEmpty()) {
                     Timber.d("Flushing batch of %d songs", batchSongs.size)
-                    onBatch(LoadSongsResult(batchSongs.toList(), batchAlbums.values.toList(), batchArtworks.toMap()))
+                    onEvent(ScanEvent.Parsed(ScanBatch(batchSongs.toList(), batchAlbums.values.toList(), batchArtworks.toMap())))
                     batchSongs = mutableListOf()
                     batchAlbums = mutableMapOf()
                     batchArtworks = mutableMapOf()
@@ -175,12 +176,13 @@ class SmbMusicSource @Inject constructor(
         }
 
         if (batchSongs.isNotEmpty()) {
-            onBatch(LoadSongsResult(batchSongs, batchAlbums.values.toList(), batchArtworks.toMap()))
+            onEvent(ScanEvent.Parsed(ScanBatch(batchSongs, batchAlbums.values.toList(), batchArtworks.toMap())))
         }
 
         connectionManager.closeAll()
         Timber.i("SMB scan: %d enumerated, %d OK, %d FAILED", total, successCount, failCount)
-        LoadSongsResult(emptyList(), emptyList(), emptyMap())
+        val successfulIds = results.mapNotNull { it.song?.id }.toSet()
+        ScanSummary(total, successfulIds.size, audioEntries.map { it.smbUri }.toSet() - successfulIds)
     }
 
     private suspend fun collectAudioFiles(
@@ -222,6 +224,10 @@ class SmbMusicSource @Inject constructor(
                 Timber.w("%d directories still failing after retry", retryFailedDirs.size)
             }
             failedDirs = retryFailedDirs
+        }
+
+        if (failedDirs.isNotEmpty()) {
+            throw IOException("SMB enumeration incomplete for ${failedDirs.size} directories")
         }
 
         result

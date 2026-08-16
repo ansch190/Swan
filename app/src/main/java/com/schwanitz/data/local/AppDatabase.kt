@@ -13,6 +13,7 @@ import com.schwanitz.data.local.dao.SongDao
 import com.schwanitz.data.local.dao.SongLyricsDao
 import com.schwanitz.data.local.dao.SongTechnicalInfoDao
 import com.schwanitz.data.local.dao.SourceConfigDao
+import com.schwanitz.data.local.dao.ScanDao
 import com.schwanitz.data.local.entity.AlbumArtworkEntity
 import com.schwanitz.data.local.entity.AlbumEntity
 import com.schwanitz.data.local.entity.AlbumSeriesEntity
@@ -27,6 +28,10 @@ import com.schwanitz.data.local.entity.SongLyricsEntity
 import com.schwanitz.data.local.entity.SongTechnicalInfoEntity
 import com.schwanitz.data.local.entity.SourceConfigEntity
 import com.schwanitz.data.local.entity.SongWithNames
+import com.schwanitz.data.local.entity.ScanArtworkEntity
+import com.schwanitz.data.local.entity.ScanDiscoveredEntity
+import com.schwanitz.data.local.entity.ScanSessionEntity
+import com.schwanitz.data.local.entity.ScanSongEntity
 
 @Database(
     entities = [
@@ -42,10 +47,14 @@ import com.schwanitz.data.local.entity.SongWithNames
         AlbumEntity::class,
         AlbumArtworkEntity::class,
         SongTechnicalInfoEntity::class,
-        AlbumSongMappingEntity::class
+        AlbumSongMappingEntity::class,
+        ScanSessionEntity::class,
+        ScanDiscoveredEntity::class,
+        ScanSongEntity::class,
+        ScanArtworkEntity::class
     ],
     views = [SongWithNames::class],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -60,4 +69,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun albumSeriesDao(): AlbumSeriesDao
     abstract fun albumSongDao(): AlbumSongDao
     abstract fun songTechnicalInfoDao(): SongTechnicalInfoDao
+    abstract fun scanDao(): ScanDao
 }

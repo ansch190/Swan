@@ -5,6 +5,6 @@ interface MusicSource {
     suspend fun loadSongs(
         config: SourceConfig,
         onProgress: (scanned: Int, total: Int) -> Unit = { _, _ -> },
-        onBatch: suspend (LoadSongsResult) -> Unit = { }
-    ): LoadSongsResult
+        onEvent: suspend (ScanEvent) -> Unit = { }
+    ): ScanSummary
 }

@@ -1,28 +1,25 @@
 package com.schwanitz.data.repository
 
 import android.content.Context
-import com.schwanitz.data.local.dao.AlbumArtworkDao
-import com.schwanitz.data.local.dao.AlbumDao
-import com.schwanitz.data.local.dao.AlbumSeriesDao
-import com.schwanitz.data.local.dao.AlbumSongDao
-import com.schwanitz.data.local.dao.ArtistDao
-import com.schwanitz.data.local.dao.ArtistPicDao
-import com.schwanitz.data.local.dao.SongDao
-import com.schwanitz.data.local.dao.SongTechnicalInfoDao
-import com.schwanitz.data.local.converter.toEntity
-import com.schwanitz.data.local.converter.toMappingEntity
-import com.schwanitz.data.local.converter.toTechnicalInfoEntity
-import com.schwanitz.data.local.entity.ArtistEntity
+import androidx.room.withTransaction
+import com.schwanitz.data.local.AppDatabase
+import com.schwanitz.data.local.dao.*
+import com.schwanitz.data.local.entity.*
 import com.schwanitz.data.source.ArtistImageCache
+import com.schwanitz.data.source.ArtworkCache
 import com.schwanitz.data.source.SeriesDetector
-import com.schwanitz.domain.source.LoadSongsResult
+import com.schwanitz.domain.source.AlbumKey
+import com.schwanitz.domain.source.ScanEvent
+import com.schwanitz.domain.source.ScanSummary
 import dagger.hilt.android.qualifiers.ApplicationContext
-import timber.log.Timber
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ScanOrchestrator @Inject constructor(
+    private val database: AppDatabase,
+    private val scanDao: ScanDao,
     private val songDao: SongDao,
     private val albumDao: AlbumDao,
     private val albumArtworkDao: AlbumArtworkDao,
@@ -33,100 +30,153 @@ class ScanOrchestrator @Inject constructor(
     private val albumSeriesDao: AlbumSeriesDao,
     @ApplicationContext private val context: Context
 ) {
-    suspend fun persistScanResult(result: LoadSongsResult) {
-        val artistNameToId = mutableMapOf<String, Long>()
-
-        suspend fun resolveArtistId(name: String): Long? {
-            if (name.isBlank()) return null
-            return artistNameToId.getOrPut(name) {
-                val existing = artistDao.findByName(name)
-                existing?.id ?: artistDao.upsert(ArtistEntity(name = name))
-            }
+    suspend fun beginScan(sourceId: String): String {
+        scanDao.deleteSessionsForSource(sourceId)
+        return UUID.randomUUID().toString().also { id ->
+            scanDao.insertSession(ScanSessionEntity(id, sourceId, System.currentTimeMillis()))
         }
-
-        val albumEntities = result.albums.map { it.toEntity() }
-        val upsertedAlbums = mutableListOf<Pair<String, Long>>()
-        val artworkKeyId = mutableMapOf<String, Long>()
-        for (albumEntity in albumEntities) {
-            val existing = albumDao.findByNameAndAlbumArtist(albumEntity.name, albumEntity.albumArtist)
-            val albumId = if (existing != null) {
-                albumDao.upsert(albumEntity.copy(id = existing.id))
-                existing.id
-            } else {
-                albumDao.upsert(albumEntity)
-            }
-            upsertedAlbums.add("${albumEntity.name}|${albumEntity.albumArtist}" to albumId)
-            artworkKeyId["${albumEntity.albumArtist}|${albumEntity.name}"] = albumId
-        }
-
-        val songEntities = mutableListOf<com.schwanitz.data.local.entity.SongEntity>()
-        val mappingEntities = mutableListOf<com.schwanitz.data.local.entity.AlbumSongMappingEntity>()
-        for (song in result.songs) {
-            val artistId = resolveArtistId(song.artistName)
-            val albumKey = "${song.albumName}|${song.albumArtistName}"
-            val albumId = upsertedAlbums.firstOrNull { it.first == albumKey }?.second
-            songEntities.add(
-                song.toEntity().copy(
-                    isActive = true,
-                    artistId = artistId
-                )
-            )
-            if (albumId != null) {
-                mappingEntities.add(song.toMappingEntity(albumId))
-            }
-        }
-        songDao.upsertAll(songEntities)
-        albumSongDao.upsertAll(mappingEntities)
-
-        val technicalInfoEntities = result.songs.map { it.toTechnicalInfoEntity() }
-        songTechnicalInfoDao.upsertAll(technicalInfoEntities)
-
-        val artworkEntities = result.artworks.flatMap { (albumKey, artworks) ->
-            val realAlbumId = artworkKeyId[albumKey] ?: run {
-                Timber.w("Artwork key '%s' not found in DB (available: %s)", albumKey, artworkKeyId.keys.joinToString())
-                return@flatMap emptyList()
-            }
-            artworks.map { it.copy(albumId = realAlbumId).toEntity() }
-        }
-        Timber.d("Persisting %d artwork entities", artworkEntities.size)
-        albumArtworkDao.upsertAll(artworkEntities)
     }
 
-    suspend fun refreshAlbumSeries() {
-        val activeAlbums = songDao.getAllActiveAlbums()
-        val albumNameToId = activeAlbums.associate { it.albumName to it.albumId }
-        val albumNames = activeAlbums.map { it.albumName }.toSet()
-        val detected = SeriesDetector.detectSeries(albumNames)
-        albumSeriesDao.replaceAllSeries(detected.map { result ->
-            com.schwanitz.data.local.dao.SeriesInput(
-                seriesName = result.seriesName,
-                volumes = result.volumes.map { vol ->
-                    com.schwanitz.data.local.dao.SeriesVolume(
-                        albumId = albumNameToId[vol.albumName] ?: 0L,
-                        volumeNumber = vol.volumeNumber
+    suspend fun stageEvent(sessionId: String, event: ScanEvent) {
+        when (event) {
+            is ScanEvent.Discovered -> scanDao.insertDiscovered(
+                event.songIds.distinct().map { ScanDiscoveredEntity(sessionId, it) }
+            )
+            is ScanEvent.Parsed -> {
+                scanDao.insertSongs(event.batch.songs.map { song ->
+                    ScanSongEntity(
+                        sessionId, song.id, song.title, song.artistName, song.albumName,
+                        song.albumArtistName, song.durationMs, song.sourceId, song.discNumber,
+                        song.trackNumber, song.year, song.genre, song.mimeType, song.sampleRate,
+                        song.bitrate, song.fileSize, song.tagVersion
+                    )
+                })
+                scanDao.insertArtworks(event.batch.artworks.flatMap { (key, artworks) ->
+                    artworks.map { artwork ->
+                        ScanArtworkEntity(
+                            sessionId, key.name, key.albumArtist, key.year,
+                            artwork.sortOrder, artwork.uriLarge, artwork.uriSmall
+                        )
+                    }
+                })
+            }
+        }
+    }
+
+    suspend fun commitScan(sessionId: String, sourceId: String, sourceActive: Boolean, summary: ScanSummary) {
+        database.withTransaction {
+            val stagedSongs = scanDao.getSongs(sessionId)
+            val discoveredIds = scanDao.getDiscoveredIds(sessionId).toSet()
+            require(discoveredIds.size == summary.total) {
+                "Incomplete scan enumeration: staged=${discoveredIds.size}, reported=${summary.total}"
+            }
+            require(stagedSongs.size == summary.succeeded) {
+                "Incomplete scan data: staged=${stagedSongs.size}, reported=${summary.succeeded}"
+            }
+
+            val existing = songDao.getEntitiesBySource(sourceId).associateBy { it.id }
+            val artistIds = mutableMapOf<String, Long>()
+            suspend fun resolveArtistId(name: String): Long? {
+                if (name.isBlank()) return null
+                return artistIds.getOrPut(name) {
+                    artistDao.findByName(name)?.id ?: artistDao.upsert(ArtistEntity(name = name))
+                }
+            }
+
+            val albumIds = mutableMapOf<AlbumKey, Long>()
+            for (song in stagedSongs) {
+                val key = AlbumKey(song.albumName, song.albumArtist, song.year)
+                if (key !in albumIds) {
+                    val found = albumDao.findByIdentity(key.name, key.albumArtist, key.year)
+                    albumIds[key] = found?.id ?: albumDao.upsert(
+                        AlbumEntity(name = key.name, albumArtist = key.albumArtist, year = key.year)
                     )
                 }
-            )
+            }
+
+            val successfulIds = stagedSongs.map { it.songId }
+            successfulIds.chunked(SQL_BATCH_SIZE).forEach { albumSongDao.deleteBySongIds(it) }
+            songDao.upsertAll(stagedSongs.map { song ->
+                SongEntity(
+                    id = song.songId,
+                    title = song.title,
+                    artistId = resolveArtistId(song.artistName),
+                    durationMs = song.durationMs,
+                    sourceId = sourceId,
+                    isFavorite = existing[song.songId]?.isFavorite ?: false,
+                    isActive = sourceActive,
+                    genre = song.genre,
+                    tagVersion = song.tagVersion
+                )
+            })
+            albumSongDao.upsertAll(stagedSongs.mapNotNull { song ->
+                albumIds[AlbumKey(song.albumName, song.albumArtist, song.year)]?.let { albumId ->
+                    AlbumSongMappingEntity(song.songId, albumId, song.trackNumber, song.discNumber)
+                }
+            })
+            songTechnicalInfoDao.upsertAll(stagedSongs.map { song ->
+                SongTechnicalInfoEntity(song.songId, song.fileSize, song.bitrate, song.sampleRate, song.mimeType)
+            })
+
+            val artworkRows = scanDao.getArtworks(sessionId)
+            val artworkAlbumIds = artworkRows.mapNotNull {
+                albumIds[AlbumKey(it.albumName, it.albumArtist, it.year)]
+            }.distinct()
+            artworkAlbumIds.chunked(SQL_BATCH_SIZE).forEach { albumArtworkDao.deleteByAlbumIds(it) }
+            albumArtworkDao.upsertAll(artworkRows.mapNotNull { artwork ->
+                albumIds[AlbumKey(artwork.albumName, artwork.albumArtist, artwork.year)]?.let { albumId ->
+                    AlbumArtworkEntity(albumId, artwork.sortOrder, artwork.uriLarge, artwork.uriSmall)
+                }
+            })
+
+            val removedIds = existing.keys - discoveredIds
+            removedIds.chunked(SQL_BATCH_SIZE).forEach { songDao.deleteByIds(it) }
+            albumDao.deleteOrphaned()
+            artistDao.deleteOrphaned()
+            refreshAlbumSeriesInDatabase()
+            scanDao.deleteSession(sessionId)
+        }
+        cleanupOrphanedArtworkFiles()
+        cleanupOrphanedArtistFiles()
+    }
+
+    suspend fun abortScan(sessionId: String) = scanDao.deleteSession(sessionId)
+
+    suspend fun refreshAlbumSeries() = database.withTransaction { refreshAlbumSeriesInDatabase() }
+
+    private suspend fun refreshAlbumSeriesInDatabase() {
+        val activeAlbums = songDao.getAllActiveAlbums()
+        val albumIdsByName = activeAlbums.groupBy({ it.albumName }, { it.albumId })
+        val detected = SeriesDetector.detectSeries(activeAlbums.map { it.albumName }.toSet())
+        albumSeriesDao.replaceAllSeries(detected.map { result ->
+            SeriesInput(result.seriesName, result.volumes.flatMap { volume ->
+                albumIdsByName[volume.albumName].orEmpty().map { albumId ->
+                    SeriesVolume(albumId, volume.volumeNumber)
+                }
+            })
         })
     }
 
     suspend fun cleanupOrphanedArtists() {
         artistDao.deleteOrphaned()
-        val usedSmallUris = artistPicDao.getAllSmallUris().toSet()
-        val usedLargeUris = artistPicDao.getAllLargeUris().toSet()
-        val usedUris = usedSmallUris + usedLargeUris
-        ArtistImageCache.deleteUnreferenced(context, usedUris)
+        cleanupOrphanedArtistFiles()
+    }
+
+    private suspend fun cleanupOrphanedArtistFiles() {
+        ArtistImageCache.deleteUnreferenced(
+            context,
+            (artistPicDao.getAllSmallUris() + artistPicDao.getAllLargeUris()).toSet()
+        )
     }
 
     suspend fun cleanupOrphanedArtworkFiles() {
-        val usedUris = (
-            albumArtworkDao.getAllLargeUris() +
-            albumArtworkDao.getAllSmallUris()
-        ).toSet()
-        com.schwanitz.data.source.ArtworkCache.deleteUnused(context, usedUris)
+        ArtworkCache.deleteUnused(
+            context,
+            (albumArtworkDao.getAllLargeUris() + albumArtworkDao.getAllSmallUris()).toSet()
+        )
     }
 
-    suspend fun deleteOrphanedAlbums() {
-        albumDao.deleteOrphaned()
-    }
+    suspend fun deleteOrphanedAlbums() = albumDao.deleteOrphaned()
+
+    private companion object { const val SQL_BATCH_SIZE = 500 }
 }

@@ -76,7 +76,73 @@ object Migrations {
         }
     }
 
-    val all = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""
+                INSERT OR IGNORE INTO album_song_mapping (songId, albumId, trackNumber, discNumber)
+                SELECT m.songId,
+                    (SELECT MIN(a2.id) FROM albums a2
+                     WHERE a2.name = a.name AND a2.albumArtist = a.albumArtist AND a2.year = a.year),
+                    m.trackNumber, m.discNumber
+                FROM album_song_mapping m
+                INNER JOIN albums a ON a.id = m.albumId
+                WHERE m.albumId != (SELECT MIN(a2.id) FROM albums a2
+                    WHERE a2.name = a.name AND a2.albumArtist = a.albumArtist AND a2.year = a.year)
+            """.trimIndent())
+            db.execSQL("""
+                INSERT OR IGNORE INTO album_artwork (albumId, sortOrder, uriLarge, uriSmall)
+                SELECT (SELECT MIN(a2.id) FROM albums a2
+                        WHERE a2.name = a.name AND a2.albumArtist = a.albumArtist AND a2.year = a.year),
+                    aw.sortOrder, aw.uriLarge, aw.uriSmall
+                FROM album_artwork aw
+                INNER JOIN albums a ON a.id = aw.albumId
+                WHERE aw.albumId != (SELECT MIN(a2.id) FROM albums a2
+                    WHERE a2.name = a.name AND a2.albumArtist = a.albumArtist AND a2.year = a.year)
+            """.trimIndent())
+            db.execSQL("""
+                UPDATE album_series_mapping
+                SET albumId = (SELECT MIN(a2.id) FROM albums a2
+                    WHERE a2.name = (SELECT name FROM albums WHERE id = album_series_mapping.albumId)
+                      AND a2.albumArtist = (SELECT albumArtist FROM albums WHERE id = album_series_mapping.albumId)
+                      AND a2.year = (SELECT year FROM albums WHERE id = album_series_mapping.albumId))
+            """.trimIndent())
+            db.execSQL("""
+                DELETE FROM albums WHERE id NOT IN (
+                    SELECT MIN(id) FROM albums GROUP BY name, albumArtist, year
+                )
+            """.trimIndent())
+            db.execSQL("DROP INDEX IF EXISTS index_albums_name_albumArtist_year")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_albums_identity ON albums(name, albumArtist, year)")
+
+            db.execSQL("CREATE TABLE IF NOT EXISTS scan_sessions (`id` TEXT NOT NULL, `sourceId` TEXT NOT NULL, `startedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS scan_discovered (`sessionId` TEXT NOT NULL, `songId` TEXT NOT NULL, PRIMARY KEY(`sessionId`, `songId`), FOREIGN KEY(`sessionId`) REFERENCES `scan_sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_scan_discovered_sessionId ON scan_discovered(sessionId)")
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS scan_songs (
+                    `sessionId` TEXT NOT NULL, `songId` TEXT NOT NULL, `title` TEXT NOT NULL,
+                    `artistName` TEXT NOT NULL, `albumName` TEXT NOT NULL, `albumArtist` TEXT NOT NULL,
+                    `durationMs` INTEGER NOT NULL, `sourceId` TEXT NOT NULL, `discNumber` INTEGER NOT NULL,
+                    `trackNumber` INTEGER NOT NULL, `year` INTEGER NOT NULL, `genre` TEXT NOT NULL,
+                    `mimeType` TEXT NOT NULL, `sampleRate` INTEGER NOT NULL, `bitrate` INTEGER NOT NULL,
+                    `fileSize` INTEGER NOT NULL, `tagVersion` TEXT NOT NULL,
+                    PRIMARY KEY(`sessionId`, `songId`),
+                    FOREIGN KEY(`sessionId`) REFERENCES `scan_sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+            """.trimIndent())
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_scan_songs_sessionId ON scan_songs(sessionId)")
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS scan_artworks (
+                    `sessionId` TEXT NOT NULL, `albumName` TEXT NOT NULL, `albumArtist` TEXT NOT NULL,
+                    `year` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, `uriLarge` TEXT NOT NULL,
+                    `uriSmall` TEXT, PRIMARY KEY(`sessionId`, `albumName`, `albumArtist`, `year`, `sortOrder`),
+                    FOREIGN KEY(`sessionId`) REFERENCES `scan_sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+            """.trimIndent())
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_scan_artworks_sessionId ON scan_artworks(sessionId)")
+        }
+    }
+
+    val all = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
     fun migrateCredentialsToEncryptedStore(context: Context, store: CredentialStore) {
         val dbPath = context.getDatabasePath("music_player_db")

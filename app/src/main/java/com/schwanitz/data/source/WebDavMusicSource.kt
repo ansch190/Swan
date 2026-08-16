@@ -5,7 +5,10 @@ import com.schwanitz.R
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.AlbumArtwork
 import com.schwanitz.domain.model.Song
-import com.schwanitz.domain.source.LoadSongsResult
+import com.schwanitz.domain.source.AlbumKey
+import com.schwanitz.domain.source.ScanBatch
+import com.schwanitz.domain.source.ScanEvent
+import com.schwanitz.domain.source.ScanSummary
 import com.schwanitz.domain.source.MusicSource
 import com.schwanitz.domain.source.SourceConfig
 import com.schwanitz.domain.source.SourceType
@@ -74,31 +77,34 @@ class WebDavMusicSource @Inject constructor(
     override suspend fun loadSongs(
         config: SourceConfig,
         onProgress: (Int, Int) -> Unit,
-        onBatch: suspend (LoadSongsResult) -> Unit
-    ): LoadSongsResult = withContext(Dispatchers.IO) {
-        val baseUrl = config.url?.trimEnd('/') ?: return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
+        onEvent: suspend (ScanEvent) -> Unit
+    ): ScanSummary = withContext(Dispatchers.IO) {
+        val baseUrl = requireNotNull(config.url?.trimEnd('/')) { "WebDAV source has no URL" }
         val username = config.username
         val password = config.password
 
         val rawPath = config.path?.let { "/${it.trimStart('/')}" } ?: "/"
         val startUrl = if (rawPath.startsWith("http")) rawPath else "$baseUrl$rawPath"
 
-        val audioEntries = collectAudioFiles(baseUrl, username, password, startUrl)
+        val audioEntries = collectAudioFiles(baseUrl, username, password, startUrl).distinctBy { it.first }
+        audioEntries.map { it.first }.chunked(BATCH_SIZE).forEach {
+            onEvent(ScanEvent.Discovered(it))
+        }
         val total = audioEntries.size
         Timber.e("WebDAV enumeration complete: %d audio files found", total)
 
         if (audioEntries.isEmpty()) {
-            return@withContext LoadSongsResult(emptyList(), emptyList(), emptyMap())
+            return@withContext ScanSummary(0, 0)
         }
 
         val albumArtworkCache = ConcurrentHashMap<String, List<ArtworkResult>>()
         var batchSongs = mutableListOf<Song>()
-        var batchAlbums = mutableMapOf<String, Album>()
-        var batchArtworks = mutableMapOf<String, MutableList<AlbumArtwork>>()
+        var batchAlbums = mutableMapOf<AlbumKey, Album>()
+        var batchArtworks = mutableMapOf<AlbumKey, MutableList<AlbumArtwork>>()
         val semaphore = Semaphore(CONCURRENCY)
 
         Timber.e("Starting metadata extraction for %d files (concurrency=%d)", total, CONCURRENCY)
-        val failedUrls = mutableSetOf<String>()
+        val failedUrls = ConcurrentHashMap.newKeySet<String>()
 
         var results = coroutineScope {
             audioEntries.mapIndexed { index, (url, fileSize) ->
@@ -147,7 +153,7 @@ class WebDavMusicSource @Inject constructor(
         for (result in results) {
             if (result.song != null) {
                 successCount++
-                val albumKey = "${result.song.albumArtistName}|${result.song.albumName}"
+                val albumKey = AlbumKey(result.song.albumName, result.song.albumArtistName, result.song.year)
                 if (albumKey !in batchAlbums) {
                     val albumEntry = Album(
                         name = result.song.albumName,
@@ -177,7 +183,7 @@ class WebDavMusicSource @Inject constructor(
 
                 if (successCount % BATCH_SIZE == 0 && batchSongs.isNotEmpty()) {
                     Timber.d("Flushing batch of %d songs", batchSongs.size)
-                    onBatch(LoadSongsResult(batchSongs.toList(), batchAlbums.values.toList(), batchArtworks.toMap()))
+                    onEvent(ScanEvent.Parsed(ScanBatch(batchSongs.toList(), batchAlbums.values.toList(), batchArtworks.toMap())))
                     batchSongs = mutableListOf()
                     batchAlbums = mutableMapOf()
                     batchArtworks = mutableMapOf()
@@ -189,7 +195,7 @@ class WebDavMusicSource @Inject constructor(
 
         if (batchSongs.isNotEmpty()) {
             Timber.d("Flushing final batch of %d songs", batchSongs.size)
-            onBatch(LoadSongsResult(batchSongs, batchAlbums.values.toList(), batchArtworks.toMap()))
+            onEvent(ScanEvent.Parsed(ScanBatch(batchSongs, batchAlbums.values.toList(), batchArtworks.toMap())))
         }
 
         if (failCount > 0) {
@@ -198,7 +204,8 @@ class WebDavMusicSource @Inject constructor(
             Timber.e("WebDAV scan: %d files enumerated, %d songs OK", total, successCount)
         }
 
-        LoadSongsResult(emptyList(), emptyList(), emptyMap())
+        val successfulIds = results.mapNotNull { it.song?.id }.toSet()
+        ScanSummary(total, successfulIds.size, audioEntries.map { it.first }.toSet() - successfulIds)
     }
 
     private suspend fun collectAudioFiles(
@@ -226,6 +233,9 @@ class WebDavMusicSource @Inject constructor(
             }
             for (p in failedPaths) {
                 Timber.e("PROPFIND permanently failed for %s — files in this subtree are missing", p)
+            }
+            if (failedPaths.isNotEmpty()) {
+                throw IOException("WebDAV enumeration incomplete for ${failedPaths.size} directories")
             }
             firstPass + retryFiles
         } else {

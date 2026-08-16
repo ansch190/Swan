@@ -17,6 +17,7 @@ import com.schwanitz.data.local.dao.SongDao
 import com.schwanitz.data.local.dao.SongLyricsDao
 import com.schwanitz.data.local.dao.SongTechnicalInfoDao
 import com.schwanitz.data.local.dao.SourceConfigDao
+import com.schwanitz.data.local.dao.ScanDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -74,4 +75,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSongTechnicalInfoDao(db: AppDatabase): SongTechnicalInfoDao = db.songTechnicalInfoDao()
+
+    @Provides
+    fun provideScanDao(db: AppDatabase): ScanDao = db.scanDao()
 }

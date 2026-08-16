@@ -1,9 +1,11 @@
 package com.schwanitz.data.repository
 
-import com.schwanitz.domain.repository.SongLyricsRepository
-import com.schwanitz.domain.repository.SongRepository
-import com.schwanitz.domain.repository.SourceLifecycleManager
-import com.schwanitz.domain.repository.SourceManager
+import com.schwanitz.domain.error.AppError
+import com.schwanitz.domain.repository.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,39 +19,69 @@ class SourceLifecycleManagerImpl @Inject constructor(
     private val scanOrchestrator: ScanOrchestrator
 ) : SourceLifecycleManager {
 
-    override suspend fun refreshSource(sourceId: String, onProgress: (Int, Int) -> Unit) {
-        Timber.d("refreshSource started for %s", sourceId)
-        val config = sourceManager.getSourceById(sourceId) ?: run {
-            Timber.e("Config not found for %s", sourceId)
-            return
-        }
-        val source = sourceRegistry.get(config.type) ?: run {
-            Timber.e("Source registry returned null for %s", config.type)
-            return
-        }
-        Timber.d("Loading songs from source...")
-        songLyricsRepository.deleteBySource(sourceId)
-        songRepository.deleteBySource(sourceId)
-        scanOrchestrator.deleteOrphanedAlbums()
-        val result = try {
-            source.loadSongs(config, onProgress) { batch ->
-                scanOrchestrator.persistScanResult(batch)
+    private val scanMutex = Mutex()
+    private val requestMutex = Mutex()
+    private val inFlight = mutableMapOf<String, CompletableDeferred<SourceRefreshResult>>()
+
+    override suspend fun refreshSource(
+        sourceId: String,
+        onProgress: (Int, Int) -> Unit
+    ): SourceRefreshResult {
+        var leader = false
+        val request = requestMutex.withLock {
+            val existing = inFlight[sourceId]
+            if (existing != null) {
+                existing
+            } else {
+                leader = true
+                val created = CompletableDeferred<SourceRefreshResult>()
+                inFlight[sourceId] = created
+                created
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Error loading songs for %s", sourceId)
-            throw e
         }
-        if (result.songs.isNotEmpty()) {
-            scanOrchestrator.persistScanResult(result)
+        if (!leader) return request.await()
+        try {
+            val result = scanMutex.withLock { performRefresh(sourceId, onProgress) }
+            request.complete(result)
+            return result
+        } catch (cancellation: CancellationException) {
+            request.cancel(cancellation)
+            throw cancellation
+        } catch (error: Throwable) {
+            request.completeExceptionally(error)
+            throw error
+        } finally {
+            requestMutex.withLock { if (inFlight[sourceId] === request) inFlight.remove(sourceId) }
         }
-        scanOrchestrator.cleanupOrphanedArtworkFiles()
-        scanOrchestrator.cleanupOrphanedArtists()
-        scanOrchestrator.refreshAlbumSeries()
-        Timber.i("refreshSource finished for %s", sourceId)
     }
 
-    override suspend fun deleteBySource(sourceId: String) {
-        Timber.d("Deleting all data for source %s", sourceId)
+    private suspend fun performRefresh(
+        sourceId: String,
+        onProgress: (Int, Int) -> Unit
+    ): SourceRefreshResult {
+        val config = sourceManager.getSourceById(sourceId)
+            ?: return SourceRefreshResult.Failure(AppError.source(sourceId, "Source config not found"))
+        val source = sourceRegistry.get(config.type)
+            ?: return SourceRefreshResult.Failure(AppError.source(config.name, "Source type is not registered"))
+        val sessionId = scanOrchestrator.beginScan(sourceId)
+        return try {
+            val summary = source.loadSongs(config, onProgress) { event ->
+                scanOrchestrator.stageEvent(sessionId, event)
+            }
+            scanOrchestrator.commitScan(sessionId, sourceId, config.isEnabled, summary)
+            Timber.i("Refresh finished for %s: %d/%d", config.name, summary.succeeded, summary.total)
+            SourceRefreshResult.Success(summary.total, summary.succeeded, summary.failedIds.size)
+        } catch (cancellation: CancellationException) {
+            scanOrchestrator.abortScan(sessionId)
+            throw cancellation
+        } catch (error: Exception) {
+            scanOrchestrator.abortScan(sessionId)
+            Timber.e(error, "Refresh failed for %s; previous data retained", config.name)
+            SourceRefreshResult.Failure(AppError.from(error, "Could not refresh ${config.name}"))
+        }
+    }
+
+    override suspend fun deleteBySource(sourceId: String) = scanMutex.withLock {
         songLyricsRepository.deleteBySource(sourceId)
         songRepository.deleteBySource(sourceId)
         scanOrchestrator.deleteOrphanedAlbums()
@@ -62,30 +94,15 @@ class SourceLifecycleManagerImpl @Inject constructor(
         songRepository.setActiveBySource(sourceId, active)
     }
 
-    override suspend fun reloadEnabled(onProgress: (sourceName: String, scanned: Int, total: Int) -> Unit) {
-        val enabledSources = sourceManager.getEnabledSources()
-        Timber.i("Reloading %d enabled sources", enabledSources.size)
-        for (config in enabledSources) {
-            val source = sourceRegistry.get(config.type) ?: continue
-            Timber.d("Reloading source: %s (%s)", config.name, config.type)
-            try {
-                songLyricsRepository.deleteBySource(config.id)
-                songRepository.deleteBySource(config.id)
-                scanOrchestrator.deleteOrphanedAlbums()
-                val result = source.loadSongs(config, { scanned, total ->
-                    onProgress(config.name, scanned, total)
-                }) { batch ->
-                    scanOrchestrator.persistScanResult(batch)
-                }
-                if (result.songs.isNotEmpty()) {
-                    scanOrchestrator.persistScanResult(result)
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error reloading source %s, skipping", config.name)
+    override suspend fun reloadEnabled(
+        onProgress: (sourceName: String, scanned: Int, total: Int) -> Unit
+    ): Map<String, SourceRefreshResult> {
+        val results = linkedMapOf<String, SourceRefreshResult>()
+        for (config in sourceManager.getEnabledSources()) {
+            results[config.id] = refreshSource(config.id) { scanned, total ->
+                onProgress(config.name, scanned, total)
             }
         }
-        scanOrchestrator.cleanupOrphanedArtworkFiles()
-        scanOrchestrator.cleanupOrphanedArtists()
-        scanOrchestrator.refreshAlbumSeries()
+        return results
     }
 }
