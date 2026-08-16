@@ -10,7 +10,6 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
 import java.security.KeyStore
-import java.security.SecureRandom
 import java.nio.file.Files
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.StandardCopyOption
@@ -76,10 +75,13 @@ class CredentialStore @Inject constructor(@ApplicationContext private val contex
 
     private fun persist() {
         val plain = JSONObject(values as Map<*, *>).toString().toByteArray(Charsets.UTF_8)
-        val iv = ByteArray(IV_LENGTH).also(SecureRandom()::nextBytes)
         val cipher = Cipher.getInstance(TRANSFORMATION).apply {
-            init(Cipher.ENCRYPT_MODE, getOrCreateKey(), GCMParameterSpec(TAG_LENGTH_BITS, iv))
+            // Android Keystore must generate a fresh IV for encryption. Supplying a
+            // caller-generated IV is rejected when randomized encryption is required.
+            init(Cipher.ENCRYPT_MODE, getOrCreateKey())
         }
+        val iv = cipher.iv
+        check(iv.size == IV_LENGTH) { "Android Keystore returned an invalid GCM IV" }
         val temp = File(file.parentFile, "$NEW_FILENAME.tmp")
         temp.outputStream().use { output ->
             output.write(MAGIC)
