@@ -4,16 +4,15 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
 import android.graphics.drawable.Icon
-import android.os.IBinder
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaSessionService
 import com.schwanitz.MainActivity
 import com.schwanitz.R
 import dagger.hilt.android.AndroidEntryPoint
@@ -22,7 +21,7 @@ import javax.inject.Inject
 
 @UnstableApi
 @AndroidEntryPoint
-class MusicPlayerService : Service() {
+class MusicPlayerService : MediaSessionService() {
 
     companion object {
         const val ACTION_PLAY = "com.schwanitz.action.PLAY"
@@ -71,6 +70,7 @@ class MusicPlayerService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
         Timber.d("onStartCommand: action=%s", intent?.action)
         when (intent?.action) {
             ACTION_PLAY -> {
@@ -90,34 +90,18 @@ class MusicPlayerService : Service() {
                 player.seekToPreviousMediaItem()
             }
             ACTION_SHUFFLE -> {
-                if (player.repeatMode != Player.REPEAT_MODE_ONE) {
-                    player.shuffleModeEnabled = !player.shuffleModeEnabled
-                    player.repeatMode = if (player.shuffleModeEnabled) {
-                        Player.REPEAT_MODE_ALL
-                    } else {
-                        Player.REPEAT_MODE_OFF
-                    }
-                }
+                PlaybackModes.toggleShuffle(player)
                 updateNotification()
             }
             ACTION_REPEAT -> {
-                player.repeatMode = when {
-                    player.shuffleModeEnabled && player.repeatMode == Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-                    player.shuffleModeEnabled && player.repeatMode == Player.REPEAT_MODE_ALL -> {
-                        player.shuffleModeEnabled = false
-                        Player.REPEAT_MODE_OFF
-                    }
-                    player.repeatMode == Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
-                    player.repeatMode == Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
-                    else -> Player.REPEAT_MODE_OFF
-                }
+                PlaybackModes.cycleRepeat(player)
                 updateNotification()
             }
         }
         return START_STICKY
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         if (!player.playWhenReady || player.mediaItemCount == 0) {
@@ -145,6 +129,10 @@ class MusicPlayerService : Service() {
         }
 
         override fun onRepeatModeChanged(repeatMode: Int) {
+            updateNotification()
+        }
+
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
             updateNotification()
         }
     }
@@ -212,16 +200,16 @@ class MusicPlayerService : Service() {
             .setContentIntent(contentIntent)
             .setOngoing(true)
             .setStyle(style)
-            .addAction(Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notification_shuffle), "Shuffle", shuffleIntent).build())
-            .addAction(Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notification_skip_prev), "Previous", prevIntent).build())
-            .addAction(Notification.Action.Builder(Icon.createWithResource(this, playPauseIcon), "Play/Pause", playPauseIntent).build())
-            .addAction(Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notification_skip_next), "Next", nextIntent).build())
-            .addAction(Notification.Action.Builder(Icon.createWithResource(this, repeatIcon), "Repeat", repeatIntent).build())
+            .addAction(Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notification_shuffle), getString(R.string.notification_shuffle), shuffleIntent).build())
+            .addAction(Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notification_skip_prev), getString(R.string.notification_previous), prevIntent).build())
+            .addAction(Notification.Action.Builder(Icon.createWithResource(this, playPauseIcon), getString(R.string.notification_play_pause), playPauseIntent).build())
+            .addAction(Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notification_skip_next), getString(R.string.notification_next), nextIntent).build())
+            .addAction(Notification.Action.Builder(Icon.createWithResource(this, repeatIcon), getString(R.string.notification_repeat), repeatIntent).build())
             .build()
     }
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(CHANNEL_ID, "Media Playback", NotificationManager.IMPORTANCE_LOW)
+        val channel = NotificationChannel(CHANNEL_ID, getString(R.string.notification_channel_playback), NotificationManager.IMPORTANCE_LOW)
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(channel)
     }

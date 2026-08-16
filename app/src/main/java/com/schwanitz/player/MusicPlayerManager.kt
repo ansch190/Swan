@@ -60,6 +60,8 @@ class MusicPlayerManager @Inject constructor(
 
     private val _navigateToPlayer = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val navigateToPlayer: SharedFlow<Unit> = _navigateToPlayer.asSharedFlow()
+    private val _playbackStarted = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val playbackStarted: SharedFlow<Unit> = _playbackStarted.asSharedFlow()
 
     private var songQueue: List<Song> = emptyList()
     private var nextMediaItemId = 0L
@@ -97,6 +99,14 @@ class MusicPlayerManager @Inject constructor(
                 }
             }
 
+            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                _playerState.update { it.copy(shuffleMode = shuffleModeEnabled) }
+            }
+
+            override fun onRepeatModeChanged(repeatMode: Int) {
+                _playerState.update { it.copy(repeatMode = repeatMode) }
+            }
+
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 Timber.e(error, "Playback error: %s", error.message)
                 _playerState.update { it.copy(
@@ -107,6 +117,7 @@ class MusicPlayerManager @Inject constructor(
     }
 
     fun play(song: Song, queue: List<Song> = listOf(song)) {
+        _playbackStarted.tryEmit(Unit)
         Timber.i("Playing: '%s' by %s (queue: %d songs)", song.title, song.artistName, queue.size)
         try {
             appContext.startService(
@@ -158,6 +169,7 @@ class MusicPlayerManager @Inject constructor(
         songs.forEach { s -> player.addMediaItem(buildMediaItem(s)) }
         songQueue = songQueue + songs
         if (needsPrepare) {
+            _playbackStarted.tryEmit(Unit)
             player.prepare()
             player.play()
             _playerState.value = _playerState.value.copy(
@@ -238,34 +250,11 @@ class MusicPlayerManager @Inject constructor(
     }
 
     fun toggleShuffle() {
-        if (player.repeatMode == Player.REPEAT_MODE_ONE) return
-        player.shuffleModeEnabled = !player.shuffleModeEnabled
-        player.repeatMode = if (player.shuffleModeEnabled) {
-            Player.REPEAT_MODE_ALL
-        } else {
-            Player.REPEAT_MODE_OFF
-        }
-        _playerState.value = _playerState.value.copy(
-            shuffleMode = player.shuffleModeEnabled,
-            repeatMode = player.repeatMode
-        )
+        PlaybackModes.toggleShuffle(player)
     }
 
     fun cycleRepeatMode() {
-        player.repeatMode = when {
-            player.shuffleModeEnabled && player.repeatMode == Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-            player.shuffleModeEnabled && player.repeatMode == Player.REPEAT_MODE_ALL -> {
-                player.shuffleModeEnabled = false
-                Player.REPEAT_MODE_OFF
-            }
-            player.repeatMode == Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
-            player.repeatMode == Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
-            else -> Player.REPEAT_MODE_OFF
-        }
-        _playerState.value = _playerState.value.copy(
-            shuffleMode = player.shuffleModeEnabled,
-            repeatMode = player.repeatMode
-        )
+        PlaybackModes.cycleRepeat(player)
     }
 
     private fun startPositionUpdates() {
@@ -275,7 +264,7 @@ class MusicPlayerManager @Inject constructor(
                 _playerState.value = _playerState.value.copy(
                     currentPosition = player.currentPosition.coerceAtLeast(0)
                 )
-                delay(100.milliseconds)
+                delay(250.milliseconds)
             }
         }
     }
