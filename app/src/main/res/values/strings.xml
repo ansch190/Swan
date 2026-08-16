@@ -9,6 +9,7 @@
 
     <!-- Bottom navigation -->
     <string name="bottom_songs">Songs</string>
+    <string name="bottom_collection">Collection</string>
     <string name="bottom_playlists">Playlists</string>
     <string name="bottom_now_playing">Now Playing</string>
 
@@ -280,6 +281,9 @@
     <string name="section_songs">Songs</string>
     <string name="section_albums">Albums</string>
     <string name="section_artists">Artists</string>
+    <string name="section_album_artists">Album Artists</string>
+    <string name="collection_title">Collection</string>
+    <string name="collection_tile_description">%1$s: %2$s</string>
     <string name="section_years">Years</string>
     <string name="section_genres">Genres</string>
     <string name="section_series">Series</string>

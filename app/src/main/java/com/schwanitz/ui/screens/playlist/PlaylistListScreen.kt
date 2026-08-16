@@ -27,7 +27,6 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
-import com.schwanitz.ui.navigation.LocalBottomBarHeight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,7 +111,6 @@ fun PlaylistListScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = LocalBottomBarHeight.current)
                 ) {
                     items(uiState.playlists, key = { it.id }) { playlist ->
                         PlaylistListItem(

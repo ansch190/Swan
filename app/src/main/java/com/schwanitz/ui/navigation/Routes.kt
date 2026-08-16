@@ -3,6 +3,7 @@ package com.schwanitz.ui.navigation
 import android.net.Uri
 
 object Routes {
+    const val COLLECTION = "collection"
     const val SETTINGS = "settings"
     const val GENERAL_SETTINGS = "general_settings"
     const val SOURCE_SETTINGS = "source_settings"

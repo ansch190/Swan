@@ -5,9 +5,12 @@ import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import androidx.navigation.navigation
+import com.schwanitz.ui.screens.collection.CollectionScreen
 import com.schwanitz.ui.screens.home.HomeScreen
 import com.schwanitz.ui.screens.nowplaying.NowPlayingScreen
 import com.schwanitz.ui.screens.playlist.PlaylistDetailScreen
@@ -37,7 +40,11 @@ fun NavGraph(navController: NavHostController) {
         navController = navController,
         startDestination = BottomNavItem.Songs.route
     ) {
-        composable(BottomNavItem.Songs.route) {
+        navigation(
+            route = BottomNavItem.Songs.route,
+            startDestination = BottomNavItem.Songs.startDestination
+        ) {
+        composable(BottomNavItem.Songs.startDestination) {
             HomeScreen(
                 onSettingsClick = { navController.navigate(Routes.SETTINGS) },
                 onSongInfoClick = { songId ->
@@ -57,10 +64,6 @@ fun NavGraph(navController: NavHostController) {
                 onAlbumClick = { album, albumArtist, year ->
                     navController.navigate(Routes.albumDetail(album, albumArtist, year))
                 },
-                onArtistClick = { artist ->
-                    navController.navigate(Routes.artistDetail(artist))
-                },
-                onAllArtistsClick = { navController.navigate(Routes.ALL_ARTISTS) },
                 onAllAlbumArtistsClick = { navController.navigate(Routes.ALL_ARTISTS) },
                 onAlbumArtistClick = { artist ->
                     navController.navigate(Routes.artistDetail(artist))
@@ -78,6 +81,23 @@ fun NavGraph(navController: NavHostController) {
                 onSeriesClick = { seriesName ->
                     navController.navigate(Routes.seriesDetail(seriesName))
                 }
+            )
+        }
+
+        settingsDestinations(navController)
+        }
+
+        navigation(
+            route = BottomNavItem.Collection.route,
+            startDestination = BottomNavItem.Collection.startDestination
+        ) {
+        composable(BottomNavItem.Collection.startDestination) {
+            CollectionScreen(
+                onAlbumsClick = { navController.navigate(Routes.ALL_ALBUMS) },
+                onAlbumArtistsClick = { navController.navigate(Routes.ALL_ARTISTS) },
+                onGenresClick = { navController.navigate(Routes.ALL_GENRES) },
+                onYearsClick = { navController.navigate(Routes.ALL_YEARS) },
+                onSeriesClick = { navController.navigate(Routes.ALL_SERIES) }
             )
         }
 
@@ -272,22 +292,16 @@ fun NavGraph(navController: NavHostController) {
                 onAllSeriesClick = { navController.navigate(Routes.ALL_SERIES) }
             )
         }
+        }
 
-        composable(BottomNavItem.Playlists.route) {
+        navigation(
+            route = BottomNavItem.Playlists.route,
+            startDestination = BottomNavItem.Playlists.startDestination
+        ) {
+        composable(BottomNavItem.Playlists.startDestination) {
             PlaylistListScreen(
                 onPlaylistClick = { playlistId ->
                     navController.navigate(Routes.playlistDetail(playlistId))
-                }
-            )
-        }
-
-        composable(BottomNavItem.NowPlaying.route) {
-            NowPlayingScreen(
-                onSongInfoClick = { songId ->
-                    navController.navigate(Routes.songInfo(songId))
-                },
-                onAddToPlaylist = { songIds ->
-                    navController.navigate(Routes.playlistPicker(songIds))
                 }
             )
         }
@@ -335,7 +349,28 @@ fun NavGraph(navController: NavHostController) {
                 }
             )
         }
+        }
 
+        navigation(
+            route = BottomNavItem.NowPlaying.route,
+            startDestination = BottomNavItem.NowPlaying.startDestination
+        ) {
+        composable(BottomNavItem.NowPlaying.startDestination) {
+            NowPlayingScreen(
+                onSongInfoClick = { songId ->
+                    navController.navigate(Routes.songInfo(songId))
+                },
+                onAddToPlaylist = { songIds ->
+                    navController.navigate(Routes.playlistPicker(songIds))
+                }
+            )
+        }
+        }
+
+    }
+}
+
+private fun NavGraphBuilder.settingsDestinations(navController: NavHostController) {
         composable(Routes.SETTINGS) {
             SettingsDashboardScreen(
                 onNavigateBack = { navController.popBackStack() },
@@ -397,5 +432,4 @@ fun NavGraph(navController: NavHostController) {
                 }
             )
         }
-    }
 }

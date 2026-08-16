@@ -6,11 +6,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -20,8 +17,6 @@ import com.schwanitz.player.MusicPlayerManager
 val LocalSnackbarHostState = compositionLocalOf<SnackbarHostState> {
     error("No SnackbarHostState provided")
 }
-
-val LocalBottomBarHeight = compositionLocalOf<Dp> { 0.dp }
 
 val LocalMusicPlayerManager = staticCompositionLocalOf<MusicPlayerManager> {
     error("No MusicPlayerManager provided")
@@ -38,52 +33,29 @@ fun MainScreen() {
 
     LaunchedEffect(Unit) {
         playerManager.navigateToPlayer.collect {
-            val route = navController.currentBackStackEntry?.destination?.route
-            if (route != BottomNavItem.NowPlaying.route) {
-                navController.navigate(BottomNavItem.NowPlaying.route) {
-                    popUpTo(navController.graph.findStartDestination().id) {
-                        saveState = true
-                    }
-                    launchSingleTop = true
-                    restoreState = true
-                }
-            }
+            navController.navigateToTopLevel(BottomNavItem.NowPlaying)
         }
     }
 
-    val bottomBarVisible = currentDestination?.route in BottomNavItem.items.map { it.route }
-
     CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
-        var bottomBarHeight by remember { mutableStateOf(0.dp) }
-        val density = LocalDensity.current
-
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
-                if (bottomBarVisible) {
-                    Box(
-                        modifier = Modifier.onGloballyPositioned { coordinates ->
-                            bottomBarHeight = density.run { coordinates.size.height.toDp() }
-                        }
-                    ) {
-                        NavigationBar {
-                            BottomNavItem.items.forEach { item ->
-                                NavigationBarItem(
-                                    icon = { Icon(item.icon, contentDescription = stringResource(item.titleRes)) },
-                                    label = { Text(stringResource(item.titleRes)) },
-                                    selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
-                                    onClick = {
-                                        navController.navigate(item.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
-                                )
+                NavigationBar {
+                    BottomNavItem.items.forEach { item ->
+                        val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+                        NavigationBarItem(
+                            icon = { Icon(item.icon, contentDescription = stringResource(item.titleRes)) },
+                            label = { Text(stringResource(item.titleRes)) },
+                            selected = selected,
+                            onClick = {
+                                if (selected) {
+                                    navController.returnToRoot(item)
+                                } else {
+                                    navController.navigateToTopLevel(item)
+                                }
                             }
-                        }
+                        )
                     }
                 }
             }
@@ -92,12 +64,34 @@ fun MainScreen() {
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background
             ) {
-                CompositionLocalProvider(LocalBottomBarHeight provides bottomBarHeight) {
-                    Box(Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
-                        NavGraph(navController = navController)
-                    }
+                Box(Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
+                    NavGraph(navController = navController)
                 }
             }
+        }
+    }
+}
+
+private fun NavHostController.navigateToTopLevel(item: BottomNavItem) {
+    val alreadySelected = currentBackStackEntry?.destination?.hierarchy
+        ?.any { it.route == item.route } == true
+    if (alreadySelected) {
+        returnToRoot(item)
+        return
+    }
+    navigate(item.route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
+private fun NavHostController.returnToRoot(item: BottomNavItem) {
+    if (currentDestination?.route == item.startDestination) return
+    if (!popBackStack(item.startDestination, inclusive = false)) {
+        navigate(item.startDestination) {
+            popUpTo(item.route) { inclusive = false }
+            launchSingleTop = true
         }
     }
 }

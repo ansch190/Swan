@@ -20,7 +20,6 @@ import com.schwanitz.R
 import com.schwanitz.domain.source.SourceConfig
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
-import com.schwanitz.ui.navigation.LocalBottomBarHeight
 import com.schwanitz.domain.source.SourceType
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,7 +101,6 @@ fun SettingsScreen(
 
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(bottom = LocalBottomBarHeight.current)
         ) {
             if (localSources.isNotEmpty()) {
                 item { SectionHeader(stringResource(R.string.settings_local_section)) }

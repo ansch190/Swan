@@ -17,7 +17,6 @@ import com.schwanitz.domain.model.Song
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.components.SongListItem
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
-import com.schwanitz.ui.navigation.LocalBottomBarHeight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +92,6 @@ fun HomeScreen(
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = LocalBottomBarHeight.current)
                 ) {
                     items(uiState.songs, key = { it.id }) { song ->
                         Box {
