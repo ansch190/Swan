@@ -7,6 +7,7 @@
          <!-- Android Studio resolves IDE-only source attachments through detached
               configurations. They are not placed on any build or runtime classpath. -->
          <trust file=".*-sources\.jar" regex="true" reason="IDE source attachment; non-executable build input"/>
+         <trust file=".*-javadoc\.jar" regex="true" reason="IDE documentation attachment; non-executable build input"/>
          <trust group="gradle" name="gradle" version="9.5.1" file="gradle-9.5.1-src.zip" reason="Gradle IDE source attachment; non-executable build input"/>
       </trusted-artifacts>
    </configuration>
