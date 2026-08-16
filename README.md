@@ -2,12 +2,12 @@
 
 A modern Android music player built with Jetpack Compose.
 
-Play music from your device and from network sources (WebDAV). Manage playlists, browse your library, view rich artist/album/genre/year detail screens, fetch lyrics automatically, and enjoy a clean Material 3 interface — all with background playback.
+Play music from your device and from network sources (WebDAV and SMB). Manage playlists, browse your library, view rich artist/album/genre/year detail screens, fetch lyrics automatically, and enjoy a clean Material 3 interface — all with background playback.
 
 ## Features
 
 - **Local playback** — Add folders from your device via the Storage Access Framework
-- **Network sources** — WebDAV support with presets for pCloud, Koofr, GMX MediaCenter, WEB.DE, Mailbox.org (SMB coming soon)
+- **Network sources** — WebDAV with provider presets and SMB shares
 - **Playlists** — Create, rename, reorder via drag-and-drop, add/remove songs
 - **Queue** — View and jump between upcoming tracks
 - **Search** — Real-time filtering by title, artist, or album
@@ -24,7 +24,7 @@ Play music from your device and from network sources (WebDAV). Manage playlists,
 - **Series** — Browse album series (e.g. compilations); detail view with ordered albums
 - **Multiple album artworks** — Swipeable artwork carousel with dot indicators
 - **Multi-language UI** — Switch between System / Deutsch / English in Settings
-- **Backup & Recovery** — Encrypted backup of settings, sources, and API keys to a local `.swanbak` file with password protection (AES/GCM)
+- **Backup & Recovery** — AES-256-GCM encrypted, streaming `.swanbak` v2 backups; optionally include the complete library and cached images
 - **Background playback** — Foreground service with media notification & lock screen controls
 - **Material 3 design** — Modern Compose UI with dynamic theming
 
@@ -43,7 +43,7 @@ Play music from your device and from network sources (WebDAV). Manage playlists,
 | Player        | Media3 ExoPlayer + MediaSession                                |
 | Images        | Coil                                                           |
 | HTML Parsing  | JSoup                                                          |
-| Encryption    | PBKDF2 + AES/GCM (Android Security Crypto)                     |
+| Encryption    | PBKDF2-HMAC-SHA256 + AES-256-GCM; Android Keystore credentials |
 | Serialization | kotlinx-serialization                                          |
 | Preferences   | DataStore Preferences                                          |
 | HTTP          | OkHttp (with digest auth for WebDAV)                           |
@@ -68,7 +68,7 @@ Play music from your device and from network sources (WebDAV). Manage playlists,
 
 - Requires Java 17 · minSdk 31 (Android 12)
 - Use the Gradle wrapper (`./gradlew`), not a system installation
-- API keys must be set in `local.properties`: `discogsKey`, `discogsSecret`, `lastfmKey`, `geniusAccessToken`
+- Discogs, Last.fm and Genius credentials are entered in the app. They are never compiled into the APK.
 
 ## Architecture
 
@@ -94,9 +94,26 @@ app/src/main/java/com/schwanitz/
 
 - **Local Folder** — pick any directory via SAF; the app retains persistent access
 - **WebDAV** — connect to any WebDAV server; presets available for popular providers
-- **SMB** — placeholder for future support
+- **SMB** — connect to SMB shares with per-source credentials
 
 Sources can be enabled or disabled individually, and all sources can be rescanned with a single "Reload All" button.
+
+Rescans use persistent staging tables. A fatal error or cancellation keeps the previous source library unchanged; unreadable individual files retain their previous metadata. Only a successfully enumerated scan removes files that are actually gone.
+
+## Backup and restore
+
+Every backup contains sources, source credentials, API credentials, language and artist-data settings. Export offers two independent options:
+
+- hide credentials after restore (the values remain encrypted in the backup and usable by Swan; only their fields are masked and locked)
+- include the music library, technical metadata, albums, artists, lyrics, series and internal image caches
+
+Playlists, playlist assignments and favorites are never included; restored songs start with `isFavorite = false`. Restore replaces the current app data instead of merging it. Without library data, the library is emptied and the Sources screen is opened for a new scan. A library backup is immediately browsable after restore. WebDAV/SMB tracks can play with their restored credentials; local SAF folder permissions cannot be transferred between installations and must be confirmed again.
+
+The v2 format uses PBKDF2-HMAC-SHA256 (600,000 iterations) and AES-256-GCM. New backup passwords require at least 12 characters. Legacy v1 backups remain importable; their historical static pepper exists only in the v1 importer.
+
+## Verification
+
+GitHub Actions runs JVM tests, lint, debug/release builds and API 35 instrumentation tests. Tagged releases publish only a signed, minified release APK and its SHA-256 checksum; signing material is supplied through GitHub Secrets.
 
 ## License
 

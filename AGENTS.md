@@ -6,8 +6,8 @@ Single-module Android music player app. Package: `com.schwanitz`, namespace: `co
 
 ```kotlin
 // Build config
-compileSdk = 37, minSdk = 31, targetSdk = 35
-versionName = "2.0", versionCode = 6
+compileSdk = 37, minSdk = 31, targetSdk = 36
+versionName = "2.3", versionCode = 7
 Java 17, Kotlin 2.1.0, AGP 9.2.1
 ```
 
@@ -23,7 +23,7 @@ Java 17, Kotlin 2.1.0, AGP 9.2.1
 
 - Always use the Gradle wrapper (`./gradlew`), not system Gradle.
 - Version catalog: `gradle/libs.versions.toml`
-- API keys in `local.properties`: `discogsKey`, `discogsSecret`, `lastfmKey`, `geniusAccessToken`
+- API credentials are user-provided in Settings and stored with AES-GCM under an Android Keystore key. Do not add API secrets to BuildConfig.
 
 ## Package layout
 
@@ -34,7 +34,7 @@ com.schwanitz/
 │   ├── genius/                       # GeniusApiService, GeniusLyricsProvider, GeniusModels
 │   ├── lastfm/                       # LastFmApiService, LastFmArtistProfileProvider, LastFmModels
 │   ├── local/
-│   │   ├── AppDatabase.kt            # Room DB (@Database, version 1, 13 entities, 11 DAOs)
+│   │   ├── AppDatabase.kt            # Room DB (@Database, version 7, including scan staging)
 │   │   ├── LanguagePreferences.kt    # DataStore wrapper for language code
 │   │   ├── Migrations.kt            # Room migration definitions
 │   │   ├── dao/                      # SongDao, PlaylistDao, SourceConfigDao, AlbumDao,
@@ -49,7 +49,7 @@ com.schwanitz/
 │   ├── repository/                   # MusicRepositoryImpl, PlaylistRepositoryImpl,
 │   │                                 # SourceManagerImpl, MusicSourceRegistry,
 │   │                                 # ArtistRepositoryImpl
-│   ├── backup/                       # BackupManager, BackupData (PBKDF2+AES/GCM)
+│   ├── backup/                       # streaming v2 backup + legacy v1 importer
 │   └── source/                       # LocalFolderMusicSource, WebDavMusicSource,
 │                                     # MetadataExtractor, AuthHttpDataSourceFactory,
 │                                     # ArtworkCache, ArtistImageCache, ContentUriDataSource,
@@ -102,7 +102,9 @@ Entrypoints: `MyApplication` (`@HiltAndroidApp`), `MainActivity` (`@AndroidEntry
 ## Key quirks
 
 - **DI**: Hilt with **KSP** (not kapt). New annotation processors go in `ksp { }` block in `app/build.gradle.kts`.
-- **Room DB**: version 1, 13 entities, 11 DAOs. Uses `Migrations.kt` for schema migrations — no `fallbackToDestructiveMigration()`. Schema exported to `app/schemas/` via KSP arg.
+- **Room DB**: version 7 with persistent scan staging. Uses `Migrations.kt` — no `fallbackToDestructiveMigration()`. Schema is exported to `app/schemas/` and migration tests use `MigrationTestHelper`.
+- **Refresh semantics**: scans emit `ScanEvent.Discovered` and `ScanEvent.Parsed` in batches up to 100. Only a completed enumeration commits; fatal errors/cancellation discard staging and retain live data. Per-file failures retain old rows. Scan commits are serialized by a central mutex.
+- **Album identity**: `(name, albumArtist, year)` via typed `AlbumKey`; migration 6→7 consolidates duplicates and creates a unique index. Artist equality is exact and case-insensitive, never `LIKE`.
 - **Media player**: foreground service (`MusicPlayerService`) extends `MediaSessionService`. Declared in manifest with `foregroundServiceType="mediaPlayback"`. Requires `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MEDIA_PLAYBACK` permissions.
 - **Navigation**: Compose `NavHost` with bottom bar (Songs / Playlists / Now Playing). Settings via gear icon in Songs top bar. Detail/settings screens hide bottom bar and use `popBackStack()`.
 - **Genius lyrics**: Client Access Token auth (`Authorization: Bearer`), JSoup for HTML parsing (`<div data-lyrics-container="true">`), 2-pass search (original title → title without parenthetical suffixes), top-3-hit title validation (case-insensitive + accent-normalized), cached in `song_lyrics` Room table. Cleanup order on source deletion: lyrics → artwork → songs (no orphaned rows).
@@ -111,6 +113,6 @@ Entrypoints: `MyApplication` (`@HiltAndroidApp`), `MainActivity` (`@AndroidEntry
 - **Language**: `AppCompatDelegate.setApplicationLocales()` for locale switching (API 33+); requires `AppCompatActivity`, `android:localeConfig="@xml/locales_config"` in manifest, `NoActionBar` theme parent. Works on minSdk 31 via AppCompat compat.
 - **Strings**: ~252 strings in `res/values/strings.xml` (English) and `res/values-de/strings.xml` (German).
 - **ProGuard/R8**: `app/proguard-rules.pro` keeps all `com.schwanitz.**` classes. Additional keep rules go in `app/src/main/keepRules/rules.keep`.
-- **Backup & Recovery**: Encrypted `.swanbak` files with PBKDF2WithHmacSHA256 (100k iterations) + AES/GCM. Password-entered export via SAF, import with inline error on wrong password. Restored data includes source configs, credentials, API keys, language preference, artist-data source config. No library data (songs/playlists/albums) included.
-- **Tests**: only auto-generated stubs exist, no real tests.
-- **No CI, no lint config, no formatter config** in the repo.
+- **Backup & Recovery**: v2 is a streaming encrypted ZIP-like container with `SWANBAK2`, PBKDF2-HMAC-SHA256 (600k) and AES-256-GCM. Settings/credentials are always included; library records and image caches are optional. Playlists/favorites are excluded. Restore replaces app data. v1 remains readable with its legacy pepper only in the v1 importer. Local SAF sources require reauthorization after restore.
+- **Tests**: JVM tests cover converters, repositories, refresh results, playback modes and backup models. Instrumented Room tests validate 1→7 and 6→7 migrations.
+- **CI/Releases**: CI runs unit tests, lint, debug/release builds and API 35 instrumentation. Tagged releases use a secret-provided keystore and publish a minified release APK plus SHA-256 only.
