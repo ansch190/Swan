@@ -345,6 +345,8 @@
     <string name="playlist_remove_all_occurrences">Alle entfernen (%d)</string>
     <string name="playlist_remove_song_duplicate_message">Dieser Song ist %2$d-mal in dieser Playlist:\n%1$s</string>
     <string name="playlist_songs_already_exist">%d Song(s) bereits in der Playlist</string>
+    <string name="playlist_songs_added">%d Song(s) zur Playlist hinzugefügt</string>
+    <string name="playlist_songs_added_with_duplicates">%1$d Song(s) hinzugefügt; %2$d bereits in der Playlist</string>
 
     <!-- Year list -->
     <string name="decade_format">%der</string>

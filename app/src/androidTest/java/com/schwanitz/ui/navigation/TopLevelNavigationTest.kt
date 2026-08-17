@@ -5,14 +5,15 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.ViewModelStore
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.compose.ComposeNavigator
+import androidx.navigation.compose.composable
 import androidx.navigation.createGraph
 import androidx.navigation.navigation
 import androidx.navigation.testing.TestNavHostController
-import androidx.navigation.compose.ComposeNavigator
-import androidx.navigation.compose.composable
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -32,54 +33,115 @@ class TopLevelNavigationTest {
                 setViewModelStore(ViewModelStore())
                 setLifecycleOwner(ResumedLifecycleOwner())
                 graph = createGraph(startDestination = BottomNavItem.Songs.route) {
-                    testGraph(BottomNavItem.Songs, SONG_INFO)
-                    testGraph(BottomNavItem.Collection, ALBUM_DETAIL)
-                    testGraph(BottomNavItem.Playlists, PLAYLIST_PICKER)
-                    testGraph(BottomNavItem.NowPlaying)
+                    testGraph(
+                        BottomNavItem.Songs,
+                        SONGS_INFO,
+                        SONGS_ALBUM,
+                        SONGS_PICKER
+                    )
+                    testGraph(
+                        BottomNavItem.Collection,
+                        COLLECTION_ALBUM,
+                        COLLECTION_PICKER
+                    )
+                    testGraph(
+                        BottomNavItem.Playlists,
+                        PLAYLIST_DETAIL,
+                        PLAYLISTS_PICKER
+                    )
+                    testGraph(
+                        BottomNavItem.NowPlaying,
+                        PLAYER_INFO,
+                        PLAYER_ALBUM,
+                        PLAYER_PICKER
+                    )
                 }
             }
         }
     }
 
     @Test
-    fun crossGraphLinksKeepEveryTopLevelBackStackIsolated() = runOnMain {
-        navController.navigateToTopLevel(BottomNavItem.NowPlaying)
-        assertDestination(BottomNavItem.NowPlaying.startDestination, BottomNavItem.NowPlaying)
-
-        navController.navigateToTopLevelDestination(BottomNavItem.Songs, SONG_INFO)
-        assertDestination(SONG_INFO, BottomNavItem.Songs)
-
-        navController.navigateToTopLevelDestination(BottomNavItem.Collection, ALBUM_DETAIL)
-        assertDestination(ALBUM_DETAIL, BottomNavItem.Collection)
-
-        navController.navigateToTopLevel(BottomNavItem.NowPlaying)
-        assertDestination(BottomNavItem.NowPlaying.startDestination, BottomNavItem.NowPlaying)
-
-        navController.navigateToTopLevel(BottomNavItem.Songs)
-        assertDestination(SONG_INFO, BottomNavItem.Songs)
-
-        navController.navigateToTopLevel(BottomNavItem.Songs)
-        assertDestination(BottomNavItem.Songs.startDestination, BottomNavItem.Songs)
+    fun sameContentCanHaveIndependentSongsAndCollectionHistories() = runOnMain {
+        navController.navigateWithinTopLevel(SONGS_INFO)
+        navController.navigateWithinTopLevel(SONGS_ALBUM)
+        assertDestination(SONGS_ALBUM, BottomNavItem.Songs)
 
         navController.navigateToTopLevel(BottomNavItem.Collection)
-        assertDestination(ALBUM_DETAIL, BottomNavItem.Collection)
+        navController.navigateWithinTopLevel(COLLECTION_ALBUM)
+        assertDestination(COLLECTION_ALBUM, BottomNavItem.Collection)
+
+        navController.navigateToTopLevel(BottomNavItem.Songs)
+        assertDestination(SONGS_ALBUM, BottomNavItem.Songs)
+
+        navController.navigateToTopLevel(BottomNavItem.Collection)
+        assertDestination(COLLECTION_ALBUM, BottomNavItem.Collection)
     }
 
     @Test
-    fun playlistPickerBelongsOnlyToPlaylistsBackStack() = runOnMain {
-        navController.navigateToTopLevelDestination(BottomNavItem.Collection, ALBUM_DETAIL)
-        navController.navigateToTopLevelDestination(BottomNavItem.Playlists, PLAYLIST_PICKER)
-        assertDestination(PLAYLIST_PICKER, BottomNavItem.Playlists)
+    fun playerDetailsAreRestoredNormallyAndDiscardedForFreshPlayback() = runOnMain {
+        navController.navigateToTopLevel(BottomNavItem.NowPlaying)
+        navController.navigateWithinTopLevel(PLAYER_INFO)
+        navController.navigateWithinTopLevel(PLAYER_ALBUM)
 
         navController.navigateToTopLevel(BottomNavItem.Collection)
-        assertDestination(ALBUM_DETAIL, BottomNavItem.Collection)
+        navController.navigateWithinTopLevel(COLLECTION_ALBUM)
+        navController.navigateToTopLevel(BottomNavItem.NowPlaying)
+        assertDestination(PLAYER_ALBUM, BottomNavItem.NowPlaying)
+
+        assertFalse(navController.navigateToPlayerForExternalPlayback())
+        assertDestination(PLAYER_ALBUM, BottomNavItem.NowPlaying)
+
+        navController.navigateToTopLevel(BottomNavItem.Collection)
+        assertTrue(navController.navigateToPlayerForExternalPlayback())
+        assertDestination(
+            BottomNavItem.NowPlaying.startDestination,
+            BottomNavItem.NowPlaying
+        )
+
+        navController.navigateToTopLevel(BottomNavItem.Collection)
+        assertDestination(COLLECTION_ALBUM, BottomNavItem.Collection)
+        navController.navigateToTopLevel(BottomNavItem.NowPlaying)
+        assertDestination(
+            BottomNavItem.NowPlaying.startDestination,
+            BottomNavItem.NowPlaying
+        )
+    }
+
+    @Test
+    fun reselectingAnActiveTabReturnsOnlyThatTabToItsRoot() = runOnMain {
+        navController.navigateWithinTopLevel(SONGS_INFO)
+        navController.returnToRoot(BottomNavItem.Songs)
+        assertDestination(BottomNavItem.Songs.startDestination, BottomNavItem.Songs)
+
+        navController.navigateToTopLevel(BottomNavItem.Collection)
+        navController.navigateWithinTopLevel(COLLECTION_ALBUM)
+        navController.returnToRoot(BottomNavItem.Collection)
+        assertDestination(
+            BottomNavItem.Collection.startDestination,
+            BottomNavItem.Collection
+        )
+    }
+
+    @Test
+    fun playlistPickerStaysInsideItsOriginatingTab() = runOnMain {
+        navController.navigateToTopLevel(BottomNavItem.Collection)
+        navController.navigateWithinTopLevel(COLLECTION_ALBUM)
+        navController.navigateWithinTopLevel(COLLECTION_PICKER)
+        assertDestination(COLLECTION_PICKER, BottomNavItem.Collection)
+        navController.popBackStack()
+        assertDestination(COLLECTION_ALBUM, BottomNavItem.Collection)
 
         navController.navigateToTopLevel(BottomNavItem.NowPlaying)
-        navController.navigateToTopLevelDestination(BottomNavItem.Playlists, PLAYLIST_PICKER)
-        assertDestination(PLAYLIST_PICKER, BottomNavItem.Playlists)
+        navController.navigateWithinTopLevel(PLAYER_PICKER)
+        assertDestination(PLAYER_PICKER, BottomNavItem.NowPlaying)
 
-        navController.navigateToTopLevel(BottomNavItem.NowPlaying)
-        assertDestination(BottomNavItem.NowPlaying.startDestination, BottomNavItem.NowPlaying)
+        navController.navigateToTopLevel(BottomNavItem.Playlists)
+        navController.navigateWithinTopLevel(PLAYLIST_DETAIL)
+        navController.navigateWithinTopLevel(PLAYLISTS_PICKER)
+        assertDestination(PLAYLISTS_PICKER, BottomNavItem.Playlists)
+
+        navController.navigateToTopLevel(BottomNavItem.Collection)
+        assertDestination(COLLECTION_ALBUM, BottomNavItem.Collection)
     }
 
     private fun assertDestination(route: String, owner: BottomNavItem) {
@@ -91,11 +153,11 @@ class TopLevelNavigationTest {
 
     private fun androidx.navigation.NavGraphBuilder.testGraph(
         item: BottomNavItem,
-        childRoute: String? = null
+        vararg childRoutes: String
     ) {
         navigation(startDestination = item.startDestination, route = item.route) {
             composable(item.startDestination) {}
-            childRoute?.let { composable(it) {} }
+            childRoutes.forEach { route -> composable(route) {} }
         }
     }
 
@@ -112,8 +174,15 @@ class TopLevelNavigationTest {
     }
 
     private companion object {
-        const val SONG_INFO = "song_info/song-1"
-        const val ALBUM_DETAIL = "album_detail/album/artist/2026"
-        const val PLAYLIST_PICKER = "playlist_picker/song-1"
+        const val SONGS_INFO = "songs_graph/song_info/song-1"
+        const val SONGS_ALBUM = "songs_graph/album_detail/album/artist/2026"
+        const val SONGS_PICKER = "songs_graph/playlist_picker/song-1"
+        const val COLLECTION_ALBUM = "collection_graph/album_detail/album/artist/2026"
+        const val COLLECTION_PICKER = "collection_graph/playlist_picker/song-1"
+        const val PLAYLIST_DETAIL = "playlist_detail/7"
+        const val PLAYLISTS_PICKER = "playlists_graph/playlist_picker/song-1"
+        const val PLAYER_INFO = "now_playing_graph/song_info/song-1"
+        const val PLAYER_ALBUM = "now_playing_graph/album_detail/album/artist/2026"
+        const val PLAYER_PICKER = "now_playing_graph/playlist_picker/song-1"
     }
 }

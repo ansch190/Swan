@@ -11,35 +11,50 @@ object Routes {
     const val BACKUP = "backup"
     const val ARTIST_DATA_SOURCE = "artist_data_source"
     const val ADD_SOURCE = "add_source"
-    const val ALL_ARTISTS = "all_artists"
-    const val ALL_ALBUMS = "all_albums"
-    const val ALL_YEARS = "all_years"
-    const val ALL_GENRES = "all_genres"
-    const val ALL_SERIES = "all_series"
-
-    fun songInfo(songId: String) = "song_info/${Uri.encode(songId)}"
-
-    fun albumDetail(albumName: String, albumArtistName: String, year: Int) =
-        "album_detail/${Uri.encode(albumName)}/${Uri.encode(albumArtistName)}/$year"
-
-    fun artistDetail(artistName: String) = "artist_detail/${Uri.encode(artistName)}"
-
-    fun genreDetail(genreName: String) = "genre_detail/${Uri.encode(genreName)}"
-
-    fun yearDetail(year: Int) = "year_detail/$year"
-
-    fun decadeDetail(decade: Int) = "decade_detail/$decade"
-
-    fun seriesDetail(seriesName: String) = "series_detail/${Uri.encode(seriesName)}"
-
-    fun artistBiography(artistName: String) = "artist_biography/${Uri.encode(artistName)}"
-
     fun playlistDetail(playlistId: Long) = "playlist_detail/$playlistId"
 
     fun selectSongs(playlistId: Long) = "select_songs/$playlistId"
 
-    fun playlistPicker(songIds: String) = "playlist_picker/${Uri.encode(songIds)}"
-
     fun addSource(sourceId: String?) =
         if (sourceId != null) "add_source?sourceId=$sourceId" else ADD_SOURCE
+
+    internal fun scoped(owner: BottomNavItem): ScopedRoutes = ScopedRoutes(owner.route)
+}
+
+internal class ScopedRoutes(private val prefix: String) {
+    val songInfoPattern = "$prefix/song_info/{songId}"
+    val albumDetailPattern = "$prefix/album_detail/{albumName}/{albumArtistName}/{albumYear}"
+    val artistDetailPattern = "$prefix/artist_detail/{artistName}"
+    val genreDetailPattern = "$prefix/genre_detail/{genreName}"
+    val yearDetailPattern = "$prefix/year_detail/{year}"
+    val decadeDetailPattern = "$prefix/decade_detail/{decade}"
+    val seriesDetailPattern = "$prefix/series_detail/{seriesName}"
+    val artistBiographyPattern = "$prefix/artist_biography/{artistName}"
+    val playlistPickerPattern = "$prefix/playlist_picker/{songIds}"
+
+    val allArtists = "$prefix/all_artists"
+    val allAlbums = "$prefix/all_albums"
+    val allYears = "$prefix/all_years"
+    val allGenres = "$prefix/all_genres"
+    val allSeries = "$prefix/all_series"
+
+    fun songInfo(songId: String) = "$prefix/song_info/${Uri.encode(songId)}"
+
+    fun albumDetail(albumName: String, albumArtistName: String, year: Int) =
+        "$prefix/album_detail/${Uri.encode(albumName)}/${Uri.encode(albumArtistName)}/$year"
+
+    fun artistDetail(artistName: String) = "$prefix/artist_detail/${Uri.encode(artistName)}"
+
+    fun genreDetail(genreName: String) = "$prefix/genre_detail/${Uri.encode(genreName)}"
+
+    fun yearDetail(year: Int) = "$prefix/year_detail/$year"
+
+    fun decadeDetail(decade: Int) = "$prefix/decade_detail/$decade"
+
+    fun seriesDetail(seriesName: String) = "$prefix/series_detail/${Uri.encode(seriesName)}"
+
+    fun artistBiography(artistName: String) =
+        "$prefix/artist_biography/${Uri.encode(artistName)}"
+
+    fun playlistPicker(songIds: String) = "$prefix/playlist_picker/${Uri.encode(songIds)}"
 }

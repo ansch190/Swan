@@ -62,6 +62,7 @@ import sh.calvin.reorderable.ReorderableItem
 fun NowPlayingScreen(
     onSongInfoClick: (String) -> Unit = {},
     onAddToPlaylist: (String) -> Unit = {},
+    uiResetToken: Long = 0L,
     viewModel: NowPlayingViewModel = hiltViewModel()
 ) {
     val playerState by viewModel.playerState.collectAsState()
@@ -74,6 +75,20 @@ fun NowPlayingScreen(
     var showLyricsDialog by remember { mutableStateOf(false) }
     val lyrics by viewModel.lyrics.collectAsState()
     val lyricsLoading by viewModel.lyricsLoading.collectAsState()
+    var handledUiResetToken by rememberSaveable {
+        mutableLongStateOf(uiResetToken)
+    }
+
+    LaunchedEffect(uiResetToken) {
+        if (uiResetToken != handledUiResetToken) {
+            handledUiResetToken = uiResetToken
+            showQueue = false
+            isEditing = false
+            selectedSongIds = emptySet()
+            showLyricsDialog = false
+            viewModel.clearLyrics()
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(

@@ -1,14 +1,11 @@
 package com.schwanitz.ui.screens.playlist
 
-import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.schwanitz.R
 import com.schwanitz.domain.repository.PlaylistRepository
 import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,11 +24,15 @@ data class PlaylistPickerUiState(
     val playlists: List<PlaylistPickerItem> = emptyList()
 )
 
+data class PlaylistAddOutcome(
+    val addedCount: Int,
+    val duplicateCount: Int
+)
+
 @HiltViewModel
 class PlaylistPickerViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val playlistRepository: PlaylistRepository,
-    @ApplicationContext private val context: Context
+    private val playlistRepository: PlaylistRepository
 ) : ViewModel() {
 
     val errorHolder = ErrorHolder()
@@ -60,28 +61,28 @@ class PlaylistPickerViewModel @Inject constructor(
     private val _selectedPlaylistId = MutableStateFlow<Long?>(null)
     val selectedPlaylistId: StateFlow<Long?> = _selectedPlaylistId
 
-    fun addSongsToPlaylist(playlistId: Long, onComplete: (Long) -> Unit) {
+    fun addSongsToPlaylist(playlistId: Long, onComplete: (PlaylistAddOutcome) -> Unit) {
         viewModelScope.launch {
-            runCatching {
+            val outcome = runCatching {
                 var duplicateCount = 0
                 val count = playlistRepository.getPlaylistSongCount(playlistId)
                 songIds.forEachIndexed { index, songId ->
                     val added = playlistRepository.addSongToPlaylist(playlistId, songId, count + index)
                     if (!added) duplicateCount++
                 }
-                if (duplicateCount > 0) {
-                    errorHolder.emit(
-                        com.schwanitz.domain.error.AppError.Unknown(
-                            message = context.getString(R.string.playlist_songs_already_exist, duplicateCount)
-                        )
-                    )
-                }
-            }.exceptionOrNull()?.let { errorHolder.emit(it) }
-            onComplete(playlistId)
+                PlaylistAddOutcome(
+                    addedCount = songIds.size - duplicateCount,
+                    duplicateCount = duplicateCount
+                )
+            }.getOrElse {
+                errorHolder.emit(it)
+                return@launch
+            }
+            onComplete(outcome)
         }
     }
 
-    fun createPlaylistAndAddSongs(name: String, onComplete: (Long) -> Unit) {
+    fun createPlaylistAndAddSongs(name: String, onComplete: (PlaylistAddOutcome) -> Unit) {
         viewModelScope.launch {
             val newId = runCatching {
                 playlistRepository.createPlaylist(name)

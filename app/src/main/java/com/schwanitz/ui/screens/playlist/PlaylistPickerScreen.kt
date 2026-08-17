@@ -25,7 +25,7 @@ import com.schwanitz.ui.navigation.LocalSnackbarHostState
 @Composable
 fun PlaylistPickerScreen(
     onNavigateBack: () -> Unit,
-    onPlaylistSelected: (Long) -> Unit,
+    onPlaylistSelected: (PlaylistAddOutcome) -> Unit,
     viewModel: PlaylistPickerViewModel = hiltViewModel()
 ) {
     val snackbarHostState = LocalSnackbarHostState.current

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -28,10 +29,13 @@ fun MainScreen() {
     val currentDestination = navBackStackEntry?.destination
     val snackbarHostState = remember { SnackbarHostState() }
     val playerManager = LocalMusicPlayerManager.current
+    var playerUiResetToken by rememberSaveable { mutableLongStateOf(0L) }
 
     LaunchedEffect(Unit) {
         playerManager.navigateToPlayer.collect {
-            navController.navigateToTopLevel(BottomNavItem.NowPlaying)
+            if (navController.navigateToPlayerForExternalPlayback()) {
+                playerUiResetToken++
+            }
         }
     }
 
@@ -49,6 +53,9 @@ fun MainScreen() {
                             onClick = {
                                 if (selected) {
                                     navController.returnToRoot(item)
+                                    if (item == BottomNavItem.NowPlaying) {
+                                        playerUiResetToken++
+                                    }
                                 } else {
                                     navController.navigateToTopLevel(item)
                                 }
@@ -63,7 +70,10 @@ fun MainScreen() {
                 color = MaterialTheme.colorScheme.background
             ) {
                 Box(Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
-                    NavGraph(navController = navController)
+                    NavGraph(
+                        navController = navController,
+                        playerUiResetToken = playerUiResetToken
+                    )
                 }
             }
         }

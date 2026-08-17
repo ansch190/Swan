@@ -8,10 +8,7 @@ internal fun NavHostController.isInTopLevel(item: BottomNavItem): Boolean =
     currentBackStackEntry?.destination?.hierarchy?.any { it.route == item.route } == true
 
 internal fun NavHostController.navigateToTopLevel(item: BottomNavItem) {
-    if (isInTopLevel(item)) {
-        returnToRoot(item)
-        return
-    }
+    if (isInTopLevel(item)) return
     navigate(item.route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
@@ -19,18 +16,19 @@ internal fun NavHostController.navigateToTopLevel(item: BottomNavItem) {
     }
 }
 
-internal fun NavHostController.navigateToTopLevelDestination(
-    item: BottomNavItem,
-    destination: String
-) {
-    if (!isInTopLevel(item)) {
-        navigate(item.route) {
-            popUpTo(graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
-    }
+internal fun NavHostController.navigateWithinTopLevel(destination: String) {
     navigate(destination) { launchSingleTop = true }
+}
+
+internal fun NavHostController.navigateToTopLevelRoot(item: BottomNavItem) {
+    navigateToTopLevel(item)
+    returnToRoot(item)
+}
+
+internal fun NavHostController.navigateToPlayerForExternalPlayback(): Boolean {
+    if (isInTopLevel(BottomNavItem.NowPlaying)) return false
+    navigateToTopLevelRoot(BottomNavItem.NowPlaying)
+    return true
 }
 
 internal fun NavHostController.returnToRoot(item: BottomNavItem) {
