@@ -16,6 +16,7 @@ import javax.inject.Inject
 
 data class HomeUiState(
     val songs: List<Song> = emptyList(),
+    val totalSongCount: Int? = null,
     val isLoading: Boolean = true,
     val searchQuery: String = "",
     val showFavoritesOnly: Boolean = false
@@ -41,6 +42,7 @@ class HomeViewModel @Inject constructor(
         val filtered = songs.filterSongs(query, favoritesOnly)
         HomeUiState(
             songs = filtered,
+            totalSongCount = songs.size,
             isLoading = false,
             searchQuery = query,
             showFavoritesOnly = favoritesOnly

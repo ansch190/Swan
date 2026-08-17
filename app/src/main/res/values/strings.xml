@@ -59,6 +59,8 @@
 
     <!-- Home screen -->
     <string name="home_title">Songs</string>
+    <string name="home_title_loading">Songs (…)</string>
+    <string name="home_title_with_count">Songs (%1$d)</string>
     <string name="home_search_placeholder">Search songs…</string>
     <string name="home_empty_search">No songs found</string>
     <string name="home_empty_no_source">No music found.\nAdd a source in Settings.</string>
@@ -351,4 +353,21 @@
     <!-- Year list -->
     <string name="decade_format">%ds</string>
     <string name="decade_title">Decade Detail</string>
+    <string name="backup_notification_channel">Backup operations</string>
+    <string name="backup_notification_export_title">Creating backup</string>
+    <string name="backup_notification_restore_title">Restoring backup</string>
+    <string name="backup_notification_cancel">Cancel</string>
+    <string name="backup_notification_items_progress">%1$d of %2$d</string>
+    <string name="backup_notification_export_success">Backup saved successfully</string>
+    <string name="backup_notification_restore_success">Backup restored successfully</string>
+    <string name="backup_notification_export_failed">Backup creation failed</string>
+    <string name="backup_notification_restore_failed">Backup restore failed</string>
+    <string name="backup_job_stage_preparing">Preparing backup operation</string>
+    <string name="backup_job_stage_configuration">Writing settings and sources</string>
+    <string name="backup_job_stage_export_library">Exporting library</string>
+    <string name="backup_job_stage_export_assets">Adding images</string>
+    <string name="backup_job_stage_waiting_scans">Waiting for exclusive library access</string>
+    <string name="backup_export_progress_title">Backup is being created</string>
+    <string name="backup_restore_background_hint">You can leave Swan open in the background. The restore will continue.</string>
+    <string name="backup_uri_permission_failed">The selected document provider does not allow persistent access. Please choose another location.</string>
 </resources>

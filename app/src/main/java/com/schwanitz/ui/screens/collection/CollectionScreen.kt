@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.Card
@@ -26,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -36,10 +36,15 @@ import com.schwanitz.R
 
 private data class CollectionTile(
     val titleRes: Int,
-    val icon: ImageVector,
+    val icon: CollectionTileIcon,
     val count: Int,
     val onClick: () -> Unit
 )
+
+private sealed interface CollectionTileIcon {
+    data class Vector(val image: ImageVector) : CollectionTileIcon
+    data class Drawable(val resourceId: Int) : CollectionTileIcon
+}
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,11 +58,11 @@ fun CollectionScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val tiles = listOf(
-        CollectionTile(R.string.section_albums, Icons.Filled.Album, state.albumCount, onAlbumsClick),
-        CollectionTile(R.string.section_album_artists, Icons.Filled.People, state.albumArtistCount, onAlbumArtistsClick),
-        CollectionTile(R.string.section_genres, Icons.Filled.Category, state.genreCount, onGenresClick),
-        CollectionTile(R.string.section_years, Icons.Filled.DateRange, state.yearCount, onYearsClick),
-        CollectionTile(R.string.section_series, Icons.Filled.CollectionsBookmark, state.seriesCount, onSeriesClick)
+        CollectionTile(R.string.section_albums, CollectionTileIcon.Vector(Icons.Filled.Album), state.albumCount, onAlbumsClick),
+        CollectionTile(R.string.section_album_artists, CollectionTileIcon.Vector(Icons.Filled.People), state.albumArtistCount, onAlbumArtistsClick),
+        CollectionTile(R.string.section_genres, CollectionTileIcon.Vector(Icons.Filled.Category), state.genreCount, onGenresClick),
+        CollectionTile(R.string.section_years, CollectionTileIcon.Vector(Icons.Filled.DateRange), state.yearCount, onYearsClick),
+        CollectionTile(R.string.section_series, CollectionTileIcon.Drawable(R.drawable.album_series), state.seriesCount, onSeriesClick)
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -93,11 +98,18 @@ private fun CollectionCard(tile: CollectionTile, isLoading: Boolean) {
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(
-                imageVector = tile.icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
+            when (val icon = tile.icon) {
+                is CollectionTileIcon.Vector -> Icon(
+                    imageVector = icon.image,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                is CollectionTileIcon.Drawable -> Icon(
+                    painter = painterResource(icon.resourceId),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
             Text(text = title, style = MaterialTheme.typography.titleMedium)
             Text(
                 text = count,

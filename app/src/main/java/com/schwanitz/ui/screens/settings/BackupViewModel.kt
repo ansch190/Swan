@@ -1,73 +1,68 @@
 package com.schwanitz.ui.screens.settings
 
-import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.schwanitz.data.backup.BackupManager
+import androidx.work.WorkInfo
+import com.schwanitz.data.backup.BackupJobCoordinator
+import com.schwanitz.data.backup.BackupOperation
 import com.schwanitz.data.backup.BackupOptions
-import com.schwanitz.data.backup.RestoreProgress
-import com.schwanitz.data.backup.RestoreStage
+import com.schwanitz.data.backup.BackupUriPermissionException
+import com.schwanitz.data.backup.BackupWorkState
+import com.schwanitz.data.backup.BackupWorker
 import com.schwanitz.ui.common.ErrorHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import javax.crypto.AEADBadTagException
 import javax.inject.Inject
 
 sealed interface RestoreUiState {
     data object Idle : RestoreUiState
     data class AwaitingPassword(val error: RestoreError? = null) : RestoreUiState
-    data class Running(val progress: RestoreProgress) : RestoreUiState
     data class Failed(val error: RestoreError) : RestoreUiState
 }
 
-enum class RestoreError {
-    WRONG_PASSWORD,
-    IMPORT_FAILED
-}
+enum class RestoreError { WRONG_PASSWORD, IMPORT_FAILED, URI_PERMISSION }
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val backupManager: BackupManager
+    private val coordinator: BackupJobCoordinator,
 ) : ViewModel() {
 
     val errorHolder = ErrorHolder()
-
-    private val _successMessage = MutableSharedFlow<String>(extraBufferCapacity = 5)
-    val successMessage: SharedFlow<String> = _successMessage.asSharedFlow()
-
-    private val _isExporting = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
-    val isExporting: SharedFlow<Boolean> = _isExporting.asSharedFlow()
-
+    private val successEvents = Channel<String>(Channel.BUFFERED)
+    val successMessage: Flow<String> = successEvents.receiveAsFlow()
+    private val _workState = MutableStateFlow<BackupWorkState?>(null)
+    val workState: StateFlow<BackupWorkState?> = _workState.asStateFlow()
     private val _restoreState = MutableStateFlow<RestoreUiState>(RestoreUiState.Idle)
     val restoreState: StateFlow<RestoreUiState> = _restoreState.asStateFlow()
     private var pendingImportUri: Uri? = null
 
-    fun exportTo(uri: Uri, password: String, options: BackupOptions = BackupOptions()) {
+    init {
         viewModelScope.launch {
-            _isExporting.tryEmit(true)
-            try {
-                val backup = backupManager.createBackup(options)
-                backupManager.exportTo(context.contentResolver, uri, backup, password)
-                _successMessage.tryEmit(SUCCESS_EXPORT)
-            } catch (e: Exception) {
-                errorHolder.emit(e, ERROR_EXPORT)
-            } finally {
-                _isExporting.tryEmit(false)
+            coordinator.workState.collect { state ->
+                if (state == null) _workState.value = null
+                else if (state.state.isFinished) handleFinished(state)
+                else _workState.value = state
             }
         }
     }
 
+    fun exportTo(uri: Uri, password: String, options: BackupOptions = BackupOptions()) {
+        if (_workState.value?.isRunning == true) return
+        viewModelScope.launch {
+            runCatching { coordinator.enqueueExport(uri, password, options) }
+                .onFailure { errorHolder.emit(it, ERROR_EXPORT) }
+        }
+    }
+
     fun selectImport(uri: Uri) {
-        if (_restoreState.value is RestoreUiState.Running) return
+        if (_workState.value?.isRunning == true) return
         pendingImportUri = uri
         _restoreState.value = RestoreUiState.AwaitingPassword()
     }
@@ -75,25 +70,26 @@ class BackupViewModel @Inject constructor(
     fun startImport(password: String) {
         if (_restoreState.value !is RestoreUiState.AwaitingPassword) return
         val uri = pendingImportUri ?: return
-        _restoreState.value = RestoreUiState.Running(RestoreProgress(RestoreStage.PREPARING_KEY))
+        _restoreState.value = RestoreUiState.Idle
         viewModelScope.launch {
-            try {
-                backupManager.importAndRestore(context.contentResolver, uri, password) { progress ->
-                    _restoreState.value = RestoreUiState.Running(progress)
+            runCatching { coordinator.enqueueRestore(uri, password) }
+                .onFailure { error ->
+                    _restoreState.value = if (error is BackupUriPermissionException) {
+                        RestoreUiState.Failed(RestoreError.URI_PERMISSION)
+                    } else RestoreUiState.Failed(RestoreError.IMPORT_FAILED)
                 }
-                pendingImportUri = null
-                _restoreState.value = RestoreUiState.Idle
-                _successMessage.tryEmit(SUCCESS_IMPORT)
-            } catch (e: AEADBadTagException) {
-                _restoreState.value = RestoreUiState.AwaitingPassword(RestoreError.WRONG_PASSWORD)
-            } catch (e: Exception) {
-                _restoreState.value = RestoreUiState.Failed(RestoreError.IMPORT_FAILED)
-            }
         }
+    }
+
+    fun cancelExport() {
+        _workState.value?.takeIf {
+            it.operation == BackupOperation.EXPORT && it.isRunning
+        }?.let { coordinator.cancelExport(it.workId) }
     }
 
     fun dismissPasswordRequest() {
         if (_restoreState.value !is RestoreUiState.AwaitingPassword) return
+        pendingImportUri?.let { coordinator.releasePermission(it, BackupOperation.RESTORE) }
         pendingImportUri = null
         _restoreState.value = RestoreUiState.Idle
     }
@@ -113,8 +109,39 @@ class BackupViewModel @Inject constructor(
 
     fun dismissImportFailure() {
         if (_restoreState.value !is RestoreUiState.Failed) return
+        pendingImportUri?.let { coordinator.releasePermission(it, BackupOperation.RESTORE) }
         pendingImportUri = null
         _restoreState.value = RestoreUiState.Idle
+    }
+
+    private fun handleFinished(state: BackupWorkState) {
+        _workState.value = null
+        when {
+            state.state == WorkInfo.State.SUCCEEDED -> {
+                coordinator.acknowledge(state)
+                if (state.operation == BackupOperation.EXPORT) successEvents.trySend(SUCCESS_EXPORT)
+                else {
+                    pendingImportUri = null
+                    _restoreState.value = RestoreUiState.Idle
+                    successEvents.trySend(SUCCESS_IMPORT)
+                }
+            }
+            state.operation == BackupOperation.RESTORE && state.error == BackupWorker.ERROR_WRONG_PASSWORD -> {
+                pendingImportUri = state.uri
+                coordinator.acknowledge(state, releasePermission = false)
+                _restoreState.value = RestoreUiState.AwaitingPassword(RestoreError.WRONG_PASSWORD)
+            }
+            state.operation == BackupOperation.RESTORE -> {
+                pendingImportUri = state.uri
+                coordinator.acknowledge(state, releasePermission = false)
+                _restoreState.value = RestoreUiState.Failed(RestoreError.IMPORT_FAILED)
+            }
+            state.state == WorkInfo.State.CANCELLED -> coordinator.acknowledge(state)
+            else -> {
+                coordinator.acknowledge(state)
+                errorHolder.emit(IllegalStateException("Backup export failed"), ERROR_EXPORT)
+            }
+        }
     }
 
     companion object {

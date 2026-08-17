@@ -32,7 +32,13 @@ fun HomeScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(stringResource(R.string.home_title)) },
+            title = {
+                Text(
+                    uiState.totalSongCount?.let { count ->
+                        stringResource(R.string.home_title_with_count, count)
+                    } ?: stringResource(R.string.home_title_loading)
+                )
+            },
             actions = {
                 IconButton(onClick = { viewModel.toggleFavoritesFilter() }) {
                     Icon(

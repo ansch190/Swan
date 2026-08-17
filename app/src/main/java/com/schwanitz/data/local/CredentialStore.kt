@@ -56,6 +56,33 @@ class CredentialStore @Inject constructor(@ApplicationContext private val contex
         persist()
     }
 
+    @Synchronized
+    fun replaceAll(replacement: Map<String, String>) {
+        values.clear()
+        values.putAll(replacement)
+        persist()
+    }
+
+    @Synchronized
+    fun snapshot(): Map<String, String> = values.toMap()
+
+    fun backupValues(
+        credentials: Map<String, Pair<String, String>>,
+        discogsKey: String?,
+        discogsSecret: String?,
+        lastfmKey: String?,
+        geniusToken: String?,
+    ): Map<String, String> = buildMap {
+        credentials.forEach { (sourceId, credential) ->
+            put(key(sourceId, FIELD_USERNAME), credential.first)
+            put(key(sourceId, FIELD_PASSWORD), credential.second)
+        }
+        discogsKey?.let { put(API_DISCOGS_KEY, it) }
+        discogsSecret?.let { put(API_DISCOGS_SECRET, it) }
+        lastfmKey?.let { put(API_LASTFM_KEY, it) }
+        geniusToken?.let { put(API_GENIUS_TOKEN, it) }
+    }
+
     fun getApiDiscogsKey(): String? = get(API_DISCOGS_KEY)
     fun setApiDiscogsKey(value: String) = put(API_DISCOGS_KEY, value)
     fun getApiDiscogsSecret(): String? = get(API_DISCOGS_SECRET)

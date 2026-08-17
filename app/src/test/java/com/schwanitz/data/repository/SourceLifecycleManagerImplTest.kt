@@ -104,7 +104,8 @@ class SourceLifecycleManagerImplTest {
         lyricsRepository,
         sourceManager,
         MusicSourceRegistry(setOf(source)),
-        orchestrator
+        orchestrator,
+        LibraryOperationCoordinator(),
     )
 
     private fun fakeSource(

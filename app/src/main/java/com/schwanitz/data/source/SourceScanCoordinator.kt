@@ -11,6 +11,7 @@ import androidx.work.workDataOf
 import com.schwanitz.domain.repository.SourceManager
 import com.schwanitz.domain.source.SourceConfig
 import com.schwanitz.domain.source.SourceType
+import com.schwanitz.data.repository.LibraryOperationCoordinator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -37,6 +38,7 @@ data class SourceScanWorkState(
 class SourceScanCoordinator @Inject constructor(
     @ApplicationContext context: Context,
     private val sourceManager: SourceManager,
+    private val libraryOperationCoordinator: LibraryOperationCoordinator,
 ) {
     private val workManager = WorkManager.getInstance(context)
     private val _scanRequested = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -61,7 +63,12 @@ class SourceScanCoordinator @Inject constructor(
         workManager.cancelUniqueWork(uniqueWorkName(sourceId))
     }
 
+    fun cancelAll() {
+        workManager.cancelAllWorkByTag(SourceScanWorker.TAG)
+    }
+
     private fun enqueue(config: SourceConfig) {
+        if (libraryOperationCoordinator.restoreRequested) return
         val requestedAt = System.currentTimeMillis()
         val constraints = Constraints.Builder().apply {
             if (config.type != SourceType.LOCAL) setRequiredNetworkType(NetworkType.CONNECTED)

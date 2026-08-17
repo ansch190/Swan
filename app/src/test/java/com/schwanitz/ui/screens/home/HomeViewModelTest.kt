@@ -10,6 +10,7 @@ import io.mockk.mockk
 import io.mockk.coVerify
 import io.mockk.verify
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -49,6 +50,7 @@ class HomeViewModelTest {
             val state = awaitItem()
             assertFalse(state.isLoading)
             assertEquals(4, state.songs.size)
+            assertEquals(4, state.totalSongCount)
             assertEquals("", state.searchQuery)
             assertFalse(state.showFavoritesOnly)
         }
@@ -61,6 +63,7 @@ class HomeViewModelTest {
             viewModel.onSearchQueryChange("Beta Song")
             val state = awaitItem()
             assertEquals(1, state.songs.size)
+            assertEquals(4, state.totalSongCount)
             assertEquals("Beta Song", state.songs[0].title)
         }
     }
@@ -130,6 +133,7 @@ class HomeViewModelTest {
             assertTrue(state.showFavoritesOnly)
             assertEquals(1, state.songs.size)
             assertTrue(state.songs[0].isFavorite)
+            assertEquals(4, state.totalSongCount)
         }
     }
 
@@ -157,6 +161,23 @@ class HomeViewModelTest {
             // Only song 3 is a favorite AND matches "Alpha" (artist name)
             assertEquals(1, state.songs.size)
             assertEquals("Gamma Song", state.songs[0].title)
+        }
+    }
+
+    @Test
+    fun `total count updates with library but not with filters`() = runTest {
+        val songs = MutableStateFlow(testSongs)
+        every { songRepository.getAllSongs() } returns songs
+        val reactiveViewModel = HomeViewModel(songRepository, playerManager)
+
+        reactiveViewModel.uiState.test {
+            assertEquals(4, awaitItem().totalSongCount)
+            reactiveViewModel.onSearchQueryChange("Beta")
+            val filtered = awaitItem()
+            assertEquals(1, filtered.songs.size)
+            assertEquals(4, filtered.totalSongCount)
+            songs.value = testSongs.dropLast(1)
+            assertEquals(3, awaitItem().totalSongCount)
         }
     }
 

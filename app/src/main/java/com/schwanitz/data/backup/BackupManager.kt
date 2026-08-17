@@ -85,12 +85,39 @@ class BackupManager @Inject constructor(
         contentResolver: ContentResolver,
         uri: Uri,
         backup: BackupFile,
-        password: String
+        password: String,
+        onProgress: (BackupJobProgress) -> Unit = {},
     ) = withContext(Dispatchers.IO) {
+        exportV2(contentResolver, uri, backup, password, BackupProgressReporter(onProgress))
+    }
+
+    suspend fun exportTo(
+        contentResolver: ContentResolver,
+        uri: Uri,
+        password: String,
+        options: BackupOptions,
+        onProgress: (BackupJobProgress) -> Unit = {},
+    ) = withContext(Dispatchers.IO) {
+        val reporter = BackupProgressReporter(onProgress)
+        reporter.report(
+            BackupJobProgress(BackupOperation.EXPORT, BackupJobStage.PREPARING),
+            force = true,
+        )
+        val backup = createBackup(options)
+        exportV2(contentResolver, uri, backup, password, reporter)
+    }
+
+    private suspend fun exportV2(
+        contentResolver: ContentResolver,
+        uri: Uri,
+        backup: BackupFile,
+        password: String,
+        reporter: BackupProgressReporter,
+    ) {
         require(password.length >= MIN_PASSWORD_LENGTH) { "Backup password must contain at least 12 characters" }
         val salt = ByteArray(SALT_LENGTH).also(SecureRandom()::nextBytes)
         val iv = ByteArray(IV_LENGTH).also(SecureRandom()::nextBytes)
-        val output = checkNotNull(contentResolver.openOutputStream(uri)) { "Cannot write backup file" }
+        val output = checkNotNull(contentResolver.openOutputStream(uri, "wt")) { "Cannot write backup file" }
         output.use { raw ->
             DataOutputStream(raw).apply {
                 write(MAGIC_V2)
@@ -101,10 +128,26 @@ class BackupManager @Inject constructor(
                 write(iv)
                 flush()
             }
+            reporter.report(
+                BackupJobProgress(BackupOperation.EXPORT, BackupJobStage.PREPARING_KEY),
+                force = true,
+            )
             val cipher = newCipher(Cipher.ENCRYPT_MODE, password, salt, iv, V2_ITERATIONS, pepper = null)
             ZipOutputStream(CipherOutputStream(raw, cipher)).use { zip ->
+                reporter.report(
+                    BackupJobProgress(BackupOperation.EXPORT, BackupJobStage.WRITING_CONFIGURATION),
+                    force = true,
+                )
                 writeZipEntry(zip, MANIFEST_ENTRY, backup.toJson().toString())
-                if (backup.includeLibrary) exportLibrary(zip, database.openHelper.readableDatabase)
+                if (backup.includeLibrary) {
+                    database.withTransaction {
+                        exportLibrary(zip, database.openHelper.readableDatabase, reporter)
+                    }
+                }
+                reporter.report(
+                    BackupJobProgress(BackupOperation.EXPORT, BackupJobStage.FINALIZING),
+                    force = true,
+                )
             }
         }
     }
@@ -234,46 +277,77 @@ class BackupManager @Inject constructor(
     ) {
         val oldInternalAssets = collectInternalAssets(database.openHelper.readableDatabase).keys
         val extractedAssets = if (libraryZip != null) extractAssets(libraryZip, reporter) else emptyMap()
+        val oldCredentials = credentialStore.snapshot()
+        val oldLanguage = languagePreferences.getLanguageSync()
+        val oldArtistSource = artistDataSourcePreferences.getSourceIdSync()
+        val oldArtistPath = artistDataSourcePreferences.getBasePathSync()
+        val oldHiddenSourceIds = sharedImportPreferences.hiddenSourceIds.first()
+        val oldApiKeysHidden = sharedImportPreferences.areApiKeysHidden.first()
+        val oldLocalAuthorization = sharedImportPreferences.localSourcesRequiringAuthorization.first()
         try {
             database.withTransaction {
                 val db = database.openHelper.writableDatabase
                 clearReplaceableData(db)
                 backup.sources.forEach { sourceConfigDao.upsert(it.toEntityForRestore()) }
                 if (libraryZip != null) restoreLibrary(db, libraryZip, extractedAssets, reporter)
+                reporter.report(RestoreProgress(RestoreStage.APPLYING_SETTINGS), force = true)
+                credentialStore.replaceAll(
+                    credentialStore.backupValues(
+                        credentials = backup.credentials.mapNotNull { (sourceId, creds) ->
+                            if (creds.username != null && creds.password != null) {
+                                sourceId to (creds.username to creds.password)
+                            } else null
+                        }.toMap(),
+                        discogsKey = backup.apiKeys.discogsKey,
+                        discogsSecret = backup.apiKeys.discogsSecret,
+                        lastfmKey = backup.apiKeys.lastfmKey,
+                        geniusToken = backup.apiKeys.geniusToken,
+                    )
+                )
+                languagePreferences.setLanguage(backup.languageCode)
+                artistDataSourcePreferences.setSourceId(backup.artistDataSource.sourceId)
+                artistDataSourcePreferences.setBasePath(backup.artistDataSource.basePath)
+                sharedImportPreferences.setHiddenSourceIds(
+                    if (backup.hideCredentialsAfterRestore) backup.credentials.keys else emptySet()
+                )
+                sharedImportPreferences.setApiKeysHidden(backup.hideCredentialsAfterRestore)
+                sharedImportPreferences.setLocalSourcesRequiringAuthorization(
+                    backup.sources.filter { it.type == "LOCAL" }.map { it.id }.toSet()
+                )
             }
-
-            reporter.report(RestoreProgress(RestoreStage.APPLYING_SETTINGS), force = true)
-            credentialStore.clear()
-            backup.credentials.forEach { (sourceId, creds) ->
-                if (creds.username != null && creds.password != null) credentialStore.save(sourceId, creds.username, creds.password)
-            }
-            backup.apiKeys.discogsKey?.let(credentialStore::setApiDiscogsKey)
-            backup.apiKeys.discogsSecret?.let(credentialStore::setApiDiscogsSecret)
-            backup.apiKeys.lastfmKey?.let(credentialStore::setApiLastfmKey)
-            backup.apiKeys.geniusToken?.let(credentialStore::setApiGeniusToken)
-            languagePreferences.setLanguage(backup.languageCode)
-            artistDataSourcePreferences.setSourceId(backup.artistDataSource.sourceId)
-            artistDataSourcePreferences.setBasePath(backup.artistDataSource.basePath)
-            sharedImportPreferences.setHiddenSourceIds(
-                if (backup.hideCredentialsAfterRestore) backup.credentials.keys else emptySet()
-            )
-            sharedImportPreferences.setApiKeysHidden(backup.hideCredentialsAfterRestore)
-            sharedImportPreferences.setLocalSourcesRequiringAuthorization(
-                backup.sources.filter { it.type == "LOCAL" }.map { it.id }.toSet()
-            )
             reporter.report(RestoreProgress(RestoreStage.FINALIZING), force = true)
             oldInternalAssets.forEach { oldUri ->
                 runCatching { File(Uri.parse(oldUri).path ?: oldUri).delete() }
             }
             Timber.i("Backup restored: %d sources, library=%s", backup.sources.size, libraryZip != null)
         } catch (e: Exception) {
+            runCatching { credentialStore.replaceAll(oldCredentials) }
+            runCatching { languagePreferences.setLanguage(oldLanguage) }
+            runCatching { artistDataSourcePreferences.setSourceId(oldArtistSource) }
+            runCatching { artistDataSourcePreferences.setBasePath(oldArtistPath) }
+            runCatching { sharedImportPreferences.setHiddenSourceIds(oldHiddenSourceIds) }
+            runCatching { sharedImportPreferences.setApiKeysHidden(oldApiKeysHidden) }
+            runCatching { sharedImportPreferences.setLocalSourcesRequiringAuthorization(oldLocalAuthorization) }
             extractedAssets.values.map(::File).mapNotNull(File::getParentFile).distinct().forEach(File::deleteRecursively)
             throw e
         }
     }
 
-    private fun exportLibrary(zip: ZipOutputStream, db: SupportSQLiteDatabase) {
-        LIBRARY_TABLES.forEach { table ->
+    private fun exportLibrary(
+        zip: ZipOutputStream,
+        db: SupportSQLiteDatabase,
+        reporter: BackupProgressReporter,
+    ) {
+        reporter.report(
+            BackupJobProgress(
+                BackupOperation.EXPORT,
+                BackupJobStage.EXPORTING_LIBRARY,
+                completedItems = 0,
+                totalItems = LIBRARY_TABLES.size,
+            ),
+            force = true,
+        )
+        LIBRARY_TABLES.forEachIndexed { index, table ->
             zip.putNextEntry(ZipEntry("library/$table.jsonl"))
             db.query("SELECT * FROM $table").use { cursor ->
                 while (cursor.moveToNext()) {
@@ -283,14 +357,63 @@ class BackupManager @Inject constructor(
                 }
             }
             zip.closeEntry()
+            reporter.report(
+                BackupJobProgress(
+                    BackupOperation.EXPORT,
+                    BackupJobStage.EXPORTING_LIBRARY,
+                    completedItems = index + 1,
+                    totalItems = LIBRARY_TABLES.size,
+                )
+            )
         }
         val assets = collectInternalAssets(db)
         writeZipEntry(zip, ASSET_MAP_ENTRY, JSONObject(assets).toString())
-        assets.values.distinct().forEach { entryName ->
+        val distinctAssets = assets.values.distinct()
+        val totalAssetBytes = distinctAssets.sumOf { entryName ->
             val sourcePath = assets.entries.first { it.value == entryName }.key
+            File(Uri.parse(sourcePath).path ?: sourcePath).length()
+        }
+        var completedAssetBytes = 0L
+        reporter.report(
+            BackupJobProgress(
+                BackupOperation.EXPORT,
+                BackupJobStage.EXPORTING_ASSETS,
+                totalBytes = totalAssetBytes,
+                completedItems = 0,
+                totalItems = distinctAssets.size,
+            ),
+            force = true,
+        )
+        distinctAssets.forEachIndexed { index, entryName ->
+            val sourcePath = assets.entries.first { it.value == entryName }.key
+            val sourceFile = File(Uri.parse(sourcePath).path ?: sourcePath)
             zip.putNextEntry(ZipEntry(entryName))
-            File(Uri.parse(sourcePath).path ?: sourcePath).inputStream().use { it.copyTo(zip) }
+            sourceFile.inputStream().use { input ->
+                copyWithProgress(input, zip, sourceFile.length()) { currentFileBytes ->
+                    reporter.report(
+                        BackupJobProgress(
+                            BackupOperation.EXPORT,
+                            BackupJobStage.EXPORTING_ASSETS,
+                            completedBytes = completedAssetBytes + currentFileBytes,
+                            totalBytes = totalAssetBytes,
+                            completedItems = index,
+                            totalItems = distinctAssets.size,
+                        )
+                    )
+                }
+            }
             zip.closeEntry()
+            completedAssetBytes += sourceFile.length()
+            reporter.report(
+                BackupJobProgress(
+                    BackupOperation.EXPORT,
+                    BackupJobStage.EXPORTING_ASSETS,
+                    completedBytes = completedAssetBytes,
+                    totalBytes = totalAssetBytes,
+                    completedItems = index + 1,
+                    totalItems = distinctAssets.size,
+                )
+            )
         }
     }
 

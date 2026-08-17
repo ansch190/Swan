@@ -59,6 +59,8 @@
 
     <!-- Home screen -->
     <string name="home_title">Lieder</string>
+    <string name="home_title_loading">Lieder (…)</string>
+    <string name="home_title_with_count">Lieder (%1$d)</string>
     <string name="home_search_placeholder">Lied suchen…</string>
     <string name="home_empty_search">Kein Titel gefunden</string>
     <string name="home_empty_no_source">Keine Musik gefunden.\nFüge eine Quelle in den Einstellungen hinzu.</string>
@@ -351,4 +353,21 @@
     <!-- Year list -->
     <string name="decade_format">%der</string>
     <string name="decade_title">Jahrzehnt-Detail</string>
+    <string name="backup_notification_channel">Backup-Vorgänge</string>
+    <string name="backup_notification_export_title">Backup wird erstellt</string>
+    <string name="backup_notification_restore_title">Backup wird wiederhergestellt</string>
+    <string name="backup_notification_cancel">Abbrechen</string>
+    <string name="backup_notification_items_progress">%1$d von %2$d</string>
+    <string name="backup_notification_export_success">Backup erfolgreich gespeichert</string>
+    <string name="backup_notification_restore_success">Backup erfolgreich wiederhergestellt</string>
+    <string name="backup_notification_export_failed">Backup-Erstellung fehlgeschlagen</string>
+    <string name="backup_notification_restore_failed">Backup-Wiederherstellung fehlgeschlagen</string>
+    <string name="backup_job_stage_preparing">Backup-Vorgang wird vorbereitet</string>
+    <string name="backup_job_stage_configuration">Einstellungen und Quellen werden geschrieben</string>
+    <string name="backup_job_stage_export_library">Bibliothek wird exportiert</string>
+    <string name="backup_job_stage_export_assets">Bilder werden hinzugefügt</string>
+    <string name="backup_job_stage_waiting_scans">Auf exklusiven Bibliothekszugriff wird gewartet</string>
+    <string name="backup_export_progress_title">Backup wird erstellt</string>
+    <string name="backup_restore_background_hint">Swan kann im Hintergrund bleiben. Die Wiederherstellung läuft weiter.</string>
+    <string name="backup_uri_permission_failed">Der gewählte Dokumentanbieter erlaubt keinen dauerhaften Zugriff. Bitte wähle einen anderen Speicherort.</string>
 </resources>

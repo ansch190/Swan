@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -29,8 +28,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.schwanitz.R
 import com.schwanitz.data.backup.BackupOptions
-import com.schwanitz.data.backup.RestoreProgress
-import com.schwanitz.data.backup.RestoreStage
+import com.schwanitz.data.backup.BackupOperation
+import com.schwanitz.data.backup.BackupJobProgress
+import com.schwanitz.data.backup.BackupJobStage
+import com.schwanitz.data.backup.stringRes
 import com.schwanitz.ui.common.CollectSnackbarErrors
 import com.schwanitz.ui.navigation.LocalSnackbarHostState
 
@@ -45,8 +46,6 @@ fun BackupScreen(
     val snackbarHostState = LocalSnackbarHostState.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
 
-    var isExporting by remember { mutableStateOf(false) }
-
     LaunchedEffect(Unit) {
         viewModel.successMessage.collect { message ->
             if (message == BackupViewModel.SUCCESS_IMPORT) {
@@ -57,21 +56,11 @@ fun BackupScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.isExporting.collect { isExporting = it }
-    }
-
     val restoreState by viewModel.restoreState.collectAsState()
-    val isRestoring = restoreState is RestoreUiState.Running
-    val view = LocalView.current
-
-    DisposableEffect(view, isRestoring) {
-        val previous = view.keepScreenOn
-        if (isRestoring) view.keepScreenOn = true
-        onDispose {
-            if (isRestoring) view.keepScreenOn = previous
-        }
-    }
+    val workState by viewModel.workState.collectAsState()
+    val isExporting = workState?.operation == BackupOperation.EXPORT && workState?.isRunning == true
+    val isRestoring = workState?.operation == BackupOperation.RESTORE && workState?.isRunning == true
+    val isWorking = isExporting || isRestoring
 
     var showExportPasswordDialog by remember { mutableStateOf(false) }
 
@@ -308,16 +297,19 @@ fun BackupScreen(
         )
     }
 
-    val runningState = restoreState as? RestoreUiState.Running
-    if (runningState != null) {
-        RestoreProgressDialog(runningState.progress)
-    }
-
     if (restoreState is RestoreUiState.Failed) {
         AlertDialog(
             onDismissRequest = {},
             title = { Text(stringResource(R.string.backup_restore_failed_title)) },
-            text = { Text(stringResource(R.string.backup_restore_failed_message)) },
+            text = {
+                Text(
+                    stringResource(
+                        if ((restoreState as RestoreUiState.Failed).error == RestoreError.URI_PERMISSION) {
+                            R.string.backup_uri_permission_failed
+                        } else R.string.backup_restore_failed_message
+                    )
+                )
+            },
             confirmButton = {
                 TextButton(onClick = viewModel::retryImport) {
                     Text(stringResource(R.string.retry))
@@ -347,6 +339,12 @@ fun BackupScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (isExporting && workState?.progress != null) {
+                BackupProgressCard(
+                    progress = workState!!.progress!!,
+                    onCancel = viewModel::cancelExport,
+                )
+            }
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -375,7 +373,7 @@ fun BackupScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Button(
                         onClick = { showExportPasswordDialog = true },
-                        enabled = !isExporting
+                        enabled = !isWorking
                     ) {
                         if (isExporting) {
                             CircularProgressIndicator(
@@ -418,7 +416,7 @@ fun BackupScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Button(
                         onClick = { importLauncher.launch(arrayOf("*/*")) },
-                        enabled = !isRestoring
+                        enabled = !isWorking
                     ) {
                         Text(stringResource(R.string.backup_import_action))
                     }
@@ -429,18 +427,10 @@ fun BackupScreen(
 }
 
 @Composable
-private fun RestoreProgressDialog(progress: RestoreProgress) {
+fun BackupProgressDetails(progress: BackupJobProgress) {
     val context = LocalContext.current
     val stage = stringResource(
-        when (progress.stage) {
-            RestoreStage.PREPARING_KEY -> R.string.backup_restore_stage_preparing
-            RestoreStage.DECRYPTING -> R.string.backup_restore_stage_decrypting
-            RestoreStage.VALIDATING -> R.string.backup_restore_stage_validating
-            RestoreStage.EXTRACTING_ASSETS -> R.string.backup_restore_stage_assets
-            RestoreStage.RESTORING_LIBRARY -> R.string.backup_restore_stage_library
-            RestoreStage.APPLYING_SETTINGS -> R.string.backup_restore_stage_settings
-            RestoreStage.FINALIZING -> R.string.backup_restore_stage_finalizing
-        }
+        progress.stage.stringRes()
     )
     val byteProgress = progress.totalBytes?.takeIf { it > 0 }?.let { total ->
         stringResource(
@@ -451,20 +441,18 @@ private fun RestoreProgressDialog(progress: RestoreProgress) {
     }
     val itemProgress = if (progress.completedItems != null && progress.totalItems != null) {
         val resource = when (progress.stage) {
-            RestoreStage.VALIDATING -> R.string.backup_restore_entries_progress
-            RestoreStage.EXTRACTING_ASSETS -> R.string.backup_restore_files_progress
-            RestoreStage.RESTORING_LIBRARY -> R.string.backup_restore_tables_progress
+            BackupJobStage.VALIDATING -> R.string.backup_restore_entries_progress
+            BackupJobStage.EXTRACTING_ASSETS,
+            BackupJobStage.EXPORTING_ASSETS -> R.string.backup_restore_files_progress
+            BackupJobStage.RESTORING_LIBRARY,
+            BackupJobStage.EXPORTING_LIBRARY -> R.string.backup_restore_tables_progress
             else -> null
         }
         resource?.let { stringResource(it, progress.completedItems, progress.totalItems) }
     } else null
     val stateText = listOfNotNull(stage, byteProgress, itemProgress).joinToString(". ")
 
-    AlertDialog(
-        onDismissRequest = {},
-        title = { Text(stringResource(R.string.backup_restore_progress_title)) },
-        text = {
-            Column(
+    Column(
                 modifier = Modifier.semantics {
                     liveRegion = LiveRegionMode.Polite
                     stateDescription = stateText
@@ -483,13 +471,24 @@ private fun RestoreProgressDialog(progress: RestoreProgress) {
                 }
                 if (byteProgress != null) Text(byteProgress, style = MaterialTheme.typography.bodyMedium)
                 if (itemProgress != null) Text(itemProgress, style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    stringResource(R.string.backup_restore_keep_open),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
-        },
-        confirmButton = {}
-    )
+}
+
+@Composable
+private fun BackupProgressCard(
+    progress: BackupJobProgress,
+    onCancel: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(stringResource(R.string.backup_export_progress_title), style = MaterialTheme.typography.titleMedium)
+            BackupProgressDetails(progress)
+            TextButton(onClick = onCancel, modifier = Modifier.align(Alignment.End)) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    }
 }

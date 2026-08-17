@@ -4,7 +4,6 @@ import com.schwanitz.domain.error.AppError
 import com.schwanitz.domain.repository.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import javax.inject.Inject
@@ -16,11 +15,11 @@ class SourceLifecycleManagerImpl @Inject constructor(
     private val songLyricsRepository: SongLyricsRepository,
     private val sourceManager: SourceManager,
     private val sourceRegistry: MusicSourceRegistry,
-    private val scanOrchestrator: ScanOrchestrator
+    private val scanOrchestrator: ScanOrchestrator,
+    private val libraryOperationCoordinator: LibraryOperationCoordinator,
 ) : SourceLifecycleManager {
 
-    private val scanMutex = Mutex()
-    private val requestMutex = Mutex()
+    private val requestMutex = kotlinx.coroutines.sync.Mutex()
     private val inFlight = mutableMapOf<String, CompletableDeferred<SourceRefreshResult>>()
 
     override suspend fun refreshSource(
@@ -41,7 +40,7 @@ class SourceLifecycleManagerImpl @Inject constructor(
         }
         if (!leader) return request.await()
         try {
-            val result = scanMutex.withLock { performRefresh(sourceId, onProgress) }
+            val result = libraryOperationCoordinator.withScan { performRefresh(sourceId, onProgress) }
             request.complete(result)
             return result
         } catch (cancellation: CancellationException) {
@@ -81,7 +80,7 @@ class SourceLifecycleManagerImpl @Inject constructor(
         }
     }
 
-    override suspend fun deleteBySource(sourceId: String) = scanMutex.withLock {
+    override suspend fun deleteBySource(sourceId: String) = libraryOperationCoordinator.withScan {
         songLyricsRepository.deleteBySource(sourceId)
         songRepository.deleteBySource(sourceId)
         scanOrchestrator.deleteOrphanedAlbums()
