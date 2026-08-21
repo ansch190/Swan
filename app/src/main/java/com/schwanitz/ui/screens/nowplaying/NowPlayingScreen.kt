@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
@@ -65,7 +67,8 @@ fun NowPlayingScreen(
     uiResetToken: Long = 0L,
     viewModel: NowPlayingViewModel = hiltViewModel()
 ) {
-    val playerState by viewModel.playerState.collectAsState()
+    val playerState by viewModel.playerState.collectAsStateWithLifecycle()
+    val favoriteIds by viewModel.favoriteIds.collectAsStateWithLifecycle()
     val snackbarHostState = LocalSnackbarHostState.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
     var showQueue by rememberSaveable { mutableStateOf(false) }
@@ -73,8 +76,8 @@ fun NowPlayingScreen(
     LaunchedEffect(showQueue) { if (!showQueue) isEditing = false }
     var selectedSongIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showLyricsDialog by remember { mutableStateOf(false) }
-    val lyrics by viewModel.lyrics.collectAsState()
-    val lyricsLoading by viewModel.lyricsLoading.collectAsState()
+    val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
+    val lyricsLoading by viewModel.lyricsLoading.collectAsStateWithLifecycle()
     var handledUiResetToken by rememberSaveable {
         mutableLongStateOf(uiResetToken)
     }
@@ -96,25 +99,19 @@ fun NowPlayingScreen(
             actions = {
                 val currentSong = playerState.currentSong
                 if (currentSong != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .combinedClickable(
-                                onClick = { onSongInfoClick(currentSong.id) },
-                                onLongClick = {
-                                    viewModel.loadLyrics(
-                                        currentSong.id,
-                                        currentSong.title,
-                                        currentSong.artistName
-                                    )
-                                    showLyricsDialog = true
-                                }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    IconButton(onClick = { onSongInfoClick(currentSong.id) }) {
                         Icon(
                             imageVector = Icons.Filled.Info,
                             contentDescription = stringResource(R.string.songinfo_title)
+                        )
+                    }
+                    IconButton(onClick = {
+                        viewModel.loadLyrics(currentSong.id, currentSong.title, currentSong.artistName)
+                        showLyricsDialog = true
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.Lyrics,
+                            contentDescription = stringResource(R.string.songinfo_lyrics_title),
                         )
                     }
                     IconButton(onClick = { showQueue = !showQueue }) {
@@ -129,38 +126,50 @@ fun NowPlayingScreen(
 
         val currentSong = playerState.currentSong
         if (currentSong != null) {
-            val artworks by viewModel.artworks.collectAsState()
+            val artworks by viewModel.artworks.collectAsStateWithLifecycle()
             LaunchedEffect(currentSong.id) {
                 viewModel.loadArtworks(currentSong.albumId)
             }
 
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (!showQueue) {
-                        AlbumArtSection(
-                            currentSong = currentSong,
-                            artworks = artworks
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
+                val expandedPlayer = maxWidth >= 840.dp && maxHeight >= 600.dp && !showQueue
+                val artworkSize = if (expandedPlayer) {
+                    (maxWidth * 0.4f).coerceIn(240.dp, 420.dp)
+                } else {
+                    (maxWidth - 32.dp).coerceIn(180.dp, 320.dp)
+                }
+                if (expandedPlayer) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(40.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AlbumArtSection(currentSong, artworks, artworkSize, Modifier.weight(1f))
+                        SongInfoSection(currentSong, Modifier.weight(1f))
                     }
-
-                    SongInfoSection(song = currentSong)
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        if (!showQueue) {
+                            AlbumArtSection(currentSong, artworks, artworkSize)
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+                        SongInfoSection(song = currentSong)
+                    }
                 }
             }
 
             Column(modifier = Modifier.padding(bottom = 24.dp)) {
                 PlayerControlBar(
                     playerState = playerState,
+                    playbackProgress = viewModel.playbackProgress.collectAsStateWithLifecycle().value,
                     onPlayPause = { viewModel.onPlayPause() },
                     onSkipNext = { viewModel.onSkipNext() },
                     onSkipPrevious = { viewModel.onSkipPrevious() },
@@ -173,7 +182,7 @@ fun NowPlayingScreen(
                     visible = showQueue,
                     queue = playerState.queue,
                     currentIdx = playerState.currentIndex,
-                    favoriteIds = viewModel.favoriteIds.collectAsState().value,
+                    favoriteIds = favoriteIds,
                     isEditing = isEditing,
                     selectedSongIds = selectedSongIds,
                     onPlayFromIndex = { viewModel.onPlayFromIndex(it) },
@@ -253,12 +262,13 @@ fun NowPlayingScreen(
 private fun AlbumArtSection(
     currentSong: Song,
     artworks: List<AlbumArtwork>,
+    size: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
     if (artworks.isNotEmpty()) {
         ArtworkPager(
             artworks = artworks,
-            modifier = modifier.size(280.dp),
+            modifier = modifier.size(size),
             scrollKey = currentSong.id
         )
     } else if (currentSong.albumArtUriLarge != null) {
@@ -266,14 +276,14 @@ private fun AlbumArtSection(
             model = currentSong.albumArtUriLarge,
             contentDescription = stringResource(R.string.cd_album_art),
             modifier = modifier
-                .size(280.dp)
+                .size(size)
                 .clip(RoundedCornerShape(16.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh),
             contentScale = ContentScale.Fit
         )
     } else {
         AlbumArtPlaceholder(
-            modifier = modifier.size(280.dp),
+            modifier = modifier.size(size),
             iconSize = 96.dp
         )
     }
@@ -519,7 +529,7 @@ private fun QueueRow(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        MarqueeText(
+                        Text(
                             text = song.title,
                             style = MaterialTheme.typography.bodyMedium,
                             color = when {
@@ -527,7 +537,9 @@ private fun QueueRow(
                                 isCurrent -> MaterialTheme.colorScheme.onPrimaryContainer
                                 else -> MaterialTheme.colorScheme.onSurface
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                         Text(
                             text = song.artistName,

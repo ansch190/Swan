@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schwanitz.R
 import com.schwanitz.ui.components.AlbumListItem
 
@@ -25,7 +26,7 @@ fun AlbumListScreen(
         viewModel.loadAlbums()
     }
 
-    val albums by viewModel.allAlbums.collectAsState()
+    val albums by viewModel.allAlbums.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -38,7 +39,7 @@ fun AlbumListScreen(
         )
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(albums) { album ->
+            items(albums, key = { it.id }, contentType = { "album" }) { album ->
                 AlbumListItem(
                     albumName = album.name,
                     albumArtUri = album.albumArtUri,

@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
 import com.schwanitz.ui.components.AlbumListItem
@@ -42,13 +43,13 @@ fun SeriesDetailScreen(
         viewModel.loadSeries(seriesName)
     }
 
-    val songs by viewModel.songs.collectAsState()
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
     val sortedSongs = remember(songs) { songs.sortedBy { it.title } }
-    val albums by viewModel.albums.collectAsState()
+    val albums by viewModel.albums.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
-    val isSelecting by viewModel.isSelecting.collectAsState()
-    val selectedSongIds by viewModel.selectedSongIds.collectAsState()
+    val isSelecting by viewModel.isSelecting.collectAsStateWithLifecycle()
+    val selectedSongIds by viewModel.selectedSongIds.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -90,7 +91,7 @@ fun SeriesDetailScreen(
             when (page) {
                 0 -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(sortedSongs) { song ->
+                        items(sortedSongs, key = { it.id }, contentType = { "song" }) { song ->
                             SelectableSongItem(
                                 song = song,
                                 isSelecting = isSelecting,
@@ -108,7 +109,7 @@ fun SeriesDetailScreen(
                 }
                 1 -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(albums) { album ->
+                        items(albums, key = { it.id }, contentType = { "album" }) { album ->
                             AlbumListItem(
                                 albumName = album.name,
                                 albumArtUri = album.albumArtUri,

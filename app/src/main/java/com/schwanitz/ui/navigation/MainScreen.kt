@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -14,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schwanitz.player.MusicPlayerManager
 import com.schwanitz.data.backup.BackupJobCoordinator
 import com.schwanitz.data.backup.BackupJobProgress
@@ -41,7 +43,7 @@ fun MainScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val playerManager = LocalMusicPlayerManager.current
     var playerUiResetToken by rememberSaveable { mutableLongStateOf(0L) }
-    val backupWorkState by backupJobCoordinator.workState.collectAsState(initial = null)
+    val backupWorkState by backupJobCoordinator.workState.collectAsStateWithLifecycle(initialValue = null)
     val restoreProgress = backupWorkState?.takeIf {
         it.operation == BackupOperation.RESTORE && it.isRunning
     }?.progress ?: backupWorkState?.takeIf {
@@ -89,40 +91,32 @@ fun MainScreen(
     }
 
     CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
-        Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            bottomBar = {
-                NavigationBar {
-                    BottomNavItem.items.forEach { item ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
-                        NavigationBarItem(
-                            icon = { Icon(item.icon, contentDescription = stringResource(item.titleRes)) },
-                            label = { Text(stringResource(item.titleRes)) },
-                            selected = selected,
-                            onClick = {
-                                if (selected) {
-                                    navController.returnToRoot(item)
-                                    if (item == BottomNavItem.NowPlaying) {
-                                        playerUiResetToken++
-                                    }
-                                } else {
-                                    navController.navigateToTopLevel(item)
-                                }
+        NavigationSuiteScaffold(
+            navigationSuiteItems = {
+                BottomNavItem.items.forEach { item ->
+                    val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+                    item(
+                        icon = { Icon(item.icon, contentDescription = stringResource(item.titleRes)) },
+                        label = { Text(stringResource(item.titleRes)) },
+                        selected = selected,
+                        onClick = {
+                            if (selected) {
+                                navController.returnToRoot(item)
+                                if (item == BottomNavItem.NowPlaying) playerUiResetToken++
+                            } else {
+                                navController.navigateToTopLevel(item)
                             }
-                        )
-                    }
-                }
-            }
-        ) { innerPadding ->
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                Box(Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
-                    NavGraph(
-                        navController = navController,
-                        playerUiResetToken = playerUiResetToken
+                        },
                     )
+                }
+            },
+        ) {
+            Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { innerPadding ->
+                Surface(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    NavGraph(navController = navController, playerUiResetToken = playerUiResetToken)
                 }
             }
         }

@@ -366,8 +366,22 @@
     <string name="backup_job_stage_configuration">Writing settings and sources</string>
     <string name="backup_job_stage_export_library">Exporting library</string>
     <string name="backup_job_stage_export_assets">Adding images</string>
+    <string name="backup_job_stage_export_finalizing">Finishing backup…</string>
+    <string name="backup_export_summary_sources">%1$d sources</string>
+    <string name="backup_export_summary_library">%1$d sources · %2$d songs · %3$d image files</string>
+    <string name="backup_export_error_destination">The selected backup destination cannot be written.</string>
+    <string name="backup_export_error_library">The music library could not be read completely.</string>
+    <string name="backup_export_error_sources">Some songs refer to a source that no longer exists.</string>
+    <string name="backup_export_error_asset">An image file could not be read: %1$s</string>
+    <string name="backup_export_error_finalizing">The encrypted backup container could not be finalized.</string>
+    <string name="backup_export_error_verification">The completed backup could not be verified at the selected destination.</string>
+    <string name="backup_export_error_unknown">Backup creation failed for an unknown reason.</string>
     <string name="backup_job_stage_waiting_scans">Waiting for exclusive library access</string>
     <string name="backup_export_progress_title">Backup is being created</string>
     <string name="backup_restore_background_hint">You can leave Swan open in the background. The restore will continue.</string>
     <string name="backup_uri_permission_failed">The selected document provider does not allow persistent access. Please choose another location.</string>
+    <string name="cd_open_song_menu">Open song menu</string>
+    <string name="home_empty_favorites">No favorite songs yet</string>
+    <string name="settings_scanning_unknown">Scanning "%1$s": %2$d files</string>
+    <string name="album_empty">This album contains no available songs.</string>
 </resources>

@@ -36,12 +36,15 @@ data class PlayerState(
     val currentSong: Song? = null,
     val currentIndex: Int = -1,
     val isPlaying: Boolean = false,
-    val currentPosition: Long = 0,
-    val duration: Long = 0,
     val shuffleMode: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     val queue: List<Song> = emptyList(),
     val error: AppError? = null
+)
+
+data class PlaybackProgress(
+    val positionMs: Long = 0,
+    val durationMs: Long = 0,
 )
 
 @Singleton
@@ -57,6 +60,8 @@ class MusicPlayerManager @Inject constructor(
 
     private val _playerState = MutableStateFlow(PlayerState())
     val playerState: StateFlow<PlayerState> = _playerState.asStateFlow()
+    private val _playbackProgress = MutableStateFlow(PlaybackProgress())
+    val playbackProgress: StateFlow<PlaybackProgress> = _playbackProgress.asStateFlow()
 
     private val _navigateToPlayer = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val navigateToPlayer: SharedFlow<Unit> = _navigateToPlayer.asSharedFlow()
@@ -81,8 +86,8 @@ class MusicPlayerManager @Inject constructor(
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY) {
-                    _playerState.value = _playerState.value.copy(
-                        duration = player.duration.coerceAtLeast(0)
+                    _playbackProgress.value = _playbackProgress.value.copy(
+                        durationMs = player.duration.coerceAtLeast(0)
                     )
                 }
             }
@@ -92,9 +97,10 @@ class MusicPlayerManager @Inject constructor(
                 if (index in songQueue.indices) {
                     _playerState.value = _playerState.value.copy(
                         currentSong = songQueue[index],
-                        currentIndex = index,
-                        duration = player.duration.coerceAtLeast(0),
-                        currentPosition = 0
+                        currentIndex = index
+                    )
+                    _playbackProgress.value = PlaybackProgress(
+                        durationMs = player.duration.coerceAtLeast(0)
                     )
                 }
             }
@@ -192,6 +198,7 @@ class MusicPlayerManager @Inject constructor(
             player.stop()
             player.clearMediaItems()
             _playerState.value = PlayerState()
+            _playbackProgress.value = PlaybackProgress()
         } else {
             _playerState.update { it.copy(queue = songQueue) }
         }
@@ -261,8 +268,9 @@ class MusicPlayerManager @Inject constructor(
         stopPositionUpdates()
         positionJob = scope.launch {
             while (isActive) {
-                _playerState.value = _playerState.value.copy(
-                    currentPosition = player.currentPosition.coerceAtLeast(0)
+                _playbackProgress.value = PlaybackProgress(
+                    positionMs = player.currentPosition.coerceAtLeast(0),
+                    durationMs = player.duration.coerceAtLeast(0)
                 )
                 delay(250.milliseconds)
             }

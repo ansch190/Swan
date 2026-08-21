@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -23,7 +24,7 @@ fun GeneralSettingsScreen(
     onNavigateBack: () -> Unit,
     viewModel: LanguageSelectionViewModel = hiltViewModel()
 ) {
-    val currentCode by viewModel.currentLanguage.collectAsState()
+    val currentCode by viewModel.currentLanguage.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
 

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import com.schwanitz.data.backup.BackupJobCoordinator
+import com.schwanitz.data.backup.BackupFailureCode
 import com.schwanitz.data.backup.BackupOperation
 import com.schwanitz.data.backup.BackupOptions
 import com.schwanitz.data.backup.BackupUriPermissionException
@@ -28,6 +29,14 @@ sealed interface RestoreUiState {
 }
 
 enum class RestoreError { WRONG_PASSWORD, IMPORT_FAILED, URI_PERMISSION }
+sealed interface BackupUiEvent {
+    data object ExportSucceeded : BackupUiEvent
+    data object RestoreSucceeded : BackupUiEvent
+    data class ExportFailed(
+        val code: BackupFailureCode = BackupFailureCode.UNKNOWN,
+        val detail: String? = null,
+    ) : BackupUiEvent
+}
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(
@@ -35,8 +44,8 @@ class BackupViewModel @Inject constructor(
 ) : ViewModel() {
 
     val errorHolder = ErrorHolder()
-    private val successEvents = Channel<String>(Channel.BUFFERED)
-    val successMessage: Flow<String> = successEvents.receiveAsFlow()
+    private val events = Channel<BackupUiEvent>(Channel.BUFFERED)
+    val uiEvents: Flow<BackupUiEvent> = events.receiveAsFlow()
     private val _workState = MutableStateFlow<BackupWorkState?>(null)
     val workState: StateFlow<BackupWorkState?> = _workState.asStateFlow()
     private val _restoreState = MutableStateFlow<RestoreUiState>(RestoreUiState.Idle)
@@ -57,7 +66,9 @@ class BackupViewModel @Inject constructor(
         if (_workState.value?.isRunning == true) return
         viewModelScope.launch {
             runCatching { coordinator.enqueueExport(uri, password, options) }
-                .onFailure { errorHolder.emit(it, ERROR_EXPORT) }
+                .onFailure {
+                    events.trySend(BackupUiEvent.ExportFailed(BackupFailureCode.DESTINATION_UNAVAILABLE))
+                }
         }
     }
 
@@ -119,11 +130,11 @@ class BackupViewModel @Inject constructor(
         when {
             state.state == WorkInfo.State.SUCCEEDED -> {
                 coordinator.acknowledge(state)
-                if (state.operation == BackupOperation.EXPORT) successEvents.trySend(SUCCESS_EXPORT)
+                if (state.operation == BackupOperation.EXPORT) events.trySend(BackupUiEvent.ExportSucceeded)
                 else {
                     pendingImportUri = null
                     _restoreState.value = RestoreUiState.Idle
-                    successEvents.trySend(SUCCESS_IMPORT)
+                    events.trySend(BackupUiEvent.RestoreSucceeded)
                 }
             }
             state.operation == BackupOperation.RESTORE && state.error == BackupWorker.ERROR_WRONG_PASSWORD -> {
@@ -139,14 +150,14 @@ class BackupViewModel @Inject constructor(
             state.state == WorkInfo.State.CANCELLED -> coordinator.acknowledge(state)
             else -> {
                 coordinator.acknowledge(state)
-                errorHolder.emit(IllegalStateException("Backup export failed"), ERROR_EXPORT)
+                events.trySend(
+                    BackupUiEvent.ExportFailed(
+                        code = state.failureCode ?: BackupFailureCode.UNKNOWN,
+                        detail = state.failureDetail,
+                    )
+                )
             }
         }
     }
 
-    companion object {
-        const val SUCCESS_EXPORT = "Backup erfolgreich gespeichert"
-        const val SUCCESS_IMPORT = "Backup erfolgreich wiederhergestellt"
-        const val ERROR_EXPORT = "Backup fehlgeschlagen"
-    }
 }

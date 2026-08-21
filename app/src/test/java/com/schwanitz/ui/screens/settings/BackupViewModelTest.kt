@@ -111,6 +111,8 @@ class BackupViewModelTest {
         state = WorkInfo.State.FAILED,
         progress = null,
         error = error,
+        failureCode = null,
+        failureDetail = null,
         uri = uri,
     )
 }

@@ -366,8 +366,22 @@
     <string name="backup_job_stage_configuration">Einstellungen und Quellen werden geschrieben</string>
     <string name="backup_job_stage_export_library">Bibliothek wird exportiert</string>
     <string name="backup_job_stage_export_assets">Bilder werden hinzugefügt</string>
+    <string name="backup_job_stage_export_finalizing">Backup wird abgeschlossen…</string>
+    <string name="backup_export_summary_sources">%1$d Quellen</string>
+    <string name="backup_export_summary_library">%1$d Quellen · %2$d Lieder · %3$d Bilddateien</string>
+    <string name="backup_export_error_destination">Am gewählten Speicherort kann das Backup nicht geschrieben werden.</string>
+    <string name="backup_export_error_library">Die Musikbibliothek konnte nicht vollständig gelesen werden.</string>
+    <string name="backup_export_error_sources">Einige Lieder verweisen auf eine nicht mehr vorhandene Quelle.</string>
+    <string name="backup_export_error_asset">Eine Bilddatei konnte nicht gelesen werden: %1$s</string>
+    <string name="backup_export_error_finalizing">Der verschlüsselte Backup-Container konnte nicht abgeschlossen werden.</string>
+    <string name="backup_export_error_verification">Das fertige Backup konnte am gewählten Speicherort nicht überprüft werden.</string>
+    <string name="backup_export_error_unknown">Die Backup-Erstellung ist aus einem unbekannten Grund fehlgeschlagen.</string>
     <string name="backup_job_stage_waiting_scans">Auf exklusiven Bibliothekszugriff wird gewartet</string>
     <string name="backup_export_progress_title">Backup wird erstellt</string>
     <string name="backup_restore_background_hint">Swan kann im Hintergrund bleiben. Die Wiederherstellung läuft weiter.</string>
     <string name="backup_uri_permission_failed">Der gewählte Dokumentanbieter erlaubt keinen dauerhaften Zugriff. Bitte wähle einen anderen Speicherort.</string>
+    <string name="cd_open_song_menu">Liedmenü öffnen</string>
+    <string name="home_empty_favorites">Noch keine Lieblingslieder</string>
+    <string name="settings_scanning_unknown">Scanne "%1$s": %2$d Dateien</string>
+    <string name="album_empty">Dieses Album enthält keine verfügbaren Lieder.</string>
 </resources>

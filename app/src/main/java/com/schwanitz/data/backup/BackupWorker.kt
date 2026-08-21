@@ -96,8 +96,19 @@ class BackupWorker(
             terminal = true
             Timber.e(error, "Backup %s failed", operation)
             if (operation == BackupOperation.EXPORT) removePartialDocument(uri)
-            showFinishedNotification(operation, success = false)
-            Result.failure(resultData(operation, ERROR_FAILED, uri))
+            val failure = if (operation == BackupOperation.EXPORT) {
+                classifyBackupExportFailure(error, lastStage)
+            } else null
+            showFinishedNotification(operation, success = false, failure = failure)
+            Result.failure(
+                resultData(
+                    operation = operation,
+                    error = ERROR_FAILED,
+                    uri = uri,
+                    failureCode = failure?.first,
+                    failureDetail = failure?.second,
+                )
+            )
         } finally {
             if (terminal) dependencies.secretStore().delete(jobId)
             if (terminal && completedSuccessfully) releaseUriPermission(uri, operation)
@@ -150,6 +161,7 @@ class BackupWorker(
         operation: BackupOperation,
         success: Boolean,
         wrongPassword: Boolean = false,
+        failure: Pair<BackupFailureCode, String?>? = null,
     ) {
         ensureChannel()
         val textRes = when {
@@ -159,10 +171,12 @@ class BackupWorker(
             operation == BackupOperation.EXPORT -> R.string.backup_notification_export_failed
             else -> R.string.backup_notification_restore_failed
         }
+        val text = failure?.let { (code, detail) -> exportFailureText(code, detail) }
+            ?: applicationContext.getString(textRes)
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(if (success) android.R.drawable.stat_sys_upload_done else android.R.drawable.stat_notify_error)
             .setContentTitle(applicationContext.getString(operation.titleRes()))
-            .setContentText(applicationContext.getString(textRes))
+            .setContentText(text)
             .setContentIntent(openAppIntent())
             .setAutoCancel(true)
             .build()
@@ -171,7 +185,7 @@ class BackupWorker(
     }
 
     private fun progressText(progress: BackupJobProgress): String {
-        val stage = applicationContext.getString(progress.stage.stringRes())
+        val stage = applicationContext.getString(progress.stage.stringRes(progress.operation))
         val items = if (progress.completedItems != null && progress.totalItems != null) {
             applicationContext.getString(
                 R.string.backup_notification_items_progress,
@@ -186,7 +200,20 @@ class BackupWorker(
                 Formatter.formatShortFileSize(applicationContext, total),
             )
         }
-        return listOfNotNull(stage, bytes, items).joinToString(" · ")
+        val summary = if (progress.operation == BackupOperation.EXPORT && progress.sourceCount != null) {
+            if (progress.songCount != null && progress.imageCount != null) {
+                applicationContext.getString(
+                    R.string.backup_export_summary_library,
+                    progress.sourceCount,
+                    progress.songCount,
+                    progress.imageCount,
+                )
+            } else applicationContext.getString(
+                R.string.backup_export_summary_sources,
+                progress.sourceCount,
+            )
+        } else null
+        return listOfNotNull(stage, bytes, items, summary).joinToString(" · ")
     }
 
     private fun ensureChannel() {
@@ -232,14 +259,38 @@ class BackupWorker(
         KEY_TOTAL_BYTES to (totalBytes ?: -1L),
         KEY_COMPLETED_ITEMS to (completedItems ?: -1),
         KEY_TOTAL_ITEMS to (totalItems ?: -1),
+        KEY_SOURCE_COUNT to (sourceCount ?: -1),
+        KEY_SONG_COUNT to (songCount ?: -1),
+        KEY_IMAGE_COUNT to (imageCount ?: -1),
     )
 
-    private fun resultData(operation: BackupOperation, error: String, uri: Uri) = workDataOf(
+    private fun resultData(
+        operation: BackupOperation,
+        error: String,
+        uri: Uri,
+        failureCode: BackupFailureCode? = null,
+        failureDetail: String? = null,
+    ) = workDataOf(
         KEY_OPERATION to operation.name,
         KEY_ERROR to error,
+        KEY_FAILURE_CODE to failureCode?.name,
+        KEY_FAILURE_DETAIL to failureDetail?.take(MAX_FAILURE_DETAIL_LENGTH),
         KEY_URI to uri.toString(),
         KEY_REQUESTED_AT to inputData.getLong(KEY_REQUESTED_AT, 0L),
     )
+
+    private fun exportFailureText(code: BackupFailureCode, detail: String?): String = when (code) {
+        BackupFailureCode.DESTINATION_UNAVAILABLE -> applicationContext.getString(R.string.backup_export_error_destination)
+        BackupFailureCode.LIBRARY_READ_FAILED -> applicationContext.getString(R.string.backup_export_error_library)
+        BackupFailureCode.SOURCE_MISMATCH -> applicationContext.getString(R.string.backup_export_error_sources)
+        BackupFailureCode.ASSET_UNAVAILABLE -> applicationContext.getString(
+            R.string.backup_export_error_asset,
+            detail.orEmpty(),
+        )
+        BackupFailureCode.FINALIZATION_FAILED -> applicationContext.getString(R.string.backup_export_error_finalizing)
+        BackupFailureCode.VERIFICATION_FAILED -> applicationContext.getString(R.string.backup_export_error_verification)
+        BackupFailureCode.UNKNOWN -> applicationContext.getString(R.string.backup_notification_export_failed)
+    }
 
     companion object {
         const val TAG = "swan.backup.job"
@@ -255,7 +306,12 @@ class BackupWorker(
         const val KEY_TOTAL_BYTES = "total_bytes"
         const val KEY_COMPLETED_ITEMS = "completed_items"
         const val KEY_TOTAL_ITEMS = "total_items"
+        const val KEY_SOURCE_COUNT = "source_count"
+        const val KEY_SONG_COUNT = "song_count"
+        const val KEY_IMAGE_COUNT = "image_count"
         const val KEY_ERROR = "error"
+        const val KEY_FAILURE_CODE = "failure_code"
+        const val KEY_FAILURE_DETAIL = "failure_detail"
         const val ERROR_NONE = ""
         const val ERROR_WRONG_PASSWORD = "wrong_password"
         const val ERROR_FAILED = "failed"
@@ -264,6 +320,7 @@ class BackupWorker(
         private const val NOTIFICATION_ID_FINISHED = 30_002
         private const val UPDATE_INTERVAL_MS = 500L
         private const val PROGRESS_MAX = 10_000
+        private const val MAX_FAILURE_DETAIL_LENGTH = 300
     }
 }
 
@@ -272,13 +329,15 @@ private fun BackupOperation.titleRes() = when (this) {
     BackupOperation.RESTORE -> R.string.backup_notification_restore_title
 }
 
-internal fun BackupJobStage.stringRes() = when (this) {
+internal fun BackupJobStage.stringRes(operation: BackupOperation) = when (this) {
     BackupJobStage.PREPARING -> R.string.backup_job_stage_preparing
     BackupJobStage.PREPARING_KEY -> R.string.backup_restore_stage_preparing
     BackupJobStage.WRITING_CONFIGURATION -> R.string.backup_job_stage_configuration
     BackupJobStage.EXPORTING_LIBRARY -> R.string.backup_job_stage_export_library
     BackupJobStage.EXPORTING_ASSETS -> R.string.backup_job_stage_export_assets
-    BackupJobStage.FINALIZING -> R.string.backup_restore_stage_finalizing
+    BackupJobStage.FINALIZING -> if (operation == BackupOperation.EXPORT) {
+        R.string.backup_job_stage_export_finalizing
+    } else R.string.backup_restore_stage_finalizing
     BackupJobStage.DECRYPTING -> R.string.backup_restore_stage_decrypting
     BackupJobStage.VALIDATING -> R.string.backup_restore_stage_validating
     BackupJobStage.EXTRACTING_ASSETS -> R.string.backup_restore_stage_assets

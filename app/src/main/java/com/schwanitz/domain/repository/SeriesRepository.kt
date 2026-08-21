@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface SeriesRepository {
     fun getAlbumSeries(): Flow<List<AlbumSeries>>
+    fun observeSeriesCount(): Flow<Int>
     fun getSeriesForAlbum(albumId: Long): Flow<AlbumSeries?>
     suspend fun getSeriesByName(name: String): AlbumSeries?
     fun getSongsBySeries(seriesId: Long): Flow<List<Song>>

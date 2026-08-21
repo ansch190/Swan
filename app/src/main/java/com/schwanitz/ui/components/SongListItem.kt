@@ -2,6 +2,7 @@
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,7 +24,6 @@ import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
 import com.schwanitz.R
 import com.schwanitz.domain.model.Song
-import com.schwanitz.ui.components.MarqueeText
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -46,8 +46,11 @@ fun SongListItem(
             .then(if (inactive) Modifier.alpha(0.4f) else Modifier)
             .then(
                 if (!inactive) {
-                    if (onLongClick != null) Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
-                    else Modifier.combinedClickable(onClick = onClick, onLongClick = {})
+                    if (onLongClick != null) Modifier.combinedClickable(
+                        onClick = onClick,
+                        onLongClickLabel = stringResource(R.string.cd_open_song_menu),
+                        onLongClick = onLongClick
+                    ) else Modifier.clickable(onClick = onClick)
                 } else Modifier
             ),
         colors = if (selected) ListItemDefaults.colors(
@@ -71,9 +74,11 @@ fun SongListItem(
             }
         },
         headlineContent = {
-            MarqueeText(
+            Text(
                 text = song.title,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         },
         supportingContent = {
@@ -84,9 +89,11 @@ fun SongListItem(
                 else -> ""
             }
             if (subtitle.isNotEmpty()) {
-                MarqueeText(
+                Text(
                     text = subtitle,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         },
@@ -94,7 +101,7 @@ fun SongListItem(
             if (showDragHandle || onRemoveClick != null) {
                 Row {
                     if (showDragHandle) {
-                        IconButton(modifier = dragHandleModifier, onClick = {}) {
+                        Box(modifier = dragHandleModifier.size(48.dp), contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Filled.Menu,
                                 contentDescription = stringResource(R.string.cd_move_song)

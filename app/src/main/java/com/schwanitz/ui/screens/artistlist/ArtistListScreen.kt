@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
@@ -44,8 +45,8 @@ fun ArtistListScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val artists by viewModel.allArtists.collectAsState()
-    val artistImageUris by viewModel.artistImageUris.collectAsState()
+    val artists by viewModel.allArtists.collectAsStateWithLifecycle()
+    val artistImageUris by viewModel.artistImageUris.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -58,7 +59,7 @@ fun ArtistListScreen(
         )
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(artists) { artist ->
+            items(artists, key = { it }, contentType = { "artist" }) { artist ->
                 ArtistListItem(
                     artistName = artist,
                     imageUri = artistImageUris[artist],

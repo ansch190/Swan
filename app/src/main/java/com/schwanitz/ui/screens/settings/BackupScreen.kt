@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
@@ -30,6 +31,7 @@ import com.schwanitz.R
 import com.schwanitz.data.backup.BackupOptions
 import com.schwanitz.data.backup.BackupOperation
 import com.schwanitz.data.backup.BackupJobProgress
+import com.schwanitz.data.backup.BackupFailureCode
 import com.schwanitz.data.backup.BackupJobStage
 import com.schwanitz.data.backup.stringRes
 import com.schwanitz.ui.common.CollectSnackbarErrors
@@ -47,17 +49,21 @@ fun BackupScreen(
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
 
     LaunchedEffect(Unit) {
-        viewModel.successMessage.collect { message ->
-            if (message == BackupViewModel.SUCCESS_IMPORT) {
-                onNavigateToSources()
-            } else {
-                snackbarHostState.showSnackbar(message)
+        viewModel.uiEvents.collect { event ->
+            when (event) {
+                BackupUiEvent.RestoreSucceeded -> onNavigateToSources()
+                BackupUiEvent.ExportSucceeded -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.backup_notification_export_success)
+                )
+                is BackupUiEvent.ExportFailed -> snackbarHostState.showSnackbar(
+                    resources.getString(event.code.messageRes(), event.detail.orEmpty())
+                )
             }
         }
     }
 
-    val restoreState by viewModel.restoreState.collectAsState()
-    val workState by viewModel.workState.collectAsState()
+    val restoreState by viewModel.restoreState.collectAsStateWithLifecycle()
+    val workState by viewModel.workState.collectAsStateWithLifecycle()
     val isExporting = workState?.operation == BackupOperation.EXPORT && workState?.isRunning == true
     val isRestoring = workState?.operation == BackupOperation.RESTORE && workState?.isRunning == true
     val isWorking = isExporting || isRestoring
@@ -430,7 +436,7 @@ fun BackupScreen(
 fun BackupProgressDetails(progress: BackupJobProgress) {
     val context = LocalContext.current
     val stage = stringResource(
-        progress.stage.stringRes()
+        progress.stage.stringRes(progress.operation)
     )
     val byteProgress = progress.totalBytes?.takeIf { it > 0 }?.let { total ->
         stringResource(
@@ -451,6 +457,17 @@ fun BackupProgressDetails(progress: BackupJobProgress) {
         resource?.let { stringResource(it, progress.completedItems, progress.totalItems) }
     } else null
     val stateText = listOfNotNull(stage, byteProgress, itemProgress).joinToString(". ")
+    val exportSummary = if (progress.operation == BackupOperation.EXPORT && progress.sourceCount != null) {
+        when {
+            progress.songCount != null && progress.imageCount != null -> stringResource(
+                R.string.backup_export_summary_library,
+                progress.sourceCount,
+                progress.songCount,
+                progress.imageCount,
+            )
+            else -> stringResource(R.string.backup_export_summary_sources, progress.sourceCount)
+        }
+    } else null
 
     Column(
                 modifier = Modifier.semantics {
@@ -471,7 +488,20 @@ fun BackupProgressDetails(progress: BackupJobProgress) {
                 }
                 if (byteProgress != null) Text(byteProgress, style = MaterialTheme.typography.bodyMedium)
                 if (itemProgress != null) Text(itemProgress, style = MaterialTheme.typography.bodyMedium)
+                if (exportSummary != null) {
+                    Text(exportSummary, style = MaterialTheme.typography.bodyMedium)
+                }
             }
+}
+
+private fun BackupFailureCode.messageRes() = when (this) {
+    BackupFailureCode.DESTINATION_UNAVAILABLE -> R.string.backup_export_error_destination
+    BackupFailureCode.LIBRARY_READ_FAILED -> R.string.backup_export_error_library
+    BackupFailureCode.SOURCE_MISMATCH -> R.string.backup_export_error_sources
+    BackupFailureCode.ASSET_UNAVAILABLE -> R.string.backup_export_error_asset
+    BackupFailureCode.FINALIZATION_FAILED -> R.string.backup_export_error_finalizing
+    BackupFailureCode.VERIFICATION_FAILED -> R.string.backup_export_error_verification
+    BackupFailureCode.UNKNOWN -> R.string.backup_export_error_unknown
 }
 
 @Composable

@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface SongRepository {
     fun getAllSongs(): Flow<List<Song>>
+    fun observeCollectionCounts(): Flow<SongCollectionCounts>
     fun getFavoriteSongs(): Flow<List<Song>>
     suspend fun getSongById(songId: String): Song?
     fun getSongsByAlbumId(albumId: Long): Flow<List<Song>>
@@ -38,3 +39,10 @@ interface SongRepository {
     suspend fun deleteBySource(sourceId: String)
     suspend fun setActiveBySource(sourceId: String, active: Boolean)
 }
+
+data class SongCollectionCounts(
+    val albums: Int,
+    val albumArtists: Int,
+    val genres: Int,
+    val years: Int,
+)

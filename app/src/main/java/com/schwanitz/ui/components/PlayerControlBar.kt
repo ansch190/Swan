@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.media3.common.Player
 import com.schwanitz.R
 import com.schwanitz.player.PlayerState
+import com.schwanitz.player.PlaybackProgress
 
 private fun formatTime(ms: Long): String {
     val totalSec = ms / 1000
@@ -23,6 +24,7 @@ private fun formatTime(ms: Long): String {
 @Composable
 fun PlayerControlBar(
     playerState: PlayerState,
+    playbackProgress: PlaybackProgress,
     onPlayPause: () -> Unit,
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit,
@@ -31,31 +33,39 @@ fun PlayerControlBar(
     onSeek: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var draggedFraction by remember { mutableStateOf<Float?>(null) }
+    val duration = playbackProgress.durationMs
+    val position = playbackProgress.positionMs.coerceIn(0, duration.coerceAtLeast(0))
+    val displayedFraction = draggedFraction ?: if (duration > 0) {
+        position.toFloat() / duration.toFloat()
+    } else 0f
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (playerState.duration > 0) {
+        if (duration > 0) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = formatTime(playerState.currentPosition),
+                    text = formatTime((displayedFraction * duration).toLong()),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(end = 8.dp)
                 )
                 Slider(
-                    value = playerState.currentPosition.toFloat() / playerState.duration.toFloat(),
-                    onValueChange = { fraction ->
-                        onSeek((fraction * playerState.duration).toLong())
+                    value = displayedFraction,
+                    onValueChange = { draggedFraction = it },
+                    onValueChangeFinished = {
+                        draggedFraction?.let { onSeek((it * duration).toLong()) }
+                        draggedFraction = null
                     },
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = formatTime(playerState.duration),
+                    text = formatTime(duration),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(start = 8.dp)
                 )

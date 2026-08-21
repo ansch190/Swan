@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schwanitz.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -24,7 +25,7 @@ fun GenreListScreen(
         viewModel.loadGenres()
     }
 
-    val genres by viewModel.allGenres.collectAsState()
+    val genres by viewModel.allGenres.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -37,7 +38,7 @@ fun GenreListScreen(
         )
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(genres) { genre ->
+            items(genres, key = { it }, contentType = { "genre" }) { genre ->
                 ListItem(
                     modifier = Modifier.clickable { onGenreClick(genre) },
                     headlineContent = { Text(genre) }

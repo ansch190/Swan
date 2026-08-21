@@ -18,18 +18,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import com.schwanitz.R
-import com.schwanitz.ui.components.MarqueeText
 
 @Composable
 fun AlbumListItem(albumName: String, albumArtUri: String?, onClick: () -> Unit, year: Int = 0, albumArtist: String = "") {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
         headlineContent = {
-            MarqueeText(
+            androidx.compose.material3.Text(
                 text = if (albumName.isBlank()) stringResource(R.string.album_no_album) else albumName,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(), maxLines = 1, overflow = TextOverflow.Ellipsis
             )
         },
         supportingContent = {
@@ -37,9 +37,9 @@ fun AlbumListItem(albumName: String, albumArtUri: String?, onClick: () -> Unit, 
             if (year > 0) parts.add(year.toString())
             if (albumArtist.isNotBlank()) parts.add(albumArtist)
             if (parts.isNotEmpty()) {
-                MarqueeText(
+                androidx.compose.material3.Text(
                     text = parts.joinToString(" \u00B7 "),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(), maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
             }
         },

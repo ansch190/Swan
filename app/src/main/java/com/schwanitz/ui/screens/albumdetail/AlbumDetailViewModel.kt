@@ -34,6 +34,8 @@ class AlbumDetailViewModel @Inject constructor(
 
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     val songs: StateFlow<List<Song>> = _songs
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading
 
     private val _artworks = MutableStateFlow<List<AlbumArtwork>>(emptyList())
     val artworks: StateFlow<List<AlbumArtwork>> = _artworks
@@ -47,14 +49,21 @@ class AlbumDetailViewModel @Inject constructor(
     val errorHolder = ErrorHolder()
 
     fun loadAlbum(albumName: String, albumArtistName: String, albumYear: Int) {
+        _isLoading.value = true
         viewModelScope.launch {
             runCatching {
-                val album = albumRepository.findAlbum(albumName, albumArtistName, albumYear) ?: return@launch
+                val album = albumRepository.findAlbum(albumName, albumArtistName, albumYear)
+                if (album == null) {
+                    _songs.value = emptyList()
+                    _isLoading.value = false
+                    return@launch
+                }
                 _year.value = album.year
                 launch {
                     runCatching {
                         songRepository.getSongsByAlbumId(album.id).collect { albumSongs ->
                             _songs.value = albumSongs
+                            _isLoading.value = false
                             if (albumSongs.isNotEmpty()) {
                                 val albumId = albumSongs.first().albumId
                                 Timber.d("AlbumDetail: albumId=%s for album '%s', songs=%d", albumId, albumName, albumSongs.size)
@@ -77,7 +86,10 @@ class AlbumDetailViewModel @Inject constructor(
                         }
                     }.exceptionOrNull()?.let { errorHolder.emit(it) }
                 }
-            }.exceptionOrNull()?.let { errorHolder.emit(it) }
+            }.exceptionOrNull()?.let {
+                _isLoading.value = false
+                errorHolder.emit(it)
+            }
         }
     }
 

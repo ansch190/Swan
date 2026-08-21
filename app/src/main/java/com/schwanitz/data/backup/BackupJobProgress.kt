@@ -2,6 +2,22 @@ package com.schwanitz.data.backup
 
 enum class BackupOperation { EXPORT, RESTORE }
 
+enum class BackupFailureCode {
+    DESTINATION_UNAVAILABLE,
+    LIBRARY_READ_FAILED,
+    SOURCE_MISMATCH,
+    ASSET_UNAVAILABLE,
+    FINALIZATION_FAILED,
+    VERIFICATION_FAILED,
+    UNKNOWN,
+}
+
+class BackupExportException(
+    val failureCode: BackupFailureCode,
+    val safeDetail: String? = null,
+    cause: Throwable? = null,
+) : Exception(safeDetail, cause)
+
 enum class BackupJobStage {
     PREPARING,
     PREPARING_KEY,
@@ -24,6 +40,9 @@ data class BackupJobProgress(
     val totalBytes: Long? = null,
     val completedItems: Int? = null,
     val totalItems: Int? = null,
+    val sourceCount: Int? = null,
+    val songCount: Int? = null,
+    val imageCount: Int? = null,
 ) {
     val fraction: Float?
         get() = when {
@@ -32,6 +51,36 @@ data class BackupJobProgress(
                 completedItems.toFloat().div(totalItems).coerceIn(0f, 1f)
             else -> null
         }
+}
+
+internal fun validateBackupSourceCoverage(
+    configuredSourceIds: Set<String>,
+    songSourceIds: Set<String>,
+) {
+    val missing = songSourceIds - configuredSourceIds
+    if (missing.isNotEmpty()) {
+        throw BackupExportException(
+            failureCode = BackupFailureCode.SOURCE_MISMATCH,
+            safeDetail = missing.sorted().joinToString(limit = 3, truncated = "…"),
+        )
+    }
+}
+
+internal fun classifyBackupExportFailure(
+    error: Throwable,
+    stage: BackupJobStage?,
+): Pair<BackupFailureCode, String?> {
+    val known = generateSequence(error as Throwable?) { it.cause }
+        .filterIsInstance<BackupExportException>()
+        .firstOrNull()
+    if (known != null) return known.failureCode to known.safeDetail
+    val code = when (stage) {
+        BackupJobStage.EXPORTING_ASSETS -> BackupFailureCode.ASSET_UNAVAILABLE
+        BackupJobStage.EXPORTING_LIBRARY -> BackupFailureCode.LIBRARY_READ_FAILED
+        BackupJobStage.FINALIZING -> BackupFailureCode.FINALIZATION_FAILED
+        else -> BackupFailureCode.UNKNOWN
+    }
+    return code to error.javaClass.simpleName.takeIf { it.isNotBlank() }
 }
 
 internal fun RestoreProgress.asJobProgress() = BackupJobProgress(

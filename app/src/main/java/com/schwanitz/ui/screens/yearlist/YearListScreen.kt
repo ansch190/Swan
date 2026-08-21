@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schwanitz.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,7 +29,7 @@ fun YearListScreen(
         viewModel.loadYears()
     }
 
-    val years by viewModel.allYears.collectAsState()
+    val years by viewModel.allYears.collectAsStateWithLifecycle()
 
     val yearsByDecade = remember(years) {
         years.groupBy { it / 10 }
@@ -64,7 +65,7 @@ fun YearListScreen(
                         )
                     }
                 }
-                items(decadeYears) { year ->
+                items(decadeYears, key = { it }, contentType = { "year" }) { year ->
                     ListItem(
                         modifier = Modifier.clickable { onYearClick(year) },
                         headlineContent = {

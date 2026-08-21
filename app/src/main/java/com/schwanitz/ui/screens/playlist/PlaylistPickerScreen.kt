@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -30,7 +31,7 @@ fun PlaylistPickerScreen(
 ) {
     val snackbarHostState = LocalSnackbarHostState.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
     var newPlaylistName by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
@@ -68,7 +69,7 @@ fun PlaylistPickerScreen(
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(uiState.playlists, key = { it.id }) { playlist ->
+                items(uiState.playlists, key = { it.id }, contentType = { "playlist" }) { playlist ->
                     ListItem(
                         modifier = Modifier.clickable {
                             viewModel.addSongsToPlaylist(playlist.id) { id ->

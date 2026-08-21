@@ -47,7 +47,7 @@ class HomeViewModelTest {
     @Test
     fun `initial state loads all songs`() = runTest {
         viewModel.uiState.test {
-            val state = awaitItem()
+            val state = awaitLoadedState()
             assertFalse(state.isLoading)
             assertEquals(4, state.songs.size)
             assertEquals(4, state.totalSongCount)
@@ -59,7 +59,7 @@ class HomeViewModelTest {
     @Test
     fun `search filters by title`() = runTest {
         viewModel.uiState.test {
-            skipItems(1) // skip initial
+            awaitLoadedState()
             viewModel.onSearchQueryChange("Beta Song")
             val state = awaitItem()
             assertEquals(1, state.songs.size)
@@ -71,7 +71,7 @@ class HomeViewModelTest {
     @Test
     fun `search filters by artist name`() = runTest {
         viewModel.uiState.test {
-            skipItems(1)
+            awaitLoadedState()
             viewModel.onSearchQueryChange("Beta Artist")
             val state = awaitItem()
             assertEquals(1, state.songs.size)
@@ -82,7 +82,7 @@ class HomeViewModelTest {
     @Test
     fun `search filters by album name`() = runTest {
         viewModel.uiState.test {
-            skipItems(1)
+            awaitLoadedState()
             viewModel.onSearchQueryChange("Gamma Album")
             val state = awaitItem()
             assertEquals(1, state.songs.size)
@@ -93,7 +93,7 @@ class HomeViewModelTest {
     @Test
     fun `search is case insensitive`() = runTest {
         viewModel.uiState.test {
-            skipItems(1)
+            awaitLoadedState()
             viewModel.onSearchQueryChange("beta")
             val state = awaitItem()
             assertEquals(1, state.songs.size)
@@ -103,7 +103,7 @@ class HomeViewModelTest {
     @Test
     fun `search matches multiple fields`() = runTest {
         viewModel.uiState.test {
-            skipItems(1)
+            awaitLoadedState()
             viewModel.onSearchQueryChange("Alpha")
             val state = awaitItem()
             // "Alpha Song" (title), "Alpha Artist" (artist), and two songs with "Alpha Album"
@@ -115,7 +115,7 @@ class HomeViewModelTest {
     @Test
     fun `empty search shows all songs`() = runTest {
         viewModel.uiState.test {
-            skipItems(1)
+            awaitLoadedState()
             viewModel.onSearchQueryChange("Alpha")
             awaitItem() // filtered
             viewModel.onSearchQueryChange("")
@@ -127,7 +127,7 @@ class HomeViewModelTest {
     @Test
     fun `favorites filter shows only favorites`() = runTest {
         viewModel.uiState.test {
-            skipItems(1)
+            awaitLoadedState()
             viewModel.toggleFavoritesFilter()
             val state = awaitItem()
             assertTrue(state.showFavoritesOnly)
@@ -140,7 +140,7 @@ class HomeViewModelTest {
     @Test
     fun `toggle favorites twice shows all songs`() = runTest {
         viewModel.uiState.test {
-            skipItems(1)
+            awaitLoadedState()
             viewModel.toggleFavoritesFilter()
             awaitItem() // favorites only
             viewModel.toggleFavoritesFilter()
@@ -153,7 +153,7 @@ class HomeViewModelTest {
     @Test
     fun `search within favorites filters both`() = runTest {
         viewModel.uiState.test {
-            skipItems(1)
+            awaitLoadedState()
             viewModel.toggleFavoritesFilter()
             awaitItem() // favorites only: 1 song
             viewModel.onSearchQueryChange("Alpha")
@@ -171,7 +171,7 @@ class HomeViewModelTest {
         val reactiveViewModel = HomeViewModel(songRepository, playerManager)
 
         reactiveViewModel.uiState.test {
-            assertEquals(4, awaitItem().totalSongCount)
+            assertEquals(4, awaitLoadedState().totalSongCount)
             reactiveViewModel.onSearchQueryChange("Beta")
             val filtered = awaitItem()
             assertEquals(1, filtered.songs.size)
@@ -184,7 +184,7 @@ class HomeViewModelTest {
     @Test
     fun `search query is stored in state`() = runTest {
         viewModel.uiState.test {
-            skipItems(1)
+            awaitLoadedState()
             viewModel.onSearchQueryChange("test")
             val state = awaitItem()
             assertEquals("test", state.searchQuery)
@@ -202,5 +202,11 @@ class HomeViewModelTest {
     fun `toggleFavorite delegates to repository`() = runTest {
         viewModel.toggleFavorite(testSongs[0])
         coVerify { songRepository.toggleFavorite("1") }
+    }
+
+    private suspend fun app.cash.turbine.ReceiveTurbine<HomeUiState>.awaitLoadedState(): HomeUiState {
+        var state = awaitItem()
+        while (state.isLoading) state = awaitItem()
+        return state
     }
 }

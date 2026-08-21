@@ -32,6 +32,8 @@ data class BackupWorkState(
     val state: WorkInfo.State,
     val progress: BackupJobProgress?,
     val error: String?,
+    val failureCode: BackupFailureCode?,
+    val failureDetail: String?,
     val uri: Uri?,
 ) {
     val isRunning: Boolean get() = state == WorkInfo.State.ENQUEUED || state == WorkInfo.State.RUNNING
@@ -169,6 +171,9 @@ class BackupJobCoordinator @Inject constructor(
         val totalBytes = info.progress.getLong(BackupWorker.KEY_TOTAL_BYTES, -1L).takeIf { it >= 0 }
         val completedItems = info.progress.getInt(BackupWorker.KEY_COMPLETED_ITEMS, -1).takeIf { it >= 0 }
         val totalItems = info.progress.getInt(BackupWorker.KEY_TOTAL_ITEMS, -1).takeIf { it >= 0 }
+        val sourceCount = info.progress.getInt(BackupWorker.KEY_SOURCE_COUNT, -1).takeIf { it >= 0 }
+        val songCount = info.progress.getInt(BackupWorker.KEY_SONG_COUNT, -1).takeIf { it >= 0 }
+        val imageCount = info.progress.getInt(BackupWorker.KEY_IMAGE_COUNT, -1).takeIf { it >= 0 }
         return BackupWorkState(
             workId = info.id.toString(),
             jobId = info.tags.first { it.startsWith(JOB_TAG_PREFIX) }.removePrefix(JOB_TAG_PREFIX),
@@ -182,9 +187,15 @@ class BackupJobCoordinator @Inject constructor(
                     totalBytes = totalBytes,
                     completedItems = completedItems,
                     totalItems = totalItems,
+                    sourceCount = sourceCount,
+                    songCount = songCount,
+                    imageCount = imageCount,
                 )
             },
             error = info.outputData.getString(BackupWorker.KEY_ERROR),
+            failureCode = info.outputData.getString(BackupWorker.KEY_FAILURE_CODE)
+                ?.let { runCatching { BackupFailureCode.valueOf(it) }.getOrNull() },
+            failureDetail = info.outputData.getString(BackupWorker.KEY_FAILURE_DETAIL),
             uri = (info.outputData.getString(BackupWorker.KEY_URI)
                 ?: preferences.getString(META_URI_PREFIX + info.id, null))?.let(Uri::parse),
         )

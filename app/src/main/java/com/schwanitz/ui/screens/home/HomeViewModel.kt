@@ -12,6 +12,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 data class HomeUiState(
@@ -31,26 +36,36 @@ class HomeViewModel @Inject constructor(
     val errorHolder = ErrorHolder()
 
     private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+    private val _filterQuery = MutableStateFlow("")
+    private var searchJob: Job? = null
     private val _showFavoritesOnly = MutableStateFlow(false)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<HomeUiState> = combine(
-        _searchQuery,
+        _filterQuery,
         _showFavoritesOnly,
         songRepository.getAllSongs()
     ) { query, favoritesOnly, songs ->
-        val filtered = songs.filterSongs(query, favoritesOnly)
         HomeUiState(
-            songs = filtered,
+            songs = withContext(Dispatchers.Default) { songs.filterSongs(query, favoritesOnly) },
             totalSongCount = songs.size,
             isLoading = false,
             searchQuery = query,
-            showFavoritesOnly = favoritesOnly
+            showFavoritesOnly = favoritesOnly,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
+        searchJob?.cancel()
+        if (query.isEmpty()) {
+            _filterQuery.value = query
+        } else {
+            searchJob = viewModelScope.launch {
+                delay(200)
+                _filterQuery.value = query
+            }
+        }
     }
 
     fun toggleFavoritesFilter() {

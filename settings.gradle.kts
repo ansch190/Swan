@@ -25,3 +25,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Swan"
 include(":app")
+include(":benchmark")

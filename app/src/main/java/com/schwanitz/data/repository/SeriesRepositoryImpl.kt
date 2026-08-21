@@ -18,6 +18,8 @@ class SeriesRepositoryImpl @Inject constructor(
     private val songDao: SongDao
 ) : SeriesRepository {
 
+    override fun observeSeriesCount(): Flow<Int> = albumSeriesDao.observeSeriesCount()
+
     override fun getAlbumSeries(): Flow<List<AlbumSeries>> {
         return albumSeriesDao.getAllSeriesWithCount().map { projections ->
             projections.map { AlbumSeries(it.id, it.name, it.albumCount) }

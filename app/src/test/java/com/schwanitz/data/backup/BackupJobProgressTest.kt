@@ -2,9 +2,53 @@ package com.schwanitz.data.backup
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
+import java.io.IOException
 
 class BackupJobProgressTest {
+    @Test
+    fun `stream close failure is classified as finalization failure`() {
+        val failure = classifyBackupExportFailure(
+            IOException("provider rejected close"),
+            BackupJobStage.FINALIZING,
+        )
+
+        assertEquals(BackupFailureCode.FINALIZATION_FAILED, failure.first)
+        assertEquals("IOException", failure.second)
+    }
+
+    @Test
+    fun `specific verification failure survives worker classification`() {
+        val failure = classifyBackupExportFailure(
+            BackupExportException(BackupFailureCode.VERIFICATION_FAILED),
+            BackupJobStage.FINALIZING,
+        )
+
+        assertEquals(BackupFailureCode.VERIFICATION_FAILED, failure.first)
+    }
+
+    @Test
+    fun `all configured song sources are accepted`() {
+        validateBackupSourceCoverage(
+            configuredSourceIds = setOf("local", "webdav", "smb"),
+            songSourceIds = setOf("local", "webdav", "smb"),
+        )
+    }
+
+    @Test
+    fun `orphan song source aborts export with specific failure`() {
+        val error = assertThrows(BackupExportException::class.java) {
+            validateBackupSourceCoverage(
+                configuredSourceIds = setOf("local", "smb"),
+                songSourceIds = setOf("local", "missing"),
+            )
+        }
+
+        assertEquals(BackupFailureCode.SOURCE_MISMATCH, error.failureCode)
+        assertEquals("missing", error.safeDetail)
+    }
+
     @Test
     fun `byte progress is bounded`() {
         assertEquals(

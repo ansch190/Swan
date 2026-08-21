@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schwanitz.R
 import com.schwanitz.domain.model.Song
 import com.schwanitz.ui.common.CollectSnackbarErrors
@@ -25,7 +26,8 @@ fun HomeScreen(
     onSongInfoClick: (String) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val snackbarHostState = LocalSnackbarHostState.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
     var contextMenuSong by remember { mutableStateOf<Song?>(null) }
@@ -55,7 +57,7 @@ fun HomeScreen(
         )
 
         OutlinedTextField(
-            value = uiState.searchQuery,
+            value = searchQuery,
             onValueChange = { viewModel.onSearchQueryChange(it) },
             modifier = Modifier
                 .fillMaxWidth()
@@ -63,7 +65,7 @@ fun HomeScreen(
             placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
-                if (uiState.searchQuery.isNotEmpty()) {
+                if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
                         Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.cd_clear_search))
                     }
@@ -89,8 +91,11 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (uiState.searchQuery.isNotBlank()) stringResource(R.string.home_empty_search)
-                        else stringResource(R.string.home_empty_no_source),
+                        text = when {
+                            searchQuery.isNotBlank() -> stringResource(R.string.home_empty_search)
+                            uiState.showFavoritesOnly -> stringResource(R.string.home_empty_favorites)
+                            else -> stringResource(R.string.home_empty_no_source)
+                        },
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -99,7 +104,7 @@ fun HomeScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(uiState.songs, key = { it.id }) { song ->
+                    items(uiState.songs, key = { it.id }, contentType = { "song" }) { song ->
                         Box {
                             SongListItem(
                                 song = song,
@@ -107,8 +112,8 @@ fun HomeScreen(
                                 onFavoriteClick = { viewModel.toggleFavorite(song) },
                                 onLongClick = { contextMenuSong = song }
                             )
-                            DropdownMenu(
-                                expanded = contextMenuSong?.id == song.id,
+                            if (contextMenuSong?.id == song.id) DropdownMenu(
+                                expanded = true,
                                 onDismissRequest = { contextMenuSong = null }
                             ) {
                                 DropdownMenuItem(

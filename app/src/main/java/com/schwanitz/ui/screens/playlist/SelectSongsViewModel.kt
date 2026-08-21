@@ -10,6 +10,12 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import com.schwanitz.ui.common.filterSongs
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 data class SelectSongsUiState(
     val songs: List<Song> = emptyList(),
@@ -27,19 +33,20 @@ class SelectSongsViewModel @Inject constructor(
     val playlistId: Long = savedStateHandle.get<Long>("playlistId") ?: 0L
 
     private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+    private val _filterQuery = MutableStateFlow("")
+    private var searchJob: Job? = null
     private val _showFavoritesOnly = MutableStateFlow(false)
 
     val selectedSongIds = MutableStateFlow<List<String>>(emptyList())
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<SelectSongsUiState> = combine(
-        _searchQuery,
+        _filterQuery,
         _showFavoritesOnly,
         songRepository.getAllSongs()
     ) { query, favoritesOnly, songs ->
-        val filtered = songs.filterSongs(query, favoritesOnly)
         SelectSongsUiState(
-            songs = filtered,
+            songs = withContext(Dispatchers.Default) { songs.filterSongs(query, favoritesOnly) },
             isLoading = false,
             searchQuery = query,
             showFavoritesOnly = favoritesOnly
@@ -48,6 +55,15 @@ class SelectSongsViewModel @Inject constructor(
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
+        searchJob?.cancel()
+        if (query.isEmpty()) {
+            _filterQuery.value = query
+        } else {
+            searchJob = viewModelScope.launch {
+                delay(200)
+                _filterQuery.value = query
+            }
+        }
     }
 
     fun toggleFavoritesFilter() {

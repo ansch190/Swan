@@ -2,6 +2,7 @@ package com.schwanitz.ui.screens.collection
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -67,8 +68,14 @@ fun CollectionScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text(stringResource(R.string.collection_title)) })
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val columnCount = when {
+            maxWidth >= 840.dp -> 4
+            maxWidth >= 600.dp -> 3
+            else -> 2
+        }
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+            columns = GridCells.Fixed(columnCount),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -77,6 +84,7 @@ fun CollectionScreen(
             items(tiles, key = { it.titleRes }) { tile ->
                 CollectionCard(tile = tile, isLoading = state.isLoading)
             }
+        }
         }
     }
 }

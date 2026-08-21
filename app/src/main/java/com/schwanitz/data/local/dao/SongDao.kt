@@ -19,6 +19,18 @@ interface SongDao {
     @Query("SELECT * FROM SongWithNames WHERE isActive = 1 ORDER BY title ASC")
     fun getAllSongs(): Flow<List<SongWithNames>>
 
+    @Query("SELECT COUNT(DISTINCT al.id) FROM albums al INNER JOIN album_song_mapping asm ON al.id = asm.albumId INNER JOIN songs s ON s.id = asm.songId WHERE s.isActive = 1")
+    fun observeActiveAlbumCount(): Flow<Int>
+
+    @Query("SELECT COUNT(DISTINCT NULLIF(al.albumArtist, '')) + CASE WHEN EXISTS(SELECT 1 FROM albums al2 INNER JOIN album_song_mapping asm2 ON al2.id = asm2.albumId INNER JOIN songs s2 ON s2.id = asm2.songId WHERE s2.isActive = 1 AND (al2.albumArtist IS NULL OR al2.albumArtist = '')) THEN 1 ELSE 0 END FROM albums al INNER JOIN album_song_mapping asm ON al.id = asm.albumId INNER JOIN songs s ON s.id = asm.songId WHERE s.isActive = 1")
+    fun observeActiveAlbumArtistCount(): Flow<Int>
+
+    @Query("SELECT COUNT(DISTINCT genre) FROM songs WHERE isActive = 1 AND genre != ''")
+    fun observeActiveGenreCount(): Flow<Int>
+
+    @Query("SELECT COUNT(DISTINCT al.year) FROM albums al INNER JOIN album_song_mapping asm ON al.id = asm.albumId INNER JOIN songs s ON s.id = asm.songId WHERE s.isActive = 1 AND al.year > 0")
+    fun observeActiveYearCount(): Flow<Int>
+
     @Query("SELECT * FROM SongWithNames WHERE isActive = 1 AND isFavorite = 1 ORDER BY title ASC")
     fun getFavoriteSongs(): Flow<List<SongWithNames>>
 

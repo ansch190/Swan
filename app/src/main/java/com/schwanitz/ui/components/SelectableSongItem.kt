@@ -48,8 +48,8 @@ fun SelectableSongItem(
             showAlbumInSubtitle = showAlbumInSubtitle
         )
 
-        DropdownMenu(
-            expanded = showNormalMenu,
+        if (showNormalMenu) DropdownMenu(
+            expanded = true,
             onDismissRequest = { showNormalMenu = false }
         ) {
             DropdownMenuItem(
@@ -69,8 +69,8 @@ fun SelectableSongItem(
             extraMenuItems()
         }
 
-        DropdownMenu(
-            expanded = showSelectionMenu,
+        if (showSelectionMenu) DropdownMenu(
+            expanded = true,
             onDismissRequest = { showSelectionMenu = false }
         ) {
             DropdownMenuItem(

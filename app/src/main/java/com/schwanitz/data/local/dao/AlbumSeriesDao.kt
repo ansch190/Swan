@@ -28,6 +28,9 @@ data class SeriesInput(
 @Dao
 interface AlbumSeriesDao {
 
+    @Query("SELECT COUNT(*) FROM album_series")
+    fun observeSeriesCount(): Flow<Int>
+
     @Query("SELECT * FROM album_series ORDER BY name ASC")
     fun getAllSeries(): Flow<List<AlbumSeriesEntity>>
 

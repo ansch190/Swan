@@ -5,6 +5,8 @@ import com.schwanitz.data.local.converter.toDomain
 import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.SongRepository
+import com.schwanitz.domain.repository.SongCollectionCounts
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -19,6 +21,15 @@ class SongRepositoryImpl @Inject constructor(
         return songDao.getAllSongs().map { entities ->
             entities.map { it.toDomain() }
         }
+    }
+
+    override fun observeCollectionCounts(): Flow<SongCollectionCounts> = combine(
+        songDao.observeActiveAlbumCount(),
+        songDao.observeActiveAlbumArtistCount(),
+        songDao.observeActiveGenreCount(),
+        songDao.observeActiveYearCount(),
+    ) { albums, albumArtists, genres, years ->
+        SongCollectionCounts(albums, albumArtists, genres, years)
     }
 
     override fun getFavoriteSongs(): Flow<List<Song>> {

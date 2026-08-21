@@ -20,45 +20,23 @@ data class CollectionUiState(
     val seriesCount: Int = 0
 )
 
-private data class SongCollectionCounts(
-    val albums: Int,
-    val albumArtists: Int,
-    val genres: Int,
-    val years: Int
-)
-
 @HiltViewModel
 class CollectionViewModel @Inject constructor(
     songRepository: SongRepository,
     seriesRepository: SeriesRepository
 ) : ViewModel() {
 
-    private val songCounts = combine(
-        songRepository.getAllAlbums(),
-        songRepository.getAllAlbumArtistNames(),
-        songRepository.hasAlbumsWithNoAlbumArtist(),
-        songRepository.getAllGenres(),
-        songRepository.getAllYears()
-    ) { albums, albumArtists, hasAlbumsWithoutArtist, genres, years ->
-        SongCollectionCounts(
-            albums = albums.size,
-            albumArtists = albumArtists.size + if (hasAlbumsWithoutArtist) 1 else 0,
-            genres = genres.size,
-            years = years.size
-        )
-    }
-
     val uiState: StateFlow<CollectionUiState> = combine(
-        songCounts,
-        seriesRepository.getAlbumSeries()
-    ) { counts, series ->
+        songRepository.observeCollectionCounts(),
+        seriesRepository.observeSeriesCount()
+    ) { counts, seriesCount ->
         CollectionUiState(
             isLoading = false,
             albumCount = counts.albums,
             albumArtistCount = counts.albumArtists,
             genreCount = counts.genres,
             yearCount = counts.years,
-            seriesCount = series.size
+            seriesCount = seriesCount
         )
     }.stateIn(
         scope = viewModelScope,

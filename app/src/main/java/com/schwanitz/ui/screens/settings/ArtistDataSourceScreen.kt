@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -26,7 +27,7 @@ fun ArtistDataSourceScreen(
     onNavigateBack: () -> Unit,
     viewModel: ArtistDataSourceViewModel = hiltViewModel()
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     var sourceExpanded by remember { mutableStateOf(false) }
     var discogsKeyVisible by remember { mutableStateOf(false) }
     var discogsSecretVisible by remember { mutableStateOf(false) }

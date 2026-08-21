@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -33,9 +34,9 @@ fun SettingsScreen(
     val snackbarHostState = LocalSnackbarHostState.current
     val resources = LocalResources.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
-    val sources by viewModel.sources.collectAsState()
-    val scanProgress by viewModel.scanProgress.collectAsState()
-    val localSourcesRequiringAuthorization by viewModel.localSourcesRequiringAuthorization.collectAsState()
+    val sources by viewModel.sources.collectAsStateWithLifecycle()
+    val scanProgress by viewModel.scanProgress.collectAsStateWithLifecycle()
+    val localSourcesRequiringAuthorization by viewModel.localSourcesRequiringAuthorization.collectAsStateWithLifecycle()
     var sourceToDelete by remember { mutableStateOf<SourceConfig?>(null) }
 
     LaunchedEffect(viewModel, snackbarHostState) {
@@ -77,16 +78,21 @@ fun SettingsScreen(
 
         if (scanProgress.isScanning) {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                LinearProgressIndicator(
-                    progress = {
-                        if (scanProgress.total > 0) scanProgress.scanned.toFloat() / scanProgress.total
-                        else 0f
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (scanProgress.total > 0) {
+                    LinearProgressIndicator(
+                        progress = { scanProgress.scanned.toFloat() / scanProgress.total },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = stringResource(R.string.settings_scanning, scanProgress.sourceName, scanProgress.scanned, scanProgress.total),
+                    text = if (scanProgress.total > 0) {
+                        stringResource(R.string.settings_scanning, scanProgress.sourceName, scanProgress.scanned, scanProgress.total)
+                    } else {
+                        stringResource(R.string.settings_scanning_unknown, scanProgress.sourceName, scanProgress.scanned)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

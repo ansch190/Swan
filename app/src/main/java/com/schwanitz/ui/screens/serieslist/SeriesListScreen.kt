@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schwanitz.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -20,7 +21,7 @@ fun SeriesListScreen(
     onSeriesClick: (String) -> Unit,
     viewModel: SeriesListViewModel = hiltViewModel()
 ) {
-    val series by viewModel.allSeries.collectAsState()
+    val series by viewModel.allSeries.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -33,7 +34,7 @@ fun SeriesListScreen(
         )
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(series) { s ->
+            items(series, key = { it.id }, contentType = { "series" }) { s ->
                 ListItem(
                     modifier = Modifier.clickable { onSeriesClick(s.name) },
                     headlineContent = {

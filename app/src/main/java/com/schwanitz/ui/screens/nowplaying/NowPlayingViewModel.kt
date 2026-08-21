@@ -8,6 +8,7 @@ import com.schwanitz.domain.model.Song
 import com.schwanitz.domain.repository.AlbumRepository
 import com.schwanitz.domain.repository.SongRepository
 import com.schwanitz.player.MusicPlayerManager
+import com.schwanitz.player.PlaybackProgress
 import com.schwanitz.ui.common.ErrorHolder
 import com.schwanitz.ui.common.toggleFavorite
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,6 +34,8 @@ class NowPlayingViewModel @Inject constructor(
     val playerState: StateFlow<com.schwanitz.player.PlayerState> =
         playerManager.playerState
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), playerManager.playerState.value)
+
+    val playbackProgress: StateFlow<PlaybackProgress> = playerManager.playbackProgress
 
     private val _artworks = MutableStateFlow<List<AlbumArtwork>>(emptyList())
     val artworks: StateFlow<List<AlbumArtwork>> = _artworks

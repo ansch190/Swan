@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.schwanitz.domain.model.AlbumArtwork
 import androidx.compose.ui.res.stringResource
@@ -50,13 +51,14 @@ fun AlbumDetailScreen(
         viewModel.loadAlbum(albumName, albumArtistName, albumYear)
     }
 
-    val songs by viewModel.songs.collectAsState()
-    val artworks by viewModel.artworks.collectAsState()
-    val series by viewModel.series.collectAsState()
-    val year by viewModel.year.collectAsState()
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val artworks by viewModel.artworks.collectAsStateWithLifecycle()
+    val series by viewModel.series.collectAsStateWithLifecycle()
+    val year by viewModel.year.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
-    val isSelecting by viewModel.isSelecting.collectAsState()
-    val selectedSongIds by viewModel.selectedSongIds.collectAsState()
+    val isSelecting by viewModel.isSelecting.collectAsStateWithLifecycle()
+    val selectedSongIds by viewModel.selectedSongIds.collectAsStateWithLifecycle()
     val snackbarHostState = LocalSnackbarHostState.current
     CollectSnackbarErrors(viewModel.errorHolder, snackbarHostState)
 
@@ -123,7 +125,7 @@ fun AlbumDetailScreen(
             ) { page ->
                 val cdSongs = songsByCd[cdList[page]] ?: emptyList()
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(cdSongs) { song ->
+                    items(cdSongs, key = { it.id }, contentType = { "song" }) { song ->
                         SelectableSongItem(
                             song = song,
                             isSelecting = isSelecting,
@@ -148,9 +150,13 @@ fun AlbumDetailScreen(
                     }
                 }
             }
-        } else {
+        } else if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
+            }
+        } else {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(stringResource(R.string.album_empty))
             }
         }
     }

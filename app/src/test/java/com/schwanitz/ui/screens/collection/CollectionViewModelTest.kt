@@ -5,6 +5,7 @@ import com.schwanitz.domain.model.Album
 import com.schwanitz.domain.model.AlbumSeries
 import com.schwanitz.domain.repository.SeriesRepository
 import com.schwanitz.domain.repository.SongRepository
+import com.schwanitz.domain.repository.SongCollectionCounts
 import com.schwanitz.util.MainDispatcherRule
 import io.mockk.every
 import io.mockk.mockk
@@ -20,22 +21,14 @@ class CollectionViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val albums = MutableStateFlow<List<Album>>(emptyList())
-    private val albumArtists = MutableStateFlow<List<String>>(emptyList())
-    private val hasAlbumsWithoutArtist = MutableStateFlow(false)
-    private val genres = MutableStateFlow<List<String>>(emptyList())
-    private val years = MutableStateFlow<List<Int>>(emptyList())
-    private val series = MutableStateFlow<List<AlbumSeries>>(emptyList())
+    private val counts = MutableStateFlow(SongCollectionCounts(0, 0, 0, 0))
+    private val seriesCount = MutableStateFlow(0)
 
     private fun createViewModel(): CollectionViewModel {
         val songRepository = mockk<SongRepository>()
         val seriesRepository = mockk<SeriesRepository>()
-        every { songRepository.getAllAlbums() } returns albums
-        every { songRepository.getAllAlbumArtistNames() } returns albumArtists
-        every { songRepository.hasAlbumsWithNoAlbumArtist() } returns hasAlbumsWithoutArtist
-        every { songRepository.getAllGenres() } returns genres
-        every { songRepository.getAllYears() } returns years
-        every { seriesRepository.getAlbumSeries() } returns series
+        every { songRepository.observeCollectionCounts() } returns counts
+        every { seriesRepository.observeSeriesCount() } returns seriesCount
         return CollectionViewModel(songRepository, seriesRepository)
     }
 
@@ -54,14 +47,8 @@ class CollectionViewModelTest {
 
     @Test
     fun `all collection counts are derived from repository flows`() = runTest {
-        albums.value = listOf(
-            Album(id = 1, name = "First"),
-            Album(id = 2, name = "Second")
-        )
-        albumArtists.value = listOf("Artist A", "Artist B")
-        genres.value = listOf("Jazz", "Rock", "Soul")
-        years.value = listOf(1999, 2000)
-        series.value = listOf(AlbumSeries(1, "Series A"))
+        counts.value = SongCollectionCounts(2, 2, 3, 2)
+        seriesCount.value = 1
 
         createViewModel().uiState.test {
             val state = awaitLoadedState()
@@ -75,8 +62,7 @@ class CollectionViewModelTest {
 
     @Test
     fun `albums without album artist form one additional entry`() = runTest {
-        albumArtists.value = listOf("Named Artist")
-        hasAlbumsWithoutArtist.value = true
+        counts.value = SongCollectionCounts(0, 2, 0, 0)
 
         createViewModel().uiState.test {
             assertEquals(2, awaitLoadedState().albumArtistCount)
@@ -87,12 +73,9 @@ class CollectionViewModelTest {
     fun `counts update reactively`() = runTest {
         createViewModel().uiState.test {
             awaitLoadedState()
-            albums.value = listOf(Album(id = 1, name = "New Album"))
+            counts.value = SongCollectionCounts(1, 0, 0, 0)
             assertEquals(1, awaitItem().albumCount)
-            series.value = listOf(
-                AlbumSeries(1, "One"),
-                AlbumSeries(2, "Two")
-            )
+            seriesCount.value = 2
             assertEquals(2, awaitItem().seriesCount)
         }
     }

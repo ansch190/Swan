@@ -26,6 +26,7 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
 import java.io.FilterInputStream
+import java.io.FilterOutputStream
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
@@ -117,39 +118,75 @@ class BackupManager @Inject constructor(
         require(password.length >= MIN_PASSWORD_LENGTH) { "Backup password must contain at least 12 characters" }
         val salt = ByteArray(SALT_LENGTH).also(SecureRandom()::nextBytes)
         val iv = ByteArray(IV_LENGTH).also(SecureRandom()::nextBytes)
-        val output = checkNotNull(contentResolver.openOutputStream(uri, "wt")) { "Cannot write backup file" }
-        output.use { raw ->
-            DataOutputStream(raw).apply {
-                write(MAGIC_V2)
-                writeByte(FORMAT_VERSION)
-                writeByte(KDF_VERSION)
-                writeInt(V2_ITERATIONS)
-                write(salt)
-                write(iv)
-                flush()
-            }
-            reporter.report(
-                BackupJobProgress(BackupOperation.EXPORT, BackupJobStage.PREPARING_KEY),
-                force = true,
-            )
-            val cipher = newCipher(Cipher.ENCRYPT_MODE, password, salt, iv, V2_ITERATIONS, pepper = null)
-            ZipOutputStream(CipherOutputStream(raw, cipher)).use { zip ->
-                reporter.report(
-                    BackupJobProgress(BackupOperation.EXPORT, BackupJobStage.WRITING_CONFIGURATION),
-                    force = true,
-                )
-                writeZipEntry(zip, MANIFEST_ENTRY, backup.toJson().toString())
-                if (backup.includeLibrary) {
-                    database.withTransaction {
-                        exportLibrary(zip, database.openHelper.readableDatabase, reporter)
-                    }
+        val output = try {
+            checkNotNull(contentResolver.openOutputStream(uri, "wt")) { "Provider returned no output stream" }
+        } catch (error: Throwable) {
+            throw BackupExportException(BackupFailureCode.DESTINATION_UNAVAILABLE, cause = error)
+        }
+        val counting = CountingOutputStream(output)
+        var activeFailureCode = BackupFailureCode.DESTINATION_UNAVAILABLE
+        try {
+            counting.use { raw ->
+                DataOutputStream(raw).apply {
+                    write(MAGIC_V2)
+                    writeByte(FORMAT_VERSION)
+                    writeByte(KDF_VERSION)
+                    writeInt(V2_ITERATIONS)
+                    write(salt)
+                    write(iv)
+                    flush()
                 }
                 reporter.report(
-                    BackupJobProgress(BackupOperation.EXPORT, BackupJobStage.FINALIZING),
+                    BackupJobProgress(
+                        BackupOperation.EXPORT,
+                        BackupJobStage.PREPARING_KEY,
+                        sourceCount = backup.sources.size,
+                    ),
                     force = true,
                 )
+                val cipher = newCipher(Cipher.ENCRYPT_MODE, password, salt, iv, V2_ITERATIONS, pepper = null)
+                ZipOutputStream(CipherOutputStream(raw, cipher)).use { zip ->
+                    reporter.report(
+                        BackupJobProgress(
+                            BackupOperation.EXPORT,
+                            BackupJobStage.WRITING_CONFIGURATION,
+                            sourceCount = backup.sources.size,
+                        ),
+                        force = true,
+                    )
+                    writeZipEntry(zip, MANIFEST_ENTRY, backup.toJson().toString())
+                    val stats = if (backup.includeLibrary) {
+                        activeFailureCode = BackupFailureCode.LIBRARY_READ_FAILED
+                        database.withTransaction {
+                            exportLibrary(
+                                zip = zip,
+                                db = database.openHelper.readableDatabase,
+                                configuredSourceIds = backup.sources.mapTo(linkedSetOf()) { it.id },
+                                reporter = reporter,
+                            )
+                        }
+                    } else BackupExportStats(sourceCount = backup.sources.size)
+                    activeFailureCode = BackupFailureCode.FINALIZATION_FAILED
+                    reporter.report(
+                        BackupJobProgress(
+                            operation = BackupOperation.EXPORT,
+                            stage = BackupJobStage.FINALIZING,
+                            sourceCount = stats.sourceCount,
+                            songCount = stats.songCount,
+                            imageCount = stats.imageCount,
+                        ),
+                        force = true,
+                    )
+                }
             }
+        } catch (error: Throwable) {
+            if (error is BackupExportException) throw error
+            throw BackupExportException(
+                failureCode = activeFailureCode,
+                cause = error,
+            )
         }
+        verifyExportedDocument(contentResolver, uri, counting.bytesWritten)
     }
 
     suspend fun importAndRestore(
@@ -336,14 +373,30 @@ class BackupManager @Inject constructor(
     private fun exportLibrary(
         zip: ZipOutputStream,
         db: SupportSQLiteDatabase,
+        configuredSourceIds: Set<String>,
         reporter: BackupProgressReporter,
-    ) {
+    ): BackupExportStats {
+        val songCountsBySource = linkedMapOf<String, Int>()
+        db.query("SELECT sourceId, COUNT(*) FROM songs GROUP BY sourceId").use { cursor ->
+            while (cursor.moveToNext()) songCountsBySource[cursor.getString(0)] = cursor.getInt(1)
+        }
+        validateBackupSourceCoverage(configuredSourceIds, songCountsBySource.keys)
+        val assets = collectInternalAssets(db)
+        val distinctAssets = assets.values.distinct()
+        val stats = BackupExportStats(
+            sourceCount = configuredSourceIds.size,
+            songCount = songCountsBySource.values.sum(),
+            imageCount = distinctAssets.size,
+        )
         reporter.report(
             BackupJobProgress(
                 BackupOperation.EXPORT,
                 BackupJobStage.EXPORTING_LIBRARY,
                 completedItems = 0,
                 totalItems = LIBRARY_TABLES.size,
+                sourceCount = stats.sourceCount,
+                songCount = stats.songCount,
+                imageCount = stats.imageCount,
             ),
             force = true,
         )
@@ -363,12 +416,13 @@ class BackupManager @Inject constructor(
                     BackupJobStage.EXPORTING_LIBRARY,
                     completedItems = index + 1,
                     totalItems = LIBRARY_TABLES.size,
+                    sourceCount = stats.sourceCount,
+                    songCount = stats.songCount,
+                    imageCount = stats.imageCount,
                 )
             )
         }
-        val assets = collectInternalAssets(db)
         writeZipEntry(zip, ASSET_MAP_ENTRY, JSONObject(assets).toString())
-        val distinctAssets = assets.values.distinct()
         val totalAssetBytes = distinctAssets.sumOf { entryName ->
             val sourcePath = assets.entries.first { it.value == entryName }.key
             File(Uri.parse(sourcePath).path ?: sourcePath).length()
@@ -381,6 +435,9 @@ class BackupManager @Inject constructor(
                 totalBytes = totalAssetBytes,
                 completedItems = 0,
                 totalItems = distinctAssets.size,
+                sourceCount = stats.sourceCount,
+                songCount = stats.songCount,
+                imageCount = stats.imageCount,
             ),
             force = true,
         )
@@ -388,19 +445,30 @@ class BackupManager @Inject constructor(
             val sourcePath = assets.entries.first { it.value == entryName }.key
             val sourceFile = File(Uri.parse(sourcePath).path ?: sourcePath)
             zip.putNextEntry(ZipEntry(entryName))
-            sourceFile.inputStream().use { input ->
-                copyWithProgress(input, zip, sourceFile.length()) { currentFileBytes ->
-                    reporter.report(
-                        BackupJobProgress(
-                            BackupOperation.EXPORT,
-                            BackupJobStage.EXPORTING_ASSETS,
-                            completedBytes = completedAssetBytes + currentFileBytes,
-                            totalBytes = totalAssetBytes,
-                            completedItems = index,
-                            totalItems = distinctAssets.size,
+            try {
+                sourceFile.inputStream().use { input ->
+                    copyWithProgress(input, zip, sourceFile.length()) { currentFileBytes ->
+                        reporter.report(
+                            BackupJobProgress(
+                                BackupOperation.EXPORT,
+                                BackupJobStage.EXPORTING_ASSETS,
+                                completedBytes = completedAssetBytes + currentFileBytes,
+                                totalBytes = totalAssetBytes,
+                                completedItems = index,
+                                totalItems = distinctAssets.size,
+                                sourceCount = stats.sourceCount,
+                                songCount = stats.songCount,
+                                imageCount = stats.imageCount,
+                            )
                         )
-                    )
+                    }
                 }
+            } catch (error: Throwable) {
+                throw BackupExportException(
+                    failureCode = BackupFailureCode.ASSET_UNAVAILABLE,
+                    safeDetail = sourceFile.name,
+                    cause = error,
+                )
             }
             zip.closeEntry()
             completedAssetBytes += sourceFile.length()
@@ -412,8 +480,27 @@ class BackupManager @Inject constructor(
                     totalBytes = totalAssetBytes,
                     completedItems = index + 1,
                     totalItems = distinctAssets.size,
+                    sourceCount = stats.sourceCount,
+                    songCount = stats.songCount,
+                    imageCount = stats.imageCount,
                 )
             )
+        }
+        return stats
+    }
+
+    private fun verifyExportedDocument(contentResolver: ContentResolver, uri: Uri, expectedBytes: Long) {
+        try {
+            val reportedLength = contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+            if (reportedLength != null && reportedLength >= 0 && reportedLength != expectedBytes) {
+                throw IllegalStateException("Expected $expectedBytes bytes, provider reports $reportedLength")
+            }
+            val header = contentResolver.openInputStream(uri)?.use { input ->
+                ByteArray(MAGIC_V2.size).also { DataInputStream(input).readFully(it) }
+            } ?: error("Provider returned no verification stream")
+            check(header.contentEquals(MAGIC_V2)) { "Written backup header is invalid" }
+        } catch (error: Throwable) {
+            throw BackupExportException(BackupFailureCode.VERIFICATION_FAILED, cause = error)
         }
     }
 
@@ -680,6 +767,21 @@ class BackupManager @Inject constructor(
         }
     }
 
+    private class CountingOutputStream(output: OutputStream) : FilterOutputStream(output) {
+        var bytesWritten: Long = 0
+            private set
+
+        override fun write(value: Int) {
+            out.write(value)
+            bytesWritten++
+        }
+
+        override fun write(buffer: ByteArray, offset: Int, length: Int) {
+            out.write(buffer, offset, length)
+            bytesWritten += length
+        }
+    }
+
     private fun writeZipEntry(zip: ZipOutputStream, name: String, contents: String) {
         zip.putNextEntry(ZipEntry(name))
         zip.write(contents.toByteArray(Charsets.UTF_8))
@@ -729,6 +831,12 @@ class BackupManager @Inject constructor(
         )
     }
 }
+
+private data class BackupExportStats(
+    val sourceCount: Int,
+    val songCount: Int? = null,
+    val imageCount: Int? = null,
+)
 
 private fun SourceConfigEntity.toBackup() = BackupSource(id, name, type, isEnabled, folderUri, url, path)
 

@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -22,8 +23,9 @@ fun SelectSongsScreen(
     onSongsSelected: (List<com.schwanitz.domain.model.Song>) -> Unit = { onNavigateBack() },
     viewModel: SelectSongsViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val selectedIds by viewModel.selectedSongIds.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val selectedIds by viewModel.selectedSongIds.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -59,7 +61,7 @@ fun SelectSongsScreen(
         )
 
         OutlinedTextField(
-            value = uiState.searchQuery,
+                value = searchQuery,
             onValueChange = { viewModel.onSearchQueryChange(it) },
             modifier = Modifier
                 .fillMaxWidth()
@@ -67,7 +69,7 @@ fun SelectSongsScreen(
             placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
-                if (uiState.searchQuery.isNotEmpty()) {
+                if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
                         Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.cd_clear_search))
                     }
@@ -93,7 +95,7 @@ fun SelectSongsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (uiState.searchQuery.isNotBlank()) stringResource(R.string.home_empty_search)
+                        text = if (searchQuery.isNotBlank()) stringResource(R.string.home_empty_search)
                         else stringResource(R.string.home_empty_no_source),
                         style = MaterialTheme.typography.bodyLarge
                     )
@@ -103,7 +105,7 @@ fun SelectSongsScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(uiState.songs, key = { it.id }) { song ->
+                    items(uiState.songs, key = { it.id }, contentType = { "song" }) { song ->
                         val isSelected = song.id in selectedIds
                         SongListItem(
                             song = song,

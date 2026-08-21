@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,12 +47,12 @@ fun PlaylistDetailScreen(
         viewModel.loadPlaylist(playlistId)
     }
 
-    val playlistName by viewModel.playlistName.collectAsState()
-    val songs by viewModel.songs.collectAsState()
-    val isFavorites by viewModel.isFavoritesPlaylist.collectAsState()
-    val isSelecting by viewModel.isSelecting.collectAsState()
-    val selectedSongIds by viewModel.selectedSongIds.collectAsState()
-    val pendingSongAdditions by viewModel.pendingSongAdditions.collectAsState()
+    val playlistName by viewModel.playlistName.collectAsStateWithLifecycle()
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
+    val isFavorites by viewModel.isFavoritesPlaylist.collectAsStateWithLifecycle()
+    val isSelecting by viewModel.isSelecting.collectAsStateWithLifecycle()
+    val selectedSongIds by viewModel.selectedSongIds.collectAsStateWithLifecycle()
+    val pendingSongAdditions by viewModel.pendingSongAdditions.collectAsStateWithLifecycle()
     var localSongs by remember { mutableStateOf(songs) }
     var addedSongIds by remember { mutableStateOf<List<String>>(emptyList()) }
     var isEditing by rememberSaveable { mutableStateOf(false) }
@@ -190,7 +191,7 @@ fun PlaylistDetailScreen(
                 state = lazyListState,
                 modifier = Modifier.fillMaxSize(),
             ) {
-                items(localSongs, key = { it.mappingId }) { entry ->
+                items(localSongs, key = { it.mappingId }, contentType = { "playlistSong" }) { entry ->
                     if (isEditing && !isFavorites) {
                         ReorderableItem(reorderableState, key = entry.mappingId) { isDragging ->
                             val alpha = if (isDragging) 0.7f else 1f

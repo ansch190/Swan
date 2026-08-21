@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -67,13 +68,13 @@ fun SongInfoScreen(
         viewModel.loadSong(songId)
     }
 
-    val song by viewModel.song.collectAsState()
-    val sourceName by viewModel.sourceName.collectAsState()
-    val artworks by viewModel.artworks.collectAsState()
-    val lyrics by viewModel.lyrics.collectAsState()
-    val trackTotal by viewModel.trackTotal.collectAsState()
-    val discTotal by viewModel.discTotal.collectAsState()
-    val series by viewModel.series.collectAsState()
+    val song by viewModel.song.collectAsStateWithLifecycle()
+    val sourceName by viewModel.sourceName.collectAsStateWithLifecycle()
+    val artworks by viewModel.artworks.collectAsStateWithLifecycle()
+    val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
+    val trackTotal by viewModel.trackTotal.collectAsStateWithLifecycle()
+    val discTotal by viewModel.discTotal.collectAsStateWithLifecycle()
+    val series by viewModel.series.collectAsStateWithLifecycle()
     var showLyricsDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })

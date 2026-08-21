@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
@@ -45,15 +46,15 @@ fun ArtistDetailScreen(
         viewModel.loadArtistByName(artistName)
     }
 
-    val songs by viewModel.songs.collectAsState()
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
     val sortedSongs = remember(songs) { songs.sortedBy { it.title } }
-    val albums by viewModel.albums.collectAsState()
-    val artistImageUri by viewModel.artistImageUri.collectAsState()
-    val artistBiography by viewModel.artistBiography.collectAsState()
+    val albums by viewModel.albums.collectAsStateWithLifecycle()
+    val artistImageUri by viewModel.artistImageUri.collectAsStateWithLifecycle()
+    val artistBiography by viewModel.artistBiography.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
-    val isSelecting by viewModel.isSelecting.collectAsState()
-    val selectedSongIds by viewModel.selectedSongIds.collectAsState()
+    val isSelecting by viewModel.isSelecting.collectAsStateWithLifecycle()
+    val selectedSongIds by viewModel.selectedSongIds.collectAsStateWithLifecycle()
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(stringResource(R.string.artist_title)) },
@@ -93,7 +94,7 @@ fun ArtistDetailScreen(
             when (page) {
                 0 -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(sortedSongs) { song ->
+                        items(sortedSongs, key = { it.id }, contentType = { "song" }) { song ->
                             SelectableSongItem(
                                 song = song,
                                 isSelecting = isSelecting,
@@ -111,7 +112,7 @@ fun ArtistDetailScreen(
                 }
                 1 -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(albums) { album ->
+                        items(albums, key = { it.id }, contentType = { "album" }) { album ->
                             AlbumListItem(
                                 albumName = album.name,
                                 albumArtUri = album.albumArtUri,

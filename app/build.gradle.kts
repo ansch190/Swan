@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -38,6 +39,12 @@ android {
                     keyPassword = System.getenv("SWAN_KEY_PASSWORD")
                 }
             }
+        }
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
         }
     }
 
@@ -80,6 +87,8 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material3.adaptive)
+    implementation(libs.compose.material3.adaptive.navigation.suite)
     implementation(libs.compose.icons)
     implementation(libs.compose.tooling.preview)
     debugImplementation(libs.compose.tooling)
@@ -123,6 +132,7 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.navigation.testing)
     androidTestImplementation(libs.room.testing)
+    baselineProfile(project(":benchmark"))
 }
 
 ksp {

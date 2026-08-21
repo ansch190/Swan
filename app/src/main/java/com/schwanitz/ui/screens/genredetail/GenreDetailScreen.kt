@@ -20,6 +20,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import androidx.compose.ui.res.stringResource
 import com.schwanitz.R
@@ -47,15 +48,15 @@ fun GenreDetailScreen(
         viewModel.loadGenre(genre)
     }
 
-    val songs by viewModel.songs.collectAsState()
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
     val sortedSongs = remember(songs) { songs.sortedBy { it.title } }
-    val albums by viewModel.albums.collectAsState()
-    val artists by viewModel.artists.collectAsState()
-    val artistImageUris by viewModel.artistImageUris.collectAsState()
+    val albums by viewModel.albums.collectAsStateWithLifecycle()
+    val artists by viewModel.artists.collectAsStateWithLifecycle()
+    val artistImageUris by viewModel.artistImageUris.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 3 })
-    val isSelecting by viewModel.isSelecting.collectAsState()
-    val selectedSongIds by viewModel.selectedSongIds.collectAsState()
+    val isSelecting by viewModel.isSelecting.collectAsStateWithLifecycle()
+    val selectedSongIds by viewModel.selectedSongIds.collectAsStateWithLifecycle()
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(stringResource(R.string.genre_title)) },
@@ -93,7 +94,7 @@ fun GenreDetailScreen(
             when (page) {
                 0 -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(sortedSongs) { song ->
+                        items(sortedSongs, key = { it.id }, contentType = { "song" }) { song ->
                             SelectableSongItem(
                                 song = song,
                                 isSelecting = isSelecting,
@@ -111,7 +112,7 @@ fun GenreDetailScreen(
                 }
                 1 -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(artists) { artist ->
+                        items(artists, key = { it }, contentType = { "artist" }) { artist ->
                             ArtistListItem(
                                 artistName = artist,
                                 imageUri = artistImageUris[artist],
@@ -122,7 +123,7 @@ fun GenreDetailScreen(
                 }
                 2 -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(albums) { album ->
+                        items(albums, key = { it.id }, contentType = { "album" }) { album ->
                             AlbumListItem(
                                 albumName = album.name,
                                 albumArtUri = album.albumArtUri,
